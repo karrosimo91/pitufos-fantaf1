@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "./supabase";
+import { createClient, isSupabaseConfigured } from "./supabase";
 import { useAuth } from "./auth";
 import type { ScuderiaDriver, Previsioni } from "./types";
 
@@ -14,16 +14,15 @@ export function useScuderia() {
   const [primoPilota, setPrimoPilotaState] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Carica piloti da Supabase
   useEffect(() => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured) {
       setDrivers([]);
       setPrimoPilotaState(null);
       setLoaded(true);
       return;
     }
 
-    const supabase = createClient();
+    const supabase = createClient()!;
     supabase
       .from("scuderia_drivers")
       .select("*")
@@ -50,12 +49,12 @@ export function useScuderia() {
 
   const acquista = useCallback(
     async (driver: ScuderiaDriver): Promise<boolean> => {
-      if (!user) return false;
+      if (!user || !isSupabaseConfigured) return false;
       if (drivers.length >= 5) return false;
       if (drivers.some((d) => d.driver_number === driver.driver_number)) return false;
       if (budget < driver.price) return false;
 
-      const supabase = createClient();
+      const supabase = createClient()!;
       const { error } = await supabase.from("scuderia_drivers").insert({
         user_id: user.id,
         driver_number: driver.driver_number,
@@ -75,8 +74,8 @@ export function useScuderia() {
 
   const vendi = useCallback(
     async (driverNumber: number) => {
-      if (!user) return;
-      const supabase = createClient();
+      if (!user || !isSupabaseConfigured) return;
+      const supabase = createClient()!;
       await supabase
         .from("scuderia_drivers")
         .delete()
@@ -91,17 +90,15 @@ export function useScuderia() {
 
   const setPrimoPilota = useCallback(
     async (driverNumber: number) => {
-      if (!user) return;
+      if (!user || !isSupabaseConfigured) return;
       if (!drivers.some((d) => d.driver_number === driverNumber)) return;
 
-      const supabase = createClient();
-      // Togli primo pilota da tutti
+      const supabase = createClient()!;
       await supabase
         .from("scuderia_drivers")
         .update({ is_primo_pilota: false })
         .eq("user_id", user.id);
 
-      // Setta il nuovo
       await supabase
         .from("scuderia_drivers")
         .update({ is_primo_pilota: true })
@@ -131,14 +128,13 @@ export function usePrevisioni(round = 1) {
   const [chipAttivo, setChipAttivoState] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Carica previsioni da Supabase
   useEffect(() => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured) {
       setLoaded(true);
       return;
     }
 
-    const supabase = createClient();
+    const supabase = createClient()!;
     supabase
       .from("previsioni")
       .select("*")
@@ -161,11 +157,10 @@ export function usePrevisioni(round = 1) {
       });
   }, [user, round]);
 
-  // Salva su Supabase (upsert)
   const saveToDb = useCallback(
     async (prev: Previsioni, chip: string | null) => {
-      if (!user) return;
-      const supabase = createClient();
+      if (!user || !isSupabaseConfigured) return;
+      const supabase = createClient()!;
       await supabase.from("previsioni").upsert(
         {
           user_id: user.id,

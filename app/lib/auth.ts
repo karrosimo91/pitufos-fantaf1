@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "./supabase";
+import { createClient, isSupabaseConfigured } from "./supabase";
 import type { User } from "@supabase/supabase-js";
 import type { DbProfile } from "./database.types";
 
@@ -10,7 +10,12 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    const supabase = createClient()!;
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -33,6 +38,7 @@ export function useAuth() {
 
   async function loadProfile(userId: string) {
     const supabase = createClient();
+    if (!supabase) return;
     const { data } = await supabase
       .from("profiles")
       .select("*")
@@ -44,16 +50,17 @@ export function useAuth() {
 
   async function signIn(email: string, password: string) {
     const supabase = createClient();
+    if (!supabase) return { message: "Supabase non configurato" };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return error;
   }
 
   async function signUp(email: string, password: string, teamPrincipalName: string, scuderiaName: string) {
     const supabase = createClient();
+    if (!supabase) return { message: "Supabase non configurato" };
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return error;
 
-    // Aggiorna profilo con nome team principal e scuderia
     if (data.user) {
       await supabase
         .from("profiles")
@@ -65,6 +72,7 @@ export function useAuth() {
 
   async function signOut() {
     const supabase = createClient();
+    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
@@ -73,6 +81,7 @@ export function useAuth() {
   async function updateProfile(updates: Partial<Pick<DbProfile, "team_principal_name" | "scuderia_name">>) {
     if (!user) return;
     const supabase = createClient();
+    if (!supabase) return;
     const { data } = await supabase
       .from("profiles")
       .update(updates)
