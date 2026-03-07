@@ -1,13 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import DriverCard from "../components/DriverCard";
 import { getDrivers } from "../lib/api";
 import { getDriverPrice } from "../lib/drivers-data";
 import { useScuderia } from "../lib/store";
+import { useAuth } from "../lib/auth";
 import type { Driver } from "../lib/types";
 
 export default function MercatoPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -15,6 +19,10 @@ export default function MercatoPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   const scuderia = useScuderia();
+
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/login");
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     getDrivers()
@@ -31,9 +39,9 @@ export default function MercatoPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleAcquista = (driver: Driver) => {
+  const handleAcquista = async (driver: Driver) => {
     const price = getDriverPrice(driver.driver_number);
-    const success = scuderia.acquista({
+    const success = await scuderia.acquista({
       driver_number: driver.driver_number,
       name: driver.full_name,
       team: driver.team_name,
@@ -162,7 +170,7 @@ export default function MercatoPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+        Los Pitufos FantaF1 — Stagione 2026 — v0.3
       </footer>
     </div>
   );

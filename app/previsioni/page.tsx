@@ -1,6 +1,9 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { usePrevisioni } from "../lib/store";
+import { useAuth } from "../lib/auth";
 import { PREVISIONI_PUNTI } from "../lib/types";
 
 const PREVISIONI_CONFIG = [
@@ -44,7 +47,13 @@ const PREVISIONI_CONFIG = [
 type PrevisioneKey = (typeof PREVISIONI_CONFIG)[number]["key"];
 
 export default function PrevisioniPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo } = usePrevisioni();
+
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/login");
+  }, [authLoading, user, router]);
 
   const togglePrevisione = (key: PrevisioneKey, value: boolean) => {
     const current = previsioni[key];
@@ -196,7 +205,7 @@ export default function PrevisioniPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+        Los Pitufos FantaF1 — Stagione 2026 — v0.3
       </footer>
     </div>
   );

@@ -1,7 +1,10 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import DriverCard from "../components/DriverCard";
 import { useScuderia } from "../lib/store";
+import { useAuth } from "../lib/auth";
 
 const NEXT_RACE = {
   name: "Australian Grand Prix",
@@ -12,11 +15,17 @@ const NEXT_RACE = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, profile, loading: authLoading } = useAuth();
   const { drivers, primoPilota, budget, loaded, vendi, setPrimoPilota } = useScuderia();
+
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/login");
+  }, [authLoading, user, router]);
 
   const totalValue = drivers.reduce((sum, d) => sum + d.price, 0);
 
-  if (!loaded) {
+  if (authLoading || !loaded || !user) {
     return (
       <div className="min-h-screen bg-[#0a0a12] text-white">
         <Navbar />
@@ -39,7 +48,7 @@ export default function DashboardPage() {
               La tua scuderia
             </div>
             <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-              PITUFOS RACING
+              {profile?.scuderia_name?.toUpperCase() || "LA MIA SCUDERIA"}
             </h1>
           </div>
           <div className="flex gap-6">
@@ -96,7 +105,6 @@ export default function DashboardPage() {
 
           {/* Right: Info weekend */}
           <div className="space-y-4">
-            {/* Next Race */}
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
               <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-3">
                 Prossimo Weekend
@@ -114,7 +122,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Quick stats */}
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
               <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold mb-4">
                 Riepilogo Stagione
@@ -136,7 +143,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Aggiornamenti disponibili */}
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
               <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold mb-4">
                 Aggiornamenti
@@ -160,7 +166,7 @@ export default function DashboardPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+        Los Pitufos FantaF1 — Stagione 2026 — v0.3
       </footer>
     </div>
   );
