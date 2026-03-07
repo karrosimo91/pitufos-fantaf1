@@ -82,7 +82,7 @@ export default function DriverCard({
               onClick={onSetPrimoPilota}
               className="text-[10px] tracking-wider font-bold uppercase border border-[#E8002D]/30 text-[#E8002D] hover:bg-[#E8002D]/10 px-3 py-2 rounded-lg transition-all"
             >
-              CAP
+              Primo Pilota
             </button>
           )}
         </div>

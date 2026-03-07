@@ -110,6 +110,47 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 7. Scudo Capitano: Primo Pilota x2 solo sui bonus? Aggiornamento extra?
 8. Algoritmo variazione quotazioni piloti post-GP
 
+## Quotazioni Piloti 2026 (confermate)
+Budget: 100 Soldini, 5 piloti per scuderia.
+
+| Pilota | Team | Soldini |
+|--------|------|---------|
+| Norris | McLaren | 37 |
+| Verstappen | Red Bull | 36 |
+| Piastri | McLaren | 33 |
+| Russell | Mercedes | 32 |
+| Leclerc | Ferrari | 30 |
+| Hamilton | Ferrari | 28 |
+| Antonelli | Mercedes | 23 |
+| Hadjar | Red Bull | 15 |
+| Gasly | Alpine | 14 |
+| Sainz | Williams | 14 |
+| Lawson | Racing Bulls | 13 |
+| Albon | Williams | 13 |
+| Alonso | Aston Martin | 12 |
+| Bearman | Haas | 11 |
+| Ocon | Haas | 11 |
+| Hulkenberg | Kick Sauber | 10 |
+| Stroll | Aston Martin | 10 |
+| Bortoleto | Kick Sauber | 9 |
+| Lindblad | Racing Bulls | 9 |
+| Colapinto | Alpine | 8 |
+| Perez | Cadillac | 8 |
+| Bottas | Cadillac | 8 |
+
+### Team 2026 (11 scuderie)
+- Red Bull: Verstappen, Hadjar
+- McLaren: Norris, Piastri
+- Mercedes: Russell, Antonelli
+- Ferrari: Leclerc, Hamilton
+- Alpine: Gasly, Colapinto
+- Williams: Sainz, Albon
+- Aston Martin: Alonso, Stroll
+- Haas: Ocon, Bearman
+- Kick Sauber: Hulkenberg, Bortoleto
+- Racing Bulls: Lawson, Lindblad
+- Cadillac: Perez, Bottas
+
 ## API OpenF1 — Endpoint che usiamo
 - `sessions` → calendario, tipo sessione
 - `session_result` → classifiche finali (qualifica, gara, sprint)

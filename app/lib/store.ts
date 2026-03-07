@@ -64,9 +64,21 @@ export function useScuderia() {
   const acquista = useCallback(
     async (driver: ScuderiaDriver): Promise<boolean> => {
       if (!user || !isSupabaseConfigured || confirmed) return false;
-      if (drivers.length >= 5) return false;
-      if (drivers.some((d) => d.driver_number === driver.driver_number)) return false;
-      if (budget < driver.price) return false;
+
+      // Calcola budget e check al momento esatto dell'acquisto
+      const currentDrivers = await (async () => {
+        const supabase = createClient()!;
+        const { data } = await supabase
+          .from("scuderia_drivers")
+          .select("driver_number, price")
+          .eq("user_id", user.id);
+        return data || [];
+      })();
+
+      if (currentDrivers.length >= 5) return false;
+      if (currentDrivers.some((d) => d.driver_number === driver.driver_number)) return false;
+      const currentBudget = BUDGET_INIZIALE - currentDrivers.reduce((sum, d) => sum + Number(d.price), 0);
+      if (currentBudget < driver.price) return false;
 
       const supabase = createClient()!;
       const { error } = await supabase.from("scuderia_drivers").insert({
@@ -83,7 +95,7 @@ export function useScuderia() {
       setDrivers((prev) => [...prev, driver]);
       return true;
     },
-    [user, drivers, budget, confirmed]
+    [user, confirmed]
   );
 
   const vendi = useCallback(
