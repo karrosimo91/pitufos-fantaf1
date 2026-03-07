@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useAuth } from "./lib/auth";
 
 // ─── Next race data from Jolpica API ───
 const RACES_2026 = [
@@ -50,6 +51,7 @@ function getTimeUntil(dateStr: string) {
 export default function Home() {
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [mounted, setMounted] = useState(false);
+  const { user } = useAuth();
   const nextRace = getNextRace();
 
   useEffect(() => {
@@ -156,8 +158,11 @@ export default function Home() {
 
         {/* CTA */}
         <div className="flex flex-col items-center gap-4 mb-16">
-          <a href="/dashboard" className="bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-bold text-sm tracking-[2px] uppercase px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(232,0,45,0.3)] inline-block">
-            Entra nel Gioco
+          <a
+            href={user ? "/dashboard" : "/registrati"}
+            className="bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-bold text-sm tracking-[2px] uppercase px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(232,0,45,0.3)] inline-block"
+          >
+            {user ? "Vai alla Dashboard" : "Crea la tua Scuderia"}
           </a>
           <p className="text-white/20 text-xs">Gratuito — Aperto a tutti</p>
         </div>
@@ -196,7 +201,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="relative z-10 text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.3
+        Los Pitufos FantaF1 — Stagione 2026 — v0.4
       </footer>
     </div>
   );

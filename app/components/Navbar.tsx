@@ -54,9 +54,12 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-[10px] tracking-wider text-white/30 hidden sm:block">
+              <Link
+                href="/profilo"
+                className="text-[10px] tracking-wider text-white/30 hover:text-white/60 hidden sm:block transition-all"
+              >
                 {profile?.team_principal_name || user.email}
-              </span>
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="text-[10px] tracking-wider text-white/30 hover:text-white/60 uppercase transition-all"
