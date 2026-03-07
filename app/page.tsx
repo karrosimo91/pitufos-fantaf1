@@ -94,11 +94,11 @@ export default function Home() {
           <div className="text-[10px] tracking-[6px] text-[#E8002D] uppercase mb-4 font-bold">
             Fantasy Racing League
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-2">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-2 font-[family-name:var(--font-oswald)]">
             LOS
             <span className="text-[#E8002D]"> PITUFOS</span>
           </h1>
-          <div className="text-lg md:text-xl font-light tracking-[8px] text-white/40 uppercase mt-2">
+          <div className="text-lg md:text-xl font-light tracking-[8px] text-white/40 uppercase mt-2 font-[family-name:var(--font-oswald)]">
             FantaF1
           </div>
         </div>
@@ -131,7 +131,7 @@ export default function Home() {
                   { value: countdown.seconds, label: "SEC" },
                 ].map((item) => (
                   <div key={item.label} className="bg-black/40 rounded-xl p-3">
-                    <div className="text-2xl md:text-3xl font-black font-mono tabular-nums text-white">
+                    <div className="text-2xl md:text-3xl font-black font-[family-name:var(--font-jetbrains)] tabular-nums text-white">
                       {String(item.value).padStart(2, "0")}
                     </div>
                     <div className="text-[9px] tracking-[2px] text-white/30 mt-1">
@@ -148,7 +148,7 @@ export default function Home() {
         <div className="grid grid-cols-4 gap-3 w-full max-w-lg mb-12">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="text-2xl font-black text-[#E8002D]">{stat.value}</div>
+              <div className="text-2xl font-black text-[#E8002D] font-[family-name:var(--font-jetbrains)]">{stat.value}</div>
               <div className="text-[8px] tracking-[2px] text-white/30 mt-1">{stat.label}</div>
             </div>
           ))}
@@ -156,9 +156,9 @@ export default function Home() {
 
         {/* CTA */}
         <div className="flex flex-col items-center gap-4 mb-16">
-          <button className="bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-bold text-sm tracking-[2px] uppercase px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]">
+          <a href="/dashboard" className="bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-bold text-sm tracking-[2px] uppercase px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(232,0,45,0.3)] inline-block">
             Entra nel Gioco
-          </button>
+          </a>
           <p className="text-white/20 text-xs">Gratuito — Aperto a tutti</p>
         </div>
 
@@ -181,7 +181,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-mono text-white/60">
+                  <div className="text-xs font-[family-name:var(--font-jetbrains)] text-white/60">
                     {new Date(race.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
                   </div>
                   {race.sprint && (
