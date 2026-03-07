@@ -269,11 +269,23 @@ export function usePrevisioni(round = 1) {
     if (completate < 6) return false;
 
     const supabase = createClient()!;
-    const { error } = await supabase
-      .from("previsioni")
-      .update({ confirmed: true })
-      .eq("user_id", user.id)
-      .eq("round", round);
+    // Upsert completo per assicurarsi che la riga esista e sia confermata
+    const { error } = await supabase.from("previsioni").upsert(
+      {
+        user_id: user.id,
+        round,
+        safety_car: previsioni.safetyCar,
+        virtual_safety_car: previsioni.virtualSafetyCar,
+        red_flag: previsioni.redFlag,
+        gomme_wet: previsioni.gommeWet,
+        pole_vince: previsioni.poleVince,
+        numero_dnf: previsioni.numeroDnf,
+        chip_attivo: chipAttivo,
+        confirmed: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,round" }
+    );
 
     if (error) return false;
     setConfirmed(true);

@@ -72,7 +72,7 @@ export default function PrevisioniPage() {
     setConfirming(false);
     if (ok) {
       setToast("Previsioni confermate!");
-      setTimeout(() => setToast(null), 2500);
+      setTimeout(() => setToast(null), 4000);
     }
   };
 
@@ -92,7 +92,7 @@ export default function PrevisioniPage() {
       <Navbar />
 
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white/10 backdrop-blur-md border border-white/10 text-white text-sm px-6 py-3 rounded-xl animate-pulse">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#E8002D] text-white text-sm font-bold px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(232,0,45,0.4)]">
           {toast}
         </div>
       )}
@@ -236,7 +236,7 @@ export default function PrevisioniPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.8
+        Los Pitufos FantaF1 — Stagione 2026 — v0.81
       </footer>
     </div>
   );
