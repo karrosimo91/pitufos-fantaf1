@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { usePrevisioni } from "../lib/store";
 import { useAuth } from "../lib/auth";
+import { getNextRace, getCurrentRound } from "../lib/races";
 import { PREVISIONI_PUNTI } from "../lib/types";
 
 const PREVISIONI_CONFIG = [
@@ -49,7 +50,9 @@ type PrevisioneKey = (typeof PREVISIONI_CONFIG)[number]["key"];
 export default function PrevisioniPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo } = usePrevisioni();
+  const nextRace = getNextRace();
+  const round = getCurrentRound();
+  const { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo } = usePrevisioni(round);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -79,7 +82,7 @@ export default function PrevisioniPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
             <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-              Australian Grand Prix — Round 1
+              {nextRace.name} — Round {nextRace.round}
             </div>
             <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
               PREVISIONI
@@ -205,7 +208,7 @@ export default function PrevisioniPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.4
+        Los Pitufos FantaF1 — Stagione 2026 — v0.5
       </footer>
     </div>
   );

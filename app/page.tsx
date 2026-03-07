@@ -1,39 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "./lib/auth";
-
-// ─── Next race data from Jolpica API ───
-const RACES_2026 = [
-  { round: 1, name: "Australian Grand Prix", circuit: "Albert Park", flag: "🇦🇺", date: "2026-03-08T04:00:00Z", sprint: false },
-  { round: 2, name: "Chinese Grand Prix", circuit: "Shanghai", flag: "🇨🇳", date: "2026-03-15T07:00:00Z", sprint: true },
-  { round: 3, name: "Japanese Grand Prix", circuit: "Suzuka", flag: "🇯🇵", date: "2026-03-29T05:00:00Z", sprint: false },
-  { round: 4, name: "Bahrain Grand Prix", circuit: "Sakhir", flag: "🇧🇭", date: "2026-04-12T15:00:00Z", sprint: false },
-  { round: 5, name: "Saudi Arabian Grand Prix", circuit: "Jeddah", flag: "🇸🇦", date: "2026-04-19T17:00:00Z", sprint: false },
-  { round: 6, name: "Miami Grand Prix", circuit: "Miami", flag: "🇺🇸", date: "2026-05-03T20:00:00Z", sprint: true },
-  { round: 7, name: "Canadian Grand Prix", circuit: "Montréal", flag: "🇨🇦", date: "2026-05-24T20:00:00Z", sprint: true },
-  { round: 8, name: "Monaco Grand Prix", circuit: "Monte Carlo", flag: "🇲🇨", date: "2026-06-07T13:00:00Z", sprint: false },
-  { round: 9, name: "Barcelona Grand Prix", circuit: "Catalunya", flag: "🇪🇸", date: "2026-06-14T13:00:00Z", sprint: false },
-  { round: 10, name: "Austrian Grand Prix", circuit: "Spielberg", flag: "🇦🇹", date: "2026-06-28T13:00:00Z", sprint: false },
-  { round: 11, name: "British Grand Prix", circuit: "Silverstone", flag: "🇬🇧", date: "2026-07-05T14:00:00Z", sprint: true },
-  { round: 12, name: "Belgian Grand Prix", circuit: "Spa", flag: "🇧🇪", date: "2026-07-19T13:00:00Z", sprint: false },
-  { round: 13, name: "Hungarian Grand Prix", circuit: "Budapest", flag: "🇭🇺", date: "2026-07-26T13:00:00Z", sprint: false },
-  { round: 14, name: "Dutch Grand Prix", circuit: "Zandvoort", flag: "🇳🇱", date: "2026-08-23T13:00:00Z", sprint: true },
-  { round: 15, name: "Italian Grand Prix", circuit: "Monza", flag: "🇮🇹", date: "2026-09-06T13:00:00Z", sprint: false },
-  { round: 16, name: "Spanish Grand Prix", circuit: "Madrid", flag: "🇪🇸", date: "2026-09-13T13:00:00Z", sprint: false },
-  { round: 17, name: "Azerbaijan Grand Prix", circuit: "Baku", flag: "🇦🇿", date: "2026-09-26T11:00:00Z", sprint: false },
-  { round: 18, name: "Singapore Grand Prix", circuit: "Marina Bay", flag: "🇸🇬", date: "2026-10-11T12:00:00Z", sprint: true },
-  { round: 19, name: "United States Grand Prix", circuit: "Austin", flag: "🇺🇸", date: "2026-10-25T20:00:00Z", sprint: false },
-  { round: 20, name: "Mexico City Grand Prix", circuit: "Mexico City", flag: "🇲🇽", date: "2026-11-01T20:00:00Z", sprint: false },
-  { round: 21, name: "Brazilian Grand Prix", circuit: "São Paulo", flag: "🇧🇷", date: "2026-11-08T17:00:00Z", sprint: false },
-  { round: 22, name: "Las Vegas Grand Prix", circuit: "Las Vegas", flag: "🇺🇸", date: "2026-11-22T04:00:00Z", sprint: false },
-  { round: 23, name: "Qatar Grand Prix", circuit: "Lusail", flag: "🇶🇦", date: "2026-11-29T16:00:00Z", sprint: false },
-  { round: 24, name: "Abu Dhabi Grand Prix", circuit: "Abu Dhabi", flag: "🇦🇪", date: "2026-12-06T13:00:00Z", sprint: false },
-];
-
-function getNextRace() {
-  const now = new Date();
-  return RACES_2026.find(r => new Date(r.date) > now) || RACES_2026[0];
-}
+import { RACES_2026, getNextRace, getUpcomingRaces } from "./lib/races";
 
 function getTimeUntil(dateStr: string) {
   const now = new Date().getTime();
@@ -53,6 +21,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
   const nextRace = getNextRace();
+  const upcoming = getUpcomingRaces(5);
 
   useEffect(() => {
     setMounted(true);
@@ -72,13 +41,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white overflow-hidden relative">
-      {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#E8002D] opacity-[0.03] blur-[150px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-[#E8002D] opacity-[0.02] blur-[100px] rounded-full" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#E8002D] to-[#ff4466] flex items-center justify-center font-black text-xs tracking-wider">
@@ -86,12 +53,21 @@ export default function Home() {
           </div>
           <span className="font-bold text-sm tracking-[3px] uppercase">Los Pitufos</span>
         </div>
-        <div className="text-[10px] tracking-[2px] text-white/30 uppercase">Stagione 2026</div>
+        <div className="flex items-center gap-4">
+          <div className="text-[10px] tracking-[2px] text-white/30 uppercase">Stagione 2026</div>
+          {user ? (
+            <a href="/dashboard" className="text-[10px] tracking-[2px] uppercase px-3 py-2 rounded-lg bg-[#E8002D]/10 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
+              Dashboard
+            </a>
+          ) : (
+            <a href="/login" className="text-[10px] tracking-[2px] uppercase px-3 py-2 rounded-lg bg-[#E8002D]/10 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
+              Accedi
+            </a>
+          )}
+        </div>
       </header>
 
-      {/* Hero */}
       <main className="relative z-10 flex flex-col items-center justify-center px-6 pt-16 pb-8">
-        {/* Title */}
         <div className="text-center mb-12">
           <div className="text-[10px] tracking-[6px] text-[#E8002D] uppercase mb-4 font-bold">
             Fantasy Racing League
@@ -105,7 +81,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Next Race Card */}
         <div className="w-full max-w-lg mb-10">
           <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase mb-3 font-bold text-center">
             Prossima Gara
@@ -123,7 +98,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Countdown */}
             {mounted && (
               <div className="grid grid-cols-4 gap-3 mt-6">
                 {[
@@ -146,7 +120,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-3 w-full max-w-lg mb-12">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
@@ -156,7 +129,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* CTA */}
         <div className="flex flex-col items-center gap-4 mb-16">
           <a
             href={user ? "/dashboard" : "/registrati"}
@@ -167,13 +139,12 @@ export default function Home() {
           <p className="text-white/20 text-xs">Gratuito — Aperto a tutti</p>
         </div>
 
-        {/* Mini Calendar - next 5 races */}
         <div className="w-full max-w-lg">
-          <div className="text-[10px] tracking-[4px] text-white/30 uppercase mb-4 font-bold text-center">
+          <a href="/calendario" className="text-[10px] tracking-[4px] text-white/30 uppercase mb-4 font-bold text-center block hover:text-white/50 transition-all">
             Prossime Gare
-          </div>
+          </a>
           <div className="space-y-2">
-            {RACES_2026.filter(r => new Date(r.date) > new Date()).slice(0, 5).map((race) => (
+            {upcoming.map((race) => (
               <div
                 key={race.round}
                 className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] rounded-lg px-4 py-3 transition-all"
@@ -196,12 +167,14 @@ export default function Home() {
               </div>
             ))}
           </div>
+          <a href="/calendario" className="block text-center text-[11px] text-white/20 hover:text-white/40 mt-3 transition-all">
+            Vedi tutto il calendario →
+          </a>
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="relative z-10 text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.4
+        Los Pitufos FantaF1 — Stagione 2026 — v0.5
       </footer>
     </div>
   );

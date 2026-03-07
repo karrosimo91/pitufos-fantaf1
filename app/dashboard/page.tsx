@@ -5,19 +5,13 @@ import Navbar from "../components/Navbar";
 import DriverCard from "../components/DriverCard";
 import { useScuderia } from "../lib/store";
 import { useAuth } from "../lib/auth";
-
-const NEXT_RACE = {
-  name: "Australian Grand Prix",
-  circuit: "Albert Park",
-  flag: "\u{1F1E6}\u{1F1FA}",
-  round: 1,
-  sprint: false,
-};
+import { getNextRace } from "../lib/races";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   const { drivers, primoPilota, budget, loaded, vendi, setPrimoPilota } = useScuderia();
+  const nextRace = getNextRace();
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -109,12 +103,12 @@ export default function DashboardPage() {
               <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-3">
                 Prossimo Weekend
               </div>
-              <div className="text-3xl mb-2">{NEXT_RACE.flag}</div>
-              <h3 className="font-bold text-lg">{NEXT_RACE.name}</h3>
-              <p className="text-white/40 text-sm">{NEXT_RACE.circuit}</p>
+              <div className="text-3xl mb-2">{nextRace.flag}</div>
+              <h3 className="font-bold text-lg">{nextRace.name}</h3>
+              <p className="text-white/40 text-sm">{nextRace.circuit}</p>
               <div className="flex items-center gap-2 mt-2 text-xs text-white/30">
-                <span>Round {NEXT_RACE.round}/24</span>
-                {NEXT_RACE.sprint && (
+                <span>Round {nextRace.round}/24</span>
+                {nextRace.sprint && (
                   <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
                     SPRINT
                   </span>
@@ -166,7 +160,7 @@ export default function DashboardPage() {
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.4
+        Los Pitufos FantaF1 — Stagione 2026 — v0.5
       </footer>
     </div>
   );
