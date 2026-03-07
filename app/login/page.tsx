@@ -39,7 +39,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)] mt-4">
             ACCEDI
           </h1>
-          <p className="text-white/30 text-sm mt-1">Entra nella tua scuderia</p>
+          <p className="text-white/30 text-sm mt-1">Entra nella tua scuderia per giocare</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
