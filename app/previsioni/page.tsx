@@ -1,27 +1,27 @@
 "use client";
-import { useState } from "react";
 import Navbar from "../components/Navbar";
+import { usePrevisioni } from "../lib/store";
 import { PREVISIONI_PUNTI } from "../lib/types";
 
 const PREVISIONI_CONFIG = [
   {
     key: "safetyCar" as const,
     label: "Safety Car",
-    description: "Ci sarà almeno una Safety Car durante la gara?",
+    description: "Ci sara almeno una Safety Car durante la gara?",
     puntiSi: PREVISIONI_PUNTI.safetyCar.si,
     puntiNo: PREVISIONI_PUNTI.safetyCar.no,
   },
   {
     key: "virtualSafetyCar" as const,
     label: "Virtual Safety Car",
-    description: "Ci sarà almeno una VSC durante la gara?",
+    description: "Ci sara almeno una VSC durante la gara?",
     puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si,
     puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no,
   },
   {
     key: "redFlag" as const,
     label: "Red Flag",
-    description: "Ci sarà almeno una bandiera rossa?",
+    description: "Ci sara almeno una bandiera rossa?",
     puntiSi: PREVISIONI_PUNTI.redFlag.si,
     puntiNo: PREVISIONI_PUNTI.redFlag.no,
   },
@@ -35,7 +35,7 @@ const PREVISIONI_CONFIG = [
   {
     key: "poleVince" as const,
     label: "Pole vince la gara",
-    description: "Il poleman vincerà il Gran Premio?",
+    description: "Il poleman vincera il Gran Premio?",
     puntiSi: PREVISIONI_PUNTI.poleVince.si,
     puntiNo: PREVISIONI_PUNTI.poleVince.no,
   },
@@ -44,24 +44,23 @@ const PREVISIONI_CONFIG = [
 type PrevisioneKey = (typeof PREVISIONI_CONFIG)[number]["key"];
 
 export default function PrevisioniPage() {
-  const [previsioni, setPrevisioni] = useState<Record<PrevisioneKey, boolean | null>>({
-    safetyCar: null,
-    virtualSafetyCar: null,
-    redFlag: null,
-    gommeWet: null,
-    poleVince: null,
-  });
-  const [numeroDnf, setNumeroDnf] = useState<number | null>(null);
-  const [chipAttivo, setChipAttivo] = useState<string | null>(null);
-
-  const completate = Object.values(previsioni).filter((v) => v !== null).length + (numeroDnf !== null ? 1 : 0);
+  const { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo } = usePrevisioni();
 
   const togglePrevisione = (key: PrevisioneKey, value: boolean) => {
-    setPrevisioni((prev) => ({
-      ...prev,
-      [key]: prev[key] === value ? null : value,
-    }));
+    const current = previsioni[key];
+    setPrevisione(key, current === value ? null : value);
   };
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen bg-[#0a0a12] text-white">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white">
@@ -141,9 +140,9 @@ export default function PrevisioniPage() {
             {Array.from({ length: 8 }, (_, i) => i).map((n) => (
               <button
                 key={n}
-                onClick={() => setNumeroDnf(numeroDnf === n ? null : n)}
+                onClick={() => setNumeroDnf(previsioni.numeroDnf === n ? null : n)}
                 className={`w-10 h-10 rounded-lg font-[family-name:var(--font-jetbrains)] font-bold text-sm transition-all ${
-                  numeroDnf === n
+                  previsioni.numeroDnf === n
                     ? "bg-[#E8002D]/20 border border-[#E8002D]/40 text-[#E8002D]"
                     : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
                 }`}
@@ -195,6 +194,10 @@ export default function PrevisioniPage() {
           Conferma Previsioni ({completate}/6)
         </button>
       </main>
+
+      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
+        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+      </footer>
     </div>
   );
 }

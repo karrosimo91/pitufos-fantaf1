@@ -144,6 +144,10 @@ export default function ClassificaPage() {
           </div>
         )}
       </main>
+
+      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
+        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+      </footer>
     </div>
   );
 }

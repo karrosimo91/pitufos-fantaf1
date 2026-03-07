@@ -1,32 +1,31 @@
 "use client";
-import { useState } from "react";
 import Navbar from "../components/Navbar";
 import DriverCard from "../components/DriverCard";
-import type { ScuderiaDriver } from "../lib/types";
-
-// Mock scuderia data — sarà sostituita dal backend
-const MOCK_SCUDERIA: ScuderiaDriver[] = [
-  { driver_number: 1, name: "Max Verstappen", team: "Red Bull Racing", price: 30, teamColour: "3671C6" },
-  { driver_number: 4, name: "Lando Norris", team: "McLaren", price: 25, teamColour: "FF8000" },
-  { driver_number: 16, name: "Charles Leclerc", team: "Ferrari", price: 26, teamColour: "E80020" },
-  { driver_number: 63, name: "George Russell", team: "Mercedes", price: 22, teamColour: "27F4D2" },
-  { driver_number: 22, name: "Yuki Tsunoda", team: "RB", price: 13, teamColour: "6692FF" },
-];
+import { useScuderia } from "../lib/store";
 
 const NEXT_RACE = {
   name: "Australian Grand Prix",
   circuit: "Albert Park",
-  flag: "🇦🇺",
+  flag: "\u{1F1E6}\u{1F1FA}",
   round: 1,
   sprint: false,
 };
 
 export default function DashboardPage() {
-  const [primoPilota, setPrimoPilota] = useState<number>(1);
-  const [scuderia] = useState<ScuderiaDriver[]>(MOCK_SCUDERIA);
+  const { drivers, primoPilota, budget, loaded, vendi, setPrimoPilota } = useScuderia();
 
-  const budget = 100 - scuderia.reduce((sum, d) => sum + d.price, 0);
-  const totalValue = scuderia.reduce((sum, d) => sum + d.price, 0);
+  const totalValue = drivers.reduce((sum, d) => sum + d.price, 0);
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen bg-[#0a0a12] text-white">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white">
@@ -63,9 +62,9 @@ export default function DashboardPage() {
           {/* Left: Scuderia */}
           <div className="lg:col-span-2 space-y-3">
             <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold mb-2">
-              I tuoi piloti ({scuderia.length}/5)
+              I tuoi piloti ({drivers.length}/5)
             </div>
-            {scuderia.map((driver) => (
+            {drivers.map((driver) => (
               <DriverCard
                 key={driver.driver_number}
                 name={driver.name}
@@ -75,11 +74,17 @@ export default function DashboardPage() {
                 number={driver.driver_number}
                 isPrimoPilota={driver.driver_number === primoPilota}
                 onSetPrimoPilota={() => setPrimoPilota(driver.driver_number)}
+                onSelect={() => vendi(driver.driver_number)}
                 actionLabel="Vendi"
                 showActions={true}
               />
             ))}
-            {scuderia.length < 5 && (
+            {drivers.length === 0 && (
+              <div className="text-center py-12 text-white/20 text-sm">
+                Non hai ancora nessun pilota. Vai al mercato per acquistarne!
+              </div>
+            )}
+            {drivers.length < 5 && (
               <a
                 href="/mercato"
                 className="block text-center border-2 border-dashed border-white/10 rounded-xl p-6 text-white/20 hover:text-white/40 hover:border-white/20 transition-all text-sm tracking-wider uppercase"
@@ -153,6 +158,10 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
+        Los Pitufos FantaF1 — Stagione 2026 — v0.2
+      </footer>
     </div>
   );
 }
