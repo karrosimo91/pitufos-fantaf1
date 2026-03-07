@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/mercato", label: "Mercato" },
   { href: "/previsioni", label: "Previsioni" },
   { href: "/classifica", label: "Classifica" },
+  { href: "/risultati", label: "Risultati" },
   { href: "/calendario", label: "Calendario" },
 ];
 

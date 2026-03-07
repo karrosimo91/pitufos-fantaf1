@@ -58,10 +58,22 @@ export function useAuth() {
   async function signUp(email: string, password: string, teamPrincipalName: string, scuderiaName: string) {
     const supabase = createClient();
     if (!supabase) return { message: "Supabase non configurato" };
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          team_principal_name: teamPrincipalName,
+          scuderia_name: scuderiaName,
+        },
+      },
+    });
     if (error) return error;
 
+    // Il trigger legge i metadata, ma come fallback aggiorniamo anche direttamente
     if (data.user) {
+      // Piccolo delay per dare tempo al trigger
+      await new Promise((r) => setTimeout(r, 500));
       await supabase
         .from("profiles")
         .update({ team_principal_name: teamPrincipalName, scuderia_name: scuderiaName })
