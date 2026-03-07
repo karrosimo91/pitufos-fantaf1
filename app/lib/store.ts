@@ -9,20 +9,24 @@ const BUDGET_INIZIALE = 100;
 // ─── Hook: useScuderia (Supabase) ───
 
 export function useScuderia() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [drivers, setDrivers] = useState<ScuderiaDriver[]>([]);
   const [primoPilota, setPrimoPilotaState] = useState<number | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!user || !isSupabaseConfigured) {
       setDrivers([]);
       setPrimoPilotaState(null);
+      setConfirmed(false);
       setLoaded(true);
       return;
     }
 
     const supabase = createClient()!;
+
+    // Carica piloti
     supabase
       .from("scuderia_drivers")
       .select("*")
@@ -43,13 +47,23 @@ export function useScuderia() {
         }
         setLoaded(true);
       });
+
+    // Carica stato conferma dal profilo
+    supabase
+      .from("profiles")
+      .select("scuderia_confirmed")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setConfirmed(!!data.scuderia_confirmed);
+      });
   }, [user]);
 
   const budget = BUDGET_INIZIALE - drivers.reduce((sum, d) => sum + d.price, 0);
 
   const acquista = useCallback(
     async (driver: ScuderiaDriver): Promise<boolean> => {
-      if (!user || !isSupabaseConfigured) return false;
+      if (!user || !isSupabaseConfigured || confirmed) return false;
       if (drivers.length >= 5) return false;
       if (drivers.some((d) => d.driver_number === driver.driver_number)) return false;
       if (budget < driver.price) return false;
@@ -69,12 +83,12 @@ export function useScuderia() {
       setDrivers((prev) => [...prev, driver]);
       return true;
     },
-    [user, drivers, budget]
+    [user, drivers, budget, confirmed]
   );
 
   const vendi = useCallback(
     async (driverNumber: number) => {
-      if (!user || !isSupabaseConfigured) return;
+      if (!user || !isSupabaseConfigured || confirmed) return;
       const supabase = createClient()!;
       await supabase
         .from("scuderia_drivers")
@@ -85,12 +99,12 @@ export function useScuderia() {
       setDrivers((prev) => prev.filter((d) => d.driver_number !== driverNumber));
       if (primoPilota === driverNumber) setPrimoPilotaState(null);
     },
-    [user, primoPilota]
+    [user, primoPilota, confirmed]
   );
 
   const setPrimoPilota = useCallback(
     async (driverNumber: number) => {
-      if (!user || !isSupabaseConfigured) return;
+      if (!user || !isSupabaseConfigured || confirmed) return;
       if (!drivers.some((d) => d.driver_number === driverNumber)) return;
 
       const supabase = createClient()!;
@@ -107,10 +121,26 @@ export function useScuderia() {
 
       setPrimoPilotaState(driverNumber);
     },
-    [user, drivers]
+    [user, drivers, confirmed]
   );
 
-  return { drivers, primoPilota, budget, loaded, acquista, vendi, setPrimoPilota };
+  const confermaScuderia = useCallback(async (): Promise<boolean> => {
+    if (!user || !isSupabaseConfigured) return false;
+    if (drivers.length !== 5) return false;
+    if (!primoPilota) return false;
+
+    const supabase = createClient()!;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ scuderia_confirmed: true })
+      .eq("id", user.id);
+
+    if (error) return false;
+    setConfirmed(true);
+    return true;
+  }, [user, drivers, primoPilota]);
+
+  return { drivers, primoPilota, budget, confirmed, loaded, acquista, vendi, setPrimoPilota, confermaScuderia };
 }
 
 // ─── Hook: usePrevisioni (Supabase) ───
@@ -126,6 +156,7 @@ export function usePrevisioni(round = 1) {
     numeroDnf: null,
   });
   const [chipAttivo, setChipAttivoState] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -152,6 +183,7 @@ export function usePrevisioni(round = 1) {
             numeroDnf: data.numero_dnf,
           });
           setChipAttivoState(data.chip_attivo);
+          setConfirmed(!!data.confirmed);
         }
         setLoaded(true);
       });
@@ -159,7 +191,7 @@ export function usePrevisioni(round = 1) {
 
   const saveToDb = useCallback(
     async (prev: Previsioni, chip: string | null) => {
-      if (!user || !isSupabaseConfigured) return;
+      if (!user || !isSupabaseConfigured || confirmed) return;
       const supabase = createClient()!;
       await supabase.from("previsioni").upsert(
         {
@@ -172,48 +204,74 @@ export function usePrevisioni(round = 1) {
           pole_vince: prev.poleVince,
           numero_dnf: prev.numeroDnf,
           chip_attivo: chip,
+          confirmed: false,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,round" }
       );
     },
-    [user, round]
+    [user, round, confirmed]
   );
 
   const setPrevisione = useCallback(
     (key: keyof Omit<Previsioni, "numeroDnf">, value: boolean | null) => {
+      if (confirmed) return;
       setPrevisioniState((prev) => {
         const next = { ...prev, [key]: value };
         saveToDb(next, chipAttivo);
         return next;
       });
     },
-    [saveToDb, chipAttivo]
+    [saveToDb, chipAttivo, confirmed]
   );
 
   const setNumeroDnf = useCallback(
     (value: number | null) => {
+      if (confirmed) return;
       setPrevisioniState((prev) => {
         const next = { ...prev, numeroDnf: value };
         saveToDb(next, chipAttivo);
         return next;
       });
     },
-    [saveToDb, chipAttivo]
+    [saveToDb, chipAttivo, confirmed]
   );
 
   const setChipAttivo = useCallback(
     (chip: string | null) => {
+      if (confirmed) return;
       setChipAttivoState(chip);
       saveToDb(previsioni, chip);
     },
-    [saveToDb, previsioni]
+    [saveToDb, previsioni, confirmed]
   );
+
+  const confermaPrevisioni = useCallback(async (): Promise<boolean> => {
+    if (!user || !isSupabaseConfigured || confirmed) return false;
+
+    const completate =
+      Object.entries(previsioni)
+        .filter(([k]) => k !== "numeroDnf")
+        .filter(([, v]) => v !== null).length + (previsioni.numeroDnf !== null ? 1 : 0);
+
+    if (completate < 6) return false;
+
+    const supabase = createClient()!;
+    const { error } = await supabase
+      .from("previsioni")
+      .update({ confirmed: true })
+      .eq("user_id", user.id)
+      .eq("round", round);
+
+    if (error) return false;
+    setConfirmed(true);
+    return true;
+  }, [user, round, previsioni, confirmed]);
 
   const completate =
     Object.entries(previsioni)
       .filter(([k]) => k !== "numeroDnf")
       .filter(([, v]) => v !== null).length + (previsioni.numeroDnf !== null ? 1 : 0);
 
-  return { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo };
+  return { previsioni, chipAttivo, completate, confirmed, loaded, setPrevisione, setNumeroDnf, setChipAttivo, confermaPrevisioni };
 }

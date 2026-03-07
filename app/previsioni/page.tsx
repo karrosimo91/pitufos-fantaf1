@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { usePrevisioni } from "../lib/store";
@@ -52,15 +52,28 @@ export default function PrevisioniPage() {
   const { user, loading: authLoading } = useAuth();
   const nextRace = getNextRace();
   const round = getCurrentRound();
-  const { previsioni, chipAttivo, completate, loaded, setPrevisione, setNumeroDnf, setChipAttivo } = usePrevisioni(round);
+  const { previsioni, chipAttivo, completate, confirmed, loaded, setPrevisione, setNumeroDnf, setChipAttivo, confermaPrevisioni } = usePrevisioni(round);
+  const [confirming, setConfirming] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
   }, [authLoading, user, router]);
 
   const togglePrevisione = (key: PrevisioneKey, value: boolean) => {
+    if (confirmed) return;
     const current = previsioni[key];
     setPrevisione(key, current === value ? null : value);
+  };
+
+  const handleConferma = async () => {
+    setConfirming(true);
+    const ok = await confermaPrevisioni();
+    setConfirming(false);
+    if (ok) {
+      setToast("Previsioni confermate!");
+      setTimeout(() => setToast(null), 2500);
+    }
   };
 
   if (!loaded) {
@@ -77,6 +90,12 @@ export default function PrevisioniPage() {
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white">
       <Navbar />
+
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white/10 backdrop-blur-md border border-white/10 text-white text-sm px-6 py-3 rounded-xl animate-pulse">
+          {toast}
+        </div>
+      )}
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
@@ -95,6 +114,12 @@ export default function PrevisioniPage() {
             <div className="text-[9px] tracking-[2px] text-white/30">COMPLETATE</div>
           </div>
         </div>
+
+        {confirmed && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400 mb-6">
+            Previsioni confermate! Non puoi piu modificarle per questo weekend.
+          </div>
+        )}
 
         {/* Previsioni SI/NO */}
         <div className="space-y-3 mb-6">
@@ -195,20 +220,23 @@ export default function PrevisioniPage() {
         </div>
 
         {/* Submit */}
-        <button
-          disabled={completate < 6}
-          className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
-            completate === 6
-              ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]"
-              : "bg-white/5 text-white/20 cursor-not-allowed"
-          }`}
-        >
-          Conferma Previsioni ({completate}/6)
-        </button>
+        {!confirmed && (
+          <button
+            onClick={handleConferma}
+            disabled={completate < 6 || confirming}
+            className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
+              completate === 6
+                ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]"
+                : "bg-white/5 text-white/20 cursor-not-allowed"
+            }`}
+          >
+            {confirming ? "Conferma in corso..." : `Conferma Previsioni (${completate}/6)`}
+          </button>
+        )}
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.5
+        Los Pitufos FantaF1 — Stagione 2026 — v0.6
       </footer>
     </div>
   );

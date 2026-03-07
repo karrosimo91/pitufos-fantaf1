@@ -174,7 +174,7 @@ export default function Home() {
       </main>
 
       <footer className="relative z-10 text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.5
+        Los Pitufos FantaF1 — Stagione 2026 — v0.6
       </footer>
     </div>
   );

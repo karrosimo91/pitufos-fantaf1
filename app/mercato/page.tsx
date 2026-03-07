@@ -3,17 +3,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import DriverCard from "../components/DriverCard";
-import { getDrivers } from "../lib/api";
-import { getDriverPrice } from "../lib/drivers-data";
+import { DRIVERS_2026 } from "../lib/drivers-data";
 import { useScuderia } from "../lib/store";
 import { useAuth } from "../lib/auth";
-import type { Driver } from "../lib/types";
 
 export default function MercatoPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"price" | "name" | "team">("price");
   const [toast, setToast] = useState<string | null>(null);
@@ -24,54 +20,43 @@ export default function MercatoPage() {
     if (!authLoading && !user) router.push("/login");
   }, [authLoading, user, router]);
 
-  useEffect(() => {
-    getDrivers()
-      .then((data) => {
-        const unique = new Map<number, Driver>();
-        data.forEach((d) => unique.set(d.driver_number, d));
-        setDrivers(Array.from(unique.values()));
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleAcquista = async (driver: Driver) => {
-    const price = getDriverPrice(driver.driver_number);
+  const handleAcquista = async (driver: typeof DRIVERS_2026[number]) => {
+    if (scuderia.confirmed) {
+      showToast("Squadra gia confermata");
+      return;
+    }
     const success = await scuderia.acquista({
-      driver_number: driver.driver_number,
-      name: driver.full_name,
-      team: driver.team_name,
-      price,
-      teamColour: driver.team_colour || "666666",
+      driver_number: driver.number,
+      name: driver.name,
+      team: driver.team,
+      price: driver.price,
+      teamColour: driver.teamColour,
     });
     if (success) {
-      showToast(`${driver.full_name} acquistato!`);
+      showToast(`${driver.name} acquistato!`);
     } else if (scuderia.drivers.length >= 5) {
       showToast("Squadra piena (5/5)");
-    } else if (scuderia.drivers.some((d) => d.driver_number === driver.driver_number)) {
+    } else if (scuderia.drivers.some((d) => d.driver_number === driver.number)) {
       showToast("Pilota gia in squadra");
     } else {
       showToast("Budget insufficiente");
     }
   };
 
-  const filtered = drivers
+  const filtered = DRIVERS_2026
     .filter((d) => {
       const q = search.toLowerCase();
-      return (
-        d.full_name?.toLowerCase().includes(q) ||
-        d.team_name?.toLowerCase().includes(q) ||
-        d.name_acronym?.toLowerCase().includes(q)
-      );
+      return d.name.toLowerCase().includes(q) || d.team.toLowerCase().includes(q);
     })
     .sort((a, b) => {
-      if (sortBy === "price") return getDriverPrice(b.driver_number) - getDriverPrice(a.driver_number);
-      if (sortBy === "name") return (a.full_name || "").localeCompare(b.full_name || "");
-      return (a.team_name || "").localeCompare(b.team_name || "");
+      if (sortBy === "price") return b.price - a.price;
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      return a.team.localeCompare(b.team);
     });
 
   const isOwned = (num: number) => scuderia.drivers.some((d) => d.driver_number === num);
@@ -80,7 +65,6 @@ export default function MercatoPage() {
     <div className="min-h-screen bg-[#0a0a12] text-white">
       <Navbar />
 
-      {/* Toast */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white/10 backdrop-blur-md border border-white/10 text-white text-sm px-6 py-3 rounded-xl animate-pulse">
           {toast}
@@ -91,7 +75,7 @@ export default function MercatoPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
             <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-              Compra e vendi piloti
+              {scuderia.confirmed ? "Squadra confermata" : "Compra piloti"}
             </div>
             <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
               MERCATO
@@ -112,6 +96,12 @@ export default function MercatoPage() {
             </div>
           </div>
         </div>
+
+        {scuderia.confirmed && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400 mb-6">
+            La tua squadra e stata confermata. Non puoi piu fare modifiche per questo weekend.
+          </div>
+        )}
 
         {/* Filtri */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -140,37 +130,25 @@ export default function MercatoPage() {
         </div>
 
         {/* Lista piloti */}
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-            <p className="text-white/30 text-sm mt-4">Caricamento piloti...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-white/30 text-sm">
-            Nessun pilota trovato
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map((driver) => (
-              <DriverCard
-                key={driver.driver_number}
-                name={driver.full_name}
-                team={driver.team_name}
-                teamColour={driver.team_colour || "666666"}
-                price={getDriverPrice(driver.driver_number)}
-                number={driver.driver_number}
-                headshot={driver.headshot_url}
-                actionLabel={isOwned(driver.driver_number) ? "In squadra" : "Acquista"}
-                showActions={!isOwned(driver.driver_number)}
-                onSelect={isOwned(driver.driver_number) ? undefined : () => handleAcquista(driver)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filtered.map((driver) => (
+            <DriverCard
+              key={driver.number}
+              name={driver.name}
+              team={driver.team}
+              teamColour={driver.teamColour}
+              price={driver.price}
+              number={driver.number}
+              actionLabel={isOwned(driver.number) ? "In squadra" : "Acquista"}
+              showActions={!isOwned(driver.number) && !scuderia.confirmed}
+              onSelect={isOwned(driver.number) || scuderia.confirmed ? undefined : () => handleAcquista(driver)}
+            />
+          ))}
+        </div>
       </main>
 
       <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.5
+        Los Pitufos FantaF1 — Stagione 2026 — v0.6
       </footer>
     </div>
   );
