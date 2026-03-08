@@ -56,6 +56,7 @@ ALTER TABLE leghe ENABLE ROW LEVEL SECURITY;
 -- Tutti possono leggere leghe pubbliche/generali + leghe a cui appartengono
 CREATE POLICY "leghe_read" ON leghe FOR SELECT USING (
   is_public = true OR is_generale = true OR
+  creator_id = auth.uid() OR
   id IN (SELECT lega_id FROM lega_members WHERE user_id = auth.uid())
 );
 

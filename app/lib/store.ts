@@ -611,32 +611,49 @@ export function useLeghe() {
 
       const inviteCode = isPublic ? null : Math.random().toString(36).substring(2, 8).toUpperCase();
 
-      const { data, error } = await supabase
+      const legaId = crypto.randomUUID();
+
+      const { error } = await supabase
         .from("leghe")
         .insert({
+          id: legaId,
           name,
           creator_id: user.id,
           round_start: roundStart,
           round_end: roundEnd,
           is_public: isPublic,
           invite_code: inviteCode,
-        })
-        .select()
-        .single();
+        });
 
-      if (error || !data) {
+      if (error) {
         console.error("[leghe] create error:", error);
         return null;
       }
 
       // Auto-join il creatore
-      await supabase.from("lega_members").insert({
-        lega_id: data.id,
+      const { error: joinErr } = await supabase.from("lega_members").insert({
+        lega_id: legaId,
         user_id: user.id,
       });
 
+      if (joinErr) {
+        console.error("[leghe] auto-join error:", joinErr);
+      }
+
       await load();
-      return data;
+
+      // Ritorna la lega creata
+      return {
+        id: legaId,
+        name,
+        creator_id: user.id,
+        round_start: roundStart,
+        round_end: roundEnd,
+        is_public: isPublic,
+        invite_code: inviteCode,
+        is_generale: false,
+        created_at: new Date().toISOString(),
+      } as Lega;
     },
     [user, load]
   );
