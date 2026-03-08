@@ -54,7 +54,20 @@ export interface ClassificaEntry {
   scuderiaName: string;
   totalPoints: number;
   weekendPoints: number;
-  realPoints: number;
+}
+
+// ─── Leghe ───
+export interface Lega {
+  id: string;
+  name: string;
+  creator_id: string | null;
+  round_start: number;
+  round_end: number;
+  is_public: boolean;
+  invite_code: string | null;
+  is_generale: boolean;
+  created_at: string;
+  member_count?: number;
 }
 
 // ─── Punteggi ───

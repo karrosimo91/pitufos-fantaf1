@@ -8,7 +8,7 @@ import { useAuth } from "../lib/auth";
 import { Users, Info, User, LogOut, ChevronRight } from "lucide-react";
 
 const MENU_ITEMS = [
-  { href: "/campionati", label: "Campionati", desc: "Crea o unisciti a un campionato", icon: Users },
+  { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
   { href: "/info", label: "Info / Regolamento", desc: "Punteggi, previsioni, aggiornamenti", icon: Info },
   { href: "/profilo", label: "Profilo", desc: "Modifica nome e scuderia", icon: User },
 ];

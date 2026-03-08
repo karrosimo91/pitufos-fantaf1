@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 import { useAuth } from "./auth";
 import { getDriverByNumber } from "./drivers-data";
-import type { Previsioni } from "./types";
+import type { Previsioni, Lega } from "./types";
 
 const BUDGET_INIZIALE = 100;
 
@@ -547,4 +547,206 @@ export function useAggiornamenti() {
   );
 
   return { pilotiChips, previsioniChips, loaded };
+}
+
+// ═══════════════════════════════════════════
+// Hook: useLeghe — Le leghe dell'utente
+// ═══════════════════════════════════════════
+
+const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
+
+export function useLeghe() {
+  const { user } = useAuth();
+  const [leghe, setLeghe] = useState<Lega[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!user || !isSupabaseConfigured) {
+      setLoaded(true);
+      return;
+    }
+    const supabase = createClient()!;
+
+    // Leghe a cui l'utente appartiene
+    const { data: membership } = await supabase
+      .from("lega_members")
+      .select("lega_id")
+      .eq("user_id", user.id);
+
+    if (!membership || membership.length === 0) {
+      setLeghe([]);
+      setLoaded(true);
+      return;
+    }
+
+    const legaIds = membership.map((m) => m.lega_id);
+    const { data: legheData } = await supabase
+      .from("leghe")
+      .select("*")
+      .in("id", legaIds)
+      .order("is_generale", { ascending: false })
+      .order("created_at", { ascending: true });
+
+    // Conta membri per ogni lega
+    const legheWithCount: Lega[] = [];
+    for (const l of legheData || []) {
+      const { count } = await supabase
+        .from("lega_members")
+        .select("*", { count: "exact", head: true })
+        .eq("lega_id", l.id);
+
+      legheWithCount.push({ ...l, member_count: count ?? 0 });
+    }
+
+    setLeghe(legheWithCount);
+    setLoaded(true);
+  }, [user]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const creaLega = useCallback(
+    async (name: string, roundStart: number, roundEnd: number, isPublic: boolean): Promise<Lega | null> => {
+      if (!user || !isSupabaseConfigured) return null;
+      const supabase = createClient()!;
+
+      const inviteCode = isPublic ? null : Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      const { data, error } = await supabase
+        .from("leghe")
+        .insert({
+          name,
+          creator_id: user.id,
+          round_start: roundStart,
+          round_end: roundEnd,
+          is_public: isPublic,
+          invite_code: inviteCode,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error("[leghe] create error:", error);
+        return null;
+      }
+
+      // Auto-join il creatore
+      await supabase.from("lega_members").insert({
+        lega_id: data.id,
+        user_id: user.id,
+      });
+
+      await load();
+      return data;
+    },
+    [user, load]
+  );
+
+  const uniscitiConCodice = useCallback(
+    async (code: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!user || !isSupabaseConfigured) return { ok: false, error: "Non loggato" };
+      const supabase = createClient()!;
+
+      // Cerca la lega per codice
+      const { data: lega, error: findErr } = await supabase
+        .from("leghe")
+        .select("*")
+        .eq("invite_code", code.toUpperCase().trim())
+        .single();
+
+      if (findErr || !lega) return { ok: false, error: "Codice non valido" };
+
+      // Controlla se gia' membro
+      const { data: existing } = await supabase
+        .from("lega_members")
+        .select("*")
+        .eq("lega_id", lega.id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (existing) return { ok: false, error: "Sei gia' in questa lega" };
+
+      // Unisciti
+      const { error: joinErr } = await supabase.from("lega_members").insert({
+        lega_id: lega.id,
+        user_id: user.id,
+      });
+
+      if (joinErr) return { ok: false, error: "Errore: " + joinErr.message };
+
+      await load();
+      return { ok: true };
+    },
+    [user, load]
+  );
+
+  const uniscitiPubblica = useCallback(
+    async (legaId: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!user || !isSupabaseConfigured) return { ok: false, error: "Non loggato" };
+      const supabase = createClient()!;
+
+      const { data: existing } = await supabase
+        .from("lega_members")
+        .select("*")
+        .eq("lega_id", legaId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (existing) return { ok: false, error: "Sei gia' in questa lega" };
+
+      const { error } = await supabase.from("lega_members").insert({
+        lega_id: legaId,
+        user_id: user.id,
+      });
+
+      if (error) return { ok: false, error: error.message };
+
+      await load();
+      return { ok: true };
+    },
+    [user, load]
+  );
+
+  return { leghe, loaded, creaLega, uniscitiConCodice, uniscitiPubblica, LEGA_GENERALE_ID, reload: load };
+}
+
+// ═══════════════════════════════════════════
+// Hook: useClassificaLega — Classifica filtrata per lega
+// Usa la RPC function classifica_lega
+// ═══════════════════════════════════════════
+
+export interface ClassificaLegaEntry {
+  user_id: string;
+  team_principal_name: string;
+  scuderia_name: string;
+  total_points: number;
+  last_weekend_points: number;
+}
+
+export function useClassificaLega(legaId: string | null) {
+  const [classifica, setClassifica] = useState<ClassificaLegaEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!legaId || !isSupabaseConfigured) {
+      setClassifica([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const supabase = createClient()!;
+    supabase
+      .rpc("classifica_lega", { p_lega_id: legaId })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[classifica_lega] error:", error);
+          setClassifica([]);
+        } else {
+          setClassifica(data || []);
+        }
+        setLoading(false);
+      });
+  }, [legaId]);
+
+  return { classifica, loading };
 }
