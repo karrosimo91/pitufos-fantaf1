@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
@@ -10,6 +10,18 @@ import { ChevronDown } from "lucide-react";
 const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
 
 export default function ClassificaPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
+      </div>
+    }>
+      <ClassificaContent />
+    </Suspense>
+  );
+}
+
+function ClassificaContent() {
   const searchParams = useSearchParams();
   const legaParam = searchParams.get("lega");
   const { user } = useAuth();
