@@ -94,10 +94,14 @@ export async function POST(request: NextRequest) {
       log.push(`Qualifica: ${qualifying.length} piloti`);
     }
 
-    // Gara
+    // Gara (usa qualifica come griglia di partenza)
     const raceKey = raceSession.session_key;
-    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day);
-    log.push(`Gara: ${raceResults.length} piloti`);
+    const qualGridMap = new Map<number, number>();
+    for (const q of qualifying) {
+      qualGridMap.set(q.driver_number, q.position);
+    }
+    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
+    log.push(`Gara: ${raceResults.length} piloti (con griglia da qualifica)`);
 
     // Sprint
     let sprint_shootout: DriverResult[] | undefined;
@@ -278,21 +282,15 @@ async function fetchSessionResults(sessionKey: number): Promise<DriverResult[]> 
   }));
 }
 
-async function fetchRaceResults(sessionKey: number, dotdNumber?: number): Promise<DriverResult[]> {
-  console.log(`[DEBUG] fetchRaceResults: fetching position for session ${sessionKey}`);
+async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGridMap?: Map<number, number>): Promise<DriverResult[]> {
   const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-  console.log(`[DEBUG] fetchRaceResults: got ${positions.length} position entries, isArray=${Array.isArray(positions)}`);
   const lastPositions = new Map<number, any>();
   for (const r of positions) {
     if (r.driver_number) lastPositions.set(r.driver_number, r);
   }
-  console.log(`[DEBUG] fetchRaceResults: ${lastPositions.size} unique drivers`);
 
-  const grid = await fetchJson(`${OPENF1}/starting_grid?session_key=${sessionKey}`);
-  const gridMap = new Map<number, number>();
-  for (const g of grid) {
-    if (g.driver_number && g.position) gridMap.set(g.driver_number, g.position);
-  }
+  // Usa griglia da qualifica (passata come parametro)
+  const gridMap = qualGridMap ?? new Map<number, number>();
 
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);
   let fastestLapDriver: number | null = null;

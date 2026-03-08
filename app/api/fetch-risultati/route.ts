@@ -74,10 +74,14 @@ export async function POST(request: NextRequest) {
       log.push(`Qualifica: ${qualifying.length} piloti`);
     }
 
-    // 4. Fetch griglia di partenza + risultati gara
+    // 4. Fetch risultati gara (usa qualifica come griglia)
     const raceKey = raceSession.session_key;
-    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day);
-    log.push(`Gara: ${raceResults.length} piloti`);
+    const qualGridMap = new Map<number, number>();
+    for (const q of qualifying) {
+      qualGridMap.set(q.driver_number, q.position);
+    }
+    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
+    log.push(`Gara: ${raceResults.length} piloti (con griglia da qualifica)`);
 
     // 5. Sprint (se presente)
     let sprint_shootout: DriverResult[] | undefined;
@@ -181,7 +185,7 @@ async function fetchSessionResults(sessionKey: number, type: string): Promise<Dr
 
 // ─── Fetch risultati gara con griglia e giro veloce ───
 
-async function fetchRaceResults(sessionKey: number, dotdNumber?: number): Promise<DriverResult[]> {
+async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGridMap?: Map<number, number>): Promise<DriverResult[]> {
   // Posizioni finali
   const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
   const lastPositions = new Map<number, any>();
@@ -189,14 +193,8 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number): Promis
     if (r.driver_number) lastPositions.set(r.driver_number, r);
   }
 
-  // Griglia di partenza
-  const grid = await fetchJson(`${OPENF1}/starting_grid?session_key=${sessionKey}`);
-  const gridMap = new Map<number, number>();
-  for (const g of grid) {
-    if (g.driver_number && g.position) {
-      gridMap.set(g.driver_number, g.position);
-    }
-  }
+  // Usa griglia da qualifica (passata come parametro)
+  const gridMap = qualGridMap ?? new Map<number, number>();
 
   // Giro veloce
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);
