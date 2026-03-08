@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { useScuderia, useFormazione, useAggiornamenti } from "../lib/store";
+import { useSquadra, useAggiornamenti, useDashboardStats } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getNextRace, getCurrentRound, getDeadline } from "../lib/races";
 import { getDriverByNumber } from "../lib/drivers-data";
 import {
   Crown, AlertTriangle, ChevronRight,
-  Zap, Shield, UserPlus, Users, ShieldCheck, Copy, Clock,
+  Zap, Shield, UserPlus, Users, ShieldCheck, Copy, Clock, Shuffle,
 } from "lucide-react";
 
 function getTimeUntil(dateStr: string) {
@@ -27,18 +27,18 @@ function getTimeUntil(dateStr: string) {
 }
 
 const CHIP_ICONS: Record<string, typeof Zap> = {
-  boost: Zap, halo: Shield, sostituzione: UserPlus, sesto: Users,
-  sicura: ShieldCheck, doppia: Copy, tardiva: Clock,
+  boost: Zap, halo: Shield, sesto: Users, wildcard: Shuffle,
+  sicura: ShieldCheck, doppia: Copy,
 };
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
-  const scuderia = useScuderia();
   const nextRace = getNextRace();
   const round = getCurrentRound();
-  const form = useFormazione(round);
+  const sq = useSquadra(round);
   const aggiornamenti = useAggiornamenti();
+  const dashStats = useDashboardStats();
   const deadline = getDeadline(nextRace);
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
   const [mounted, setMounted] = useState(false);
@@ -53,7 +53,7 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [deadline]);
 
-  if (authLoading || !scuderia.loaded || !user) {
+  if (authLoading || !sq.loaded || !user) {
     return (
       <div className="min-h-screen bg-[#0a0a12] text-white">
         <Navbar />
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     );
   }
 
-  const hasConfirmed = form.confirmed;
+  const hasConfirmed = sq.confirmed;
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white">
@@ -82,10 +82,10 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { value: "0", label: "PUNTI TOTALI", accent: true },
-            { value: "-", label: "POSIZIONE", accent: false },
-            { value: "0/24", label: "GARE GIOCATE", accent: false },
-            { value: "-", label: "MEDIA PUNTI", accent: false },
+            { value: dashStats.loaded ? String(dashStats.totalPoints) : "...", label: "PUNTI TOTALI", accent: true },
+            { value: dashStats.loaded ? (dashStats.position ? `${dashStats.position}°/${dashStats.totalPlayers}` : "-") : "...", label: "POSIZIONE", accent: false },
+            { value: dashStats.loaded ? `${dashStats.gareGiocate}/24` : "...", label: "GARE GIOCATE", accent: false },
+            { value: dashStats.loaded ? (dashStats.mediaPunti !== null ? String(dashStats.mediaPunti) : "-") : "...", label: "MEDIA PUNTI", accent: false },
           ].map((stat) => (
             <div key={stat.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-center">
               <div className={`font-[family-name:var(--font-jetbrains)] text-xl font-bold ${stat.accent ? "text-[#E8002D]" : "text-white/60"}`}>
@@ -158,22 +158,22 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold">La tua scuderia</div>
             <div className="text-right">
-              <span className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">{scuderia.budget}</span>
+              <span className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">{sq.budget}</span>
               <span className="text-[9px] text-white/30 ml-1">/ 100</span>
             </div>
           </div>
 
-          {scuderia.drivers.length === 0 ? (
+          {sq.drivers.length === 0 ? (
             <Link href="/mercato" className="block text-center border-2 border-dashed border-white/10 rounded-xl p-8 text-white/20 hover:text-white/40 transition-all text-sm tracking-wider uppercase">
               Vai al Mercato per scegliere i tuoi piloti
             </Link>
           ) : (
             <div className="space-y-2">
-              {scuderia.drivers.map((driver) => {
+              {sq.drivers.map((driver) => {
                 const d = getDriverByNumber(driver.driver_number);
                 if (!d) return null;
                 const color = `#${d.teamColour}`;
-                const isCaptain = driver.driver_number === form.primoPilota;
+                const isCaptain = driver.driver_number === sq.primoPilota;
                 return (
                   <div key={driver.driver_number}
                     className={`relative flex items-center gap-3 bg-white/[0.03] rounded-xl p-3 ${
@@ -205,10 +205,18 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
-              {scuderia.drivers.length < 5 && (
+              {sq.drivers.length < 5 && (
                 <Link href="/mercato" className="flex items-center justify-center gap-2 border border-dashed border-white/10 rounded-xl p-3 text-white/20 hover:text-white/30 transition-all text-[11px] tracking-wider uppercase">
-                  + {5 - scuderia.drivers.length} slot da riempire
+                  + {5 - sq.drivers.length} slot da riempire
                 </Link>
+              )}
+              {sq.penalitaTotale > 0 && (
+                <div className="flex items-center gap-2 mt-2 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-2.5">
+                  <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+                  <span className="text-[11px] text-amber-400">
+                    Penalità cambi: <span className="font-bold font-[family-name:var(--font-jetbrains)]">-{sq.penalitaTotale} pts</span> sul weekend
+                  </span>
+                </div>
               )}
             </div>
           )}

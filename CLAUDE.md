@@ -19,7 +19,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - 5 piloti per scuderia
 - Quotazioni iniziali basate sul Fantasy F1 ufficiale ($1M = 1 Soldino)
 - Quotazioni variano dopo ogni GP
-- Mercato ibrido: compravendita con quotazioni variabili + limite di cambi per weekend
+- Mercato: compravendita con quotazioni variabili, 2 cambi gratis per round, dal 3° in poi -10 punti weekend ciascuno
 - Aperto a tutti
 - Stagione 2026: 24 GP, 6 weekend sprint, 22 piloti, 11 scuderie
 
@@ -79,13 +79,12 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 **Aggiornamenti Piloti:**
 - **Boost Mode (x3):** un pilota DIVERSO dal Primo Pilota fa x3 per tutto il weekend
 - **Halo:** se un tuo pilota va in negativo, il minimo è 0 punti
-- **Sostituzione in Griglia:** 1 cambio squadra post-qualifica senza penalità
 - **Sesto Uomo:** aggiungi un 6° pilota temporaneo per un weekend (qualsiasi pilota)
+- **Wildcard:** cambi illimitati senza penalità per quel round
 
 **Aggiornamenti Previsioni:**
 - **Previsione Sicura:** 1 previsione dà punti comunque (indovini o no)
 - **Previsione Doppia:** punti x2 su 1 previsione
-- **Previsione Tardiva:** cambi 1 previsione dopo le qualifiche
 
 ### Bonus Automatici
 - **All-in Previsioni:** tutte e 6 le previsioni giuste = bonus automatico (punteggio DA DEFINIRE)

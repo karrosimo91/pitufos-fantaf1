@@ -8,9 +8,7 @@ import type { Previsioni, Lega } from "./types";
 const BUDGET_INIZIALE = 100;
 
 // ═══════════════════════════════════════════
-// Hook: useScuderia — Rosa attuale (mercato)
-// Tabella: scuderia_drivers (user_id, driver_number)
-// Prezzo/nome/team vengono da drivers-data.ts
+// Tipi condivisi
 // ═══════════════════════════════════════════
 
 export interface OwnedDriver {
@@ -33,112 +31,20 @@ function driverNumberToOwned(num: number): OwnedDriver | null {
   };
 }
 
-export function useScuderia() {
-  const { user } = useAuth();
-  const [driverNumbers, setDriverNumbers] = useState<number[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!user || !isSupabaseConfigured) {
-      setDriverNumbers([]);
-      setLoaded(true);
-      return;
-    }
-
-    const supabase = createClient()!;
-    supabase
-      .from("scuderia_drivers")
-      .select("driver_number")
-      .eq("user_id", user.id)
-      .then(({ data, error }) => {
-        if (error) console.error("[scuderia] load error:", error);
-        if (data) setDriverNumbers(data.map((d) => d.driver_number));
-        setLoaded(true);
-      });
-  }, [user]);
-
-  const drivers: OwnedDriver[] = driverNumbers
-    .map(driverNumberToOwned)
-    .filter((d): d is OwnedDriver => d !== null);
-
-  const budget = BUDGET_INIZIALE - drivers.reduce((sum, d) => sum + d.price, 0);
-
-  const acquista = useCallback(
-    async (driverNumber: number): Promise<boolean> => {
-      if (!user || !isSupabaseConfigured) return false;
-
-      const supabase = createClient()!;
-      // Verifica stato attuale dal DB
-      const { data: current, error: loadErr } = await supabase
-        .from("scuderia_drivers")
-        .select("driver_number")
-        .eq("user_id", user.id);
-
-      if (loadErr) {
-        console.error("[scuderia] acquista load error:", loadErr);
-        return false;
-      }
-
-      const list = current || [];
-      if (list.length >= 5) return false;
-      if (list.some((d) => d.driver_number === driverNumber)) return false;
-
-      const driverData = getDriverByNumber(driverNumber);
-      if (!driverData) return false;
-
-      const currentBudget = BUDGET_INIZIALE - list.reduce((sum, d) => {
-        const dd = getDriverByNumber(d.driver_number);
-        return sum + (dd?.price ?? 0);
-      }, 0);
-      if (currentBudget < driverData.price) return false;
-
-      const { error } = await supabase.from("scuderia_drivers").insert({
-        user_id: user.id,
-        driver_number: driverNumber,
-      });
-
-      if (error) {
-        console.error("[scuderia] acquista error:", error);
-        return false;
-      }
-      setDriverNumbers((prev) => [...prev, driverNumber]);
-      return true;
-    },
-    [user]
-  );
-
-  const vendi = useCallback(
-    async (driverNumber: number) => {
-      if (!user || !isSupabaseConfigured) return;
-      const supabase = createClient()!;
-      const { error } = await supabase
-        .from("scuderia_drivers")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("driver_number", driverNumber);
-
-      if (error) {
-        console.error("[scuderia] vendi error:", error);
-        return;
-      }
-      setDriverNumbers((prev) => prev.filter((n) => n !== driverNumber));
-    },
-    [user]
-  );
-
-  return { drivers, driverNumbers, budget, loaded, acquista, vendi };
-}
+const CAMBI_GRATIS = 2;
+const PENALITA_CAMBIO_EXTRA = 10;
 
 // ═══════════════════════════════════════════
-// Hook: useFormazione — Formazione per round
+// Hook: useSquadra — Unica fonte di verita'
 // Tabella: formazioni (user_id, round)
 //
-// Lo stato (primo pilota, chip, sesto uomo) è LOCALE.
-// Va in DB solo quando l'utente clicca "Conferma".
-// Al load, se esiste una riga in DB, la ripristina.
+// La rosa, il primo pilota, i chip, tutto vive in formazioni.
+// Al primo accesso di un round, copia i piloti dal round precedente.
+// Prima della deadline: modifichi tutto liberamente.
+// Dopo deadline: bloccato.
 // ═══════════════════════════════════════════
 
-export interface FormazioneState {
+export interface SquadraState {
   driverNumbers: number[];
   primoPilota: number | null;
   sestoUomo: number | null;
@@ -147,9 +53,9 @@ export interface FormazioneState {
   confirmed: boolean;
 }
 
-export function useFormazione(round: number) {
+export function useSquadra(round: number) {
   const { user } = useAuth();
-  const [state, setState] = useState<FormazioneState>({
+  const [state, setState] = useState<SquadraState>({
     driverNumbers: [],
     primoPilota: null,
     sestoUomo: null,
@@ -157,42 +63,165 @@ export function useFormazione(round: number) {
     chipPilotiTarget: null,
     confirmed: false,
   });
+  const [rosaBase, setRosaBase] = useState<number[]>([]);
+  const [cambiRound, setCambiRound] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
-  // Carica da DB (se esiste una riga per questo round)
+  // Carica formazione del round (o copia dal precedente)
   useEffect(() => {
+    // Reset stato al cambio round per evitare dati stale
+    setLoaded(false);
+    setCambiRound(0);
+    setState({ driverNumbers: [], primoPilota: null, sestoUomo: null, chipPiloti: null, chipPilotiTarget: null, confirmed: false });
+    setRosaBase([]);
+
     if (!user || !isSupabaseConfigured) {
       setLoaded(true);
       return;
     }
 
     const supabase = createClient()!;
-    supabase
-      .from("formazioni")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("round", round)
-      .single()
-      .then(({ data, error }) => {
-        if (error && error.code !== "PGRST116") {
-          console.error("[formazione] load error:", error);
+
+    (async () => {
+      // 1. Cerca formazione di questo round
+      const { data, error } = await supabase
+        .from("formazioni")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("round", round)
+        .single();
+
+      if (data) {
+        // Formazione esiste per questo round
+        setState({
+          driverNumbers: (data.driver_numbers || []).map(Number),
+          primoPilota: data.primo_pilota,
+          sestoUomo: data.sesto_uomo,
+          chipPiloti: data.chip_piloti,
+          chipPilotiTarget: data.chip_piloti_target,
+          confirmed: !!data.confirmed,
+        });
+        setRosaBase((data.driver_numbers || []).map(Number));
+      } else if (!error || error.code === "PGRST116") {
+        // Nessuna formazione per questo round: copia dal round precedente
+        const { data: prev } = await supabase
+          .from("formazioni")
+          .select("driver_numbers")
+          .eq("user_id", user.id)
+          .eq("confirmed", true)
+          .order("round", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (prev?.driver_numbers) {
+          const prevDrivers = (prev.driver_numbers as number[]).map(Number);
+          setState((s) => ({ ...s, driverNumbers: prevDrivers }));
+          setRosaBase(prevDrivers);
+
+          // Crea la riga in DB per questo round (non confermata)
+          await supabase.from("formazioni").upsert({
+            user_id: user.id,
+            round,
+            driver_numbers: prevDrivers,
+            confirmed: false,
+          }, { onConflict: "user_id,round" });
         }
-        if (data) {
-          console.log("[formazione] loaded from DB:", data);
-          setState({
-            driverNumbers: (data.driver_numbers || []).map(Number),
-            primoPilota: data.primo_pilota,
-            sestoUomo: data.sesto_uomo,
-            chipPiloti: data.chip_piloti,
-            chipPilotiTarget: data.chip_piloti_target,
-            confirmed: !!data.confirmed,
-          });
-        }
-        setLoaded(true);
-      });
+      }
+
+      // Carica conteggio cambi
+      const { data: cambiData } = await supabase
+        .from("mercato_cambi")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("round", round);
+      setCambiRound((cambiData || []).length);
+
+      setLoaded(true);
+    })();
   }, [user, round]);
 
-  // Setters locali (non salvano in DB)
+  const drivers: OwnedDriver[] = state.driverNumbers
+    .map(driverNumberToOwned)
+    .filter((d): d is OwnedDriver => d !== null);
+
+  const budget = BUDGET_INIZIALE - drivers.reduce((sum, d) => sum + d.price, 0);
+
+  const cambiGratisRimasti = Math.max(0, CAMBI_GRATIS - cambiRound);
+  const hasWildcard = state.chipPiloti === "wildcard";
+  const penalitaProssimoCambio = hasWildcard ? 0 : (cambiRound >= CAMBI_GRATIS ? PENALITA_CAMBIO_EXTRA : 0);
+  const penalitaTotale = hasWildcard ? 0 : Math.max(0, cambiRound - CAMBI_GRATIS) * PENALITA_CAMBIO_EXTRA;
+
+  // Salva driver_numbers in DB (auto-save)
+  const saveDrivers = useCallback(
+    async (newDrivers: number[]) => {
+      if (!user || !isSupabaseConfigured) return;
+      const supabase = createClient()!;
+      await supabase.from("formazioni").upsert({
+        user_id: user.id,
+        round,
+        driver_numbers: newDrivers,
+        confirmed: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,round" });
+    },
+    [user, round]
+  );
+
+  const acquista = useCallback(
+    async (driverNumber: number): Promise<{ ok: boolean; error?: string }> => {
+      if (!user || !isSupabaseConfigured) return { ok: false, error: "Non loggato" };
+
+      const current = state.driverNumbers;
+      if (current.length >= 5) return { ok: false, error: "Squadra piena (5/5)" };
+      if (current.includes(driverNumber)) return { ok: false, error: "Pilota gia' in squadra" };
+
+      const driverData = getDriverByNumber(driverNumber);
+      if (!driverData) return { ok: false, error: "Pilota non trovato" };
+
+      const currentBudget = BUDGET_INIZIALE - current.reduce((sum, n) => {
+        const dd = getDriverByNumber(n);
+        return sum + (dd?.price ?? 0);
+      }, 0);
+      if (currentBudget < driverData.price) return { ok: false, error: "Budget insufficiente" };
+
+      const newDrivers = [...current, driverNumber];
+
+      // Conta come cambio se il pilota NON era nella rosa base
+      // (wildcard annulla la penalita' solo al calcolo post-gara, i cambi si registrano sempre)
+      if (rosaBase.length > 0 && !rosaBase.includes(driverNumber)) {
+        const supabase = createClient()!;
+        const venduti = rosaBase.filter((n) => !current.includes(n));
+        const driverOut = venduti[0] ?? 0;
+        await supabase.from("mercato_cambi").insert({
+          user_id: user.id, round, driver_in: driverNumber, driver_out: driverOut,
+        });
+        setCambiRound((prev) => prev + 1);
+      }
+
+      setState((prev) => ({ ...prev, driverNumbers: newDrivers, confirmed: false }));
+      await saveDrivers(newDrivers);
+      return { ok: true };
+    },
+    [user, state.driverNumbers, rosaBase, round, saveDrivers]
+  );
+
+  const vendi = useCallback(
+    async (driverNumber: number): Promise<boolean> => {
+      if (!user || !isSupabaseConfigured) return false;
+      const newDrivers = state.driverNumbers.filter((n) => n !== driverNumber);
+      setState((prev) => ({
+        ...prev,
+        driverNumbers: newDrivers,
+        primoPilota: prev.primoPilota === driverNumber ? null : prev.primoPilota,
+        confirmed: false,
+      }));
+      await saveDrivers(newDrivers);
+      return true;
+    },
+    [user, state.driverNumbers, saveDrivers]
+  );
+
+  // Setters locali
   const setPrimoPilota = useCallback((driverNumber: number) => {
     setState((prev) => ({ ...prev, primoPilota: driverNumber, confirmed: false }));
   }, []);
@@ -203,11 +232,8 @@ export function useFormazione(round: number) {
 
   const setChipPiloti = useCallback((chip: string | null) => {
     setState((prev) => ({
-      ...prev,
-      chipPiloti: chip,
-      chipPilotiTarget: null,
-      sestoUomo: chip !== "sesto" ? null : prev.sestoUomo,
-      confirmed: false,
+      ...prev, chipPiloti: chip, chipPilotiTarget: null,
+      sestoUomo: chip !== "sesto" ? null : prev.sestoUomo, confirmed: false,
     }));
   }, []);
 
@@ -215,25 +241,20 @@ export function useFormazione(round: number) {
     setState((prev) => ({ ...prev, chipPilotiTarget: target, confirmed: false }));
   }, []);
 
-  // Conferma: salva TUTTO in DB (driver_numbers dalla scuderia + stato locale)
+  // Conferma: salva tutto in DB
   const conferma = useCallback(
-    async (currentDriverNumbers: number[]): Promise<boolean> => {
+    async (): Promise<boolean> => {
       if (!user || !isSupabaseConfigured) return false;
-      if (currentDriverNumbers.length !== 5) return false;
 
-      // Leggi lo stato corrente (non dal ref, dal parametro + closure)
-      // setState è asincrono, quindi usiamo una Promise per leggere lo stato attuale
       return new Promise((resolve) => {
         setState((current) => {
-          if (!current.primoPilota) {
-            resolve(false);
-            return current;
-          }
+          if (current.driverNumbers.length !== 5) { resolve(false); return current; }
+          if (!current.primoPilota) { resolve(false); return current; }
 
           const payload = {
             user_id: user!.id,
             round,
-            driver_numbers: currentDriverNumbers,
+            driver_numbers: current.driverNumbers,
             primo_pilota: current.primoPilota,
             sesto_uomo: current.sestoUomo,
             chip_piloti: current.chipPiloti,
@@ -242,24 +263,21 @@ export function useFormazione(round: number) {
             updated_at: new Date().toISOString(),
           };
 
-          console.log("[formazione] confirming:", payload);
-
           const supabase = createClient()!;
           supabase
             .from("formazioni")
             .upsert(payload, { onConflict: "user_id,round" })
             .then(({ error }) => {
               if (error) {
-                console.error("[formazione] confirm error:", error);
+                console.error("[squadra] confirm error:", error);
                 resolve(false);
               } else {
-                console.log("[formazione] confirmed OK");
-                setState((prev) => ({ ...prev, driverNumbers: currentDriverNumbers, confirmed: true }));
+                setState((prev) => ({ ...prev, confirmed: true }));
                 resolve(true);
               }
             });
 
-          return current; // Non modificare lo stato qui
+          return current;
         });
       });
     },
@@ -268,14 +286,18 @@ export function useFormazione(round: number) {
 
   return {
     ...state,
-    loaded,
-    setPrimoPilota,
-    setSestoUomo,
-    setChipPiloti,
-    setChipPilotiTarget,
+    drivers, budget, loaded,
+    acquista, vendi,
+    setPrimoPilota, setSestoUomo, setChipPiloti, setChipPilotiTarget,
     conferma,
+    cambiRound, cambiGratisRimasti, penalitaProssimoCambio, penalitaTotale,
+    CAMBI_GRATIS, PENALITA_CAMBIO_EXTRA,
   };
 }
+
+// Alias retrocompatibili
+export const useScuderia = () => { throw new Error("useScuderia rimosso: usa useSquadra"); };
+export const useFormazione = (_round: number) => { throw new Error("useFormazione rimosso: usa useSquadra"); };
 
 // ═══════════════════════════════════════════
 // Hook: usePrevisioni — Previsioni per round
@@ -522,8 +544,8 @@ export function useAggiornamenti() {
 
   function getChipStatus(chipId: string, source: { chip: string; round: number }[]): ChipUsage {
     const labels: Record<string, string> = {
-      boost: "Boost Mode", halo: "Halo", sostituzione: "Sost. Griglia", sesto: "Sesto Uomo",
-      sicura: "Prev. Sicura", doppia: "Prev. Doppia", tardiva: "Prev. Tardiva",
+      boost: "Boost Mode", halo: "Halo", sesto: "Sesto Uomo", wildcard: "Wildcard",
+      sicura: "Prev. Sicura", doppia: "Prev. Doppia",
     };
     const uses = source.filter((u) => u.chip === chipId);
     const pre = uses.find((u) => u.round < PAUSA_ESTIVA_ROUND);
@@ -538,11 +560,11 @@ export function useAggiornamenti() {
     };
   }
 
-  const pilotiChips = ["boost", "halo", "sostituzione", "sesto"].map((id) =>
+  const pilotiChips = ["boost", "halo", "sesto", "wildcard"].map((id) =>
     getChipStatus(id, chipPilotiUsed)
   );
 
-  const previsioniChips = ["sicura", "doppia", "tardiva"].map((id) =>
+  const previsioniChips = ["sicura", "doppia"].map((id) =>
     getChipStatus(id, chipPrevisioniUsed)
   );
 
@@ -736,10 +758,12 @@ export interface ClassificaLegaEntry {
   team_principal_name: string;
   scuderia_name: string;
   total_points: number;
+  piloti_points: number;
+  previsioni_points: number;
   last_weekend_points: number;
 }
 
-export function useClassificaLega(legaId: string | null) {
+export function useClassificaLega(legaId: string | null, round: number | null = null) {
   const [classifica, setClassifica] = useState<ClassificaLegaEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -752,8 +776,11 @@ export function useClassificaLega(legaId: string | null) {
 
     setLoading(true);
     const supabase = createClient()!;
+    const params: Record<string, unknown> = { p_lega_id: legaId };
+    if (round !== null) params.p_round = round;
+
     supabase
-      .rpc("classifica_lega", { p_lega_id: legaId })
+      .rpc("classifica_lega", params)
       .then(({ data, error }) => {
         if (error) {
           console.error("[classifica_lega] error:", error);
@@ -763,7 +790,68 @@ export function useClassificaLega(legaId: string | null) {
         }
         setLoading(false);
       });
-  }, [legaId]);
+  }, [legaId, round]);
 
   return { classifica, loading };
+}
+
+// ═══════════════════════════════════════════
+// Hook: useDashboardStats — Stats personali per dashboard
+// Legge da classifica_totale + weekend_scores
+// ═══════════════════════════════════════════
+
+export interface DashboardStats {
+  totalPoints: number;
+  position: number | null;
+  totalPlayers: number;
+  gareGiocate: number;
+  mediaPunti: number | null;
+  lastWeekendPoints: number;
+  loaded: boolean;
+}
+
+export function useDashboardStats() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPoints: 0, position: null, totalPlayers: 0,
+    gareGiocate: 0, mediaPunti: null, lastWeekendPoints: 0, loaded: false,
+  });
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) {
+      setStats((s) => ({ ...s, loaded: true }));
+      return;
+    }
+
+    const supabase = createClient()!;
+
+    Promise.all([
+      // Classifica Lega Generale (fonte unica di verita')
+      supabase.rpc("classifica_lega", { p_lega_id: LEGA_GENERALE_ID }),
+      // Weekend scores dell'utente (per contare gare giocate)
+      supabase
+        .from("weekend_scores")
+        .select("round")
+        .eq("user_id", user.id),
+    ]).then(([classificaRes, scoresRes]) => {
+      const classifica = (classificaRes.data || []) as ClassificaLegaEntry[];
+      const gare = (scoresRes.data || []).length;
+
+      const posIndex = classifica.findIndex((e) => e.user_id === user.id);
+      const myEntry = posIndex >= 0 ? classifica[posIndex] : null;
+      const total = myEntry?.total_points ?? 0;
+
+      setStats({
+        totalPoints: total,
+        position: posIndex >= 0 ? posIndex + 1 : null,
+        totalPlayers: classifica.length,
+        gareGiocate: gare,
+        mediaPunti: gare > 0 ? Math.round((total / gare) * 10) / 10 : null,
+        lastWeekendPoints: myEntry?.last_weekend_points ?? 0,
+        loaded: true,
+      });
+    });
+  }, [user]);
+
+  return stats;
 }

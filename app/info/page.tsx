@@ -5,11 +5,6 @@ import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
 
-interface Section {
-  title: string;
-  content: React.ReactNode;
-}
-
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
@@ -68,6 +63,14 @@ export default function InfoPage() {
             <p>Ogni weekend scegli 1 pilota come <strong>Primo Pilota</strong>.</p>
             <p>Il suo punteggio viene <strong>raddoppiato (x2)</strong>, sia bonus che malus.</p>
             <p>Esempio: se il Primo Pilota fa DNF (-15), il malus diventa <strong>-30</strong>.</p>
+          </Accordion>
+
+          {/* Mercato e cambi */}
+          <Accordion title="Mercato e cambi">
+            <p>Ogni weekend hai <strong>2 cambi gratuiti</strong> (vendi + compra).</p>
+            <p>Dal 3° cambio in poi, ogni cambio costa <strong>-10 punti</strong> sul weekend.</p>
+            <p>Il budget si calcola sempre sulle quotazioni attuali: se compri a 10 e il pilota sale a 12, lo vendi a 12.</p>
+            <p>Non puoi andare in negativo con i Soldini.</p>
           </Accordion>
 
           {/* Punteggi Qualifica */}
@@ -165,25 +168,17 @@ export default function InfoPage() {
 
             <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mt-3 mb-1">Aggiornamenti Piloti</div>
             <PuntiTable rows={[
-              ["Boost Mode (x3)", "Un pilota diverso dal Primo Pilota fa x3"],
+              ["Boost Mode (x3)", "Un pilota diverso dal Capitano fa x3"],
               ["Halo", "Se un pilota va in negativo, minimo 0 punti"],
-              ["Sost. Griglia", "1 cambio squadra post-qualifica"],
               ["Sesto Uomo", "6o pilota temporaneo per un weekend"],
+              ["Wildcard", "Cambi illimitati senza penalita"],
             ]} />
 
             <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mt-3 mb-1">Aggiornamenti Previsioni</div>
             <PuntiTable rows={[
-              ["Prev. Sicura", "1 previsione vale comunque"],
+              ["Prev. Sicura", "1 previsione vale comunque (indovini o no)"],
               ["Prev. Doppia", "Punti x2 su 1 previsione"],
-              ["Prev. Tardiva", "Cambia 1 previsione dopo le qualifiche"],
             ]} />
-          </Accordion>
-
-          {/* Bonus */}
-          <Accordion title="Bonus Automatici">
-            <p><strong>All-in Previsioni:</strong> tutte e 6 le previsioni giuste = bonus automatico.</p>
-            <p><strong>Weekend Perfetto:</strong> Primo Pilota vince + tutte le previsioni giuste = super bonus.</p>
-            <p className="text-xs text-white/30">Punteggio bonus da definire.</p>
           </Accordion>
 
           {/* Deadline */}
@@ -194,9 +189,9 @@ export default function InfoPage() {
           </Accordion>
 
           {/* Classifiche */}
-          <Accordion title="Doppia Classifica">
-            <p><strong>1. Classifica Somma Punti (PRINCIPALE):</strong> somma totale di tutti i punti weekend dopo weekend.</p>
-            <p><strong>2. Classifica Reale:</strong> ogni weekend i giocatori vengono classificati. Top 10 prendono punti F1 (25-18-15-12-10-8-6-4-2-1), gli altri 0.</p>
+          <Accordion title="Classifica">
+            <p><strong>Classifica Somma Punti:</strong> somma totale di tutti i punti weekend dopo weekend. Include punteggio piloti, previsioni e penalita cambi.</p>
+            <p>Puoi creare o unirti a <strong>leghe</strong> per competere con amici su un sottoinsieme di gare.</p>
           </Accordion>
         </div>
       </main>

@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { useScuderia, useFormazione, usePrevisioni } from "../lib/store";
+import { useSquadra, usePrevisioni } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
-import { getNextRace, getCurrentRound, getWeekendSessions, getDeadline, isAfterDeadline } from "../lib/races";
+import { RACES_2026, getNextRace, getCurrentRound, getWeekendSessions, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
 import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import {
@@ -18,8 +18,8 @@ import {
   type ChipPrevisioniConfig,
 } from "../lib/scoring";
 import {
-  Crown, Check, ChevronRight, Clock, AlertTriangle, Trophy,
-  Zap, Shield, UserPlus, Users, ShieldCheck, Copy as CopyIcon, Timer,
+  Crown, Check, ChevronRight, ChevronDown, Clock, AlertTriangle, Trophy,
+  Zap, Shield, Users, ShieldCheck, Copy as CopyIcon, Shuffle,
   CheckCircle2, Circle,
 } from "lucide-react";
 
@@ -38,14 +38,13 @@ type PrevisioneKey = (typeof PREVISIONI_CONFIG)[number]["key"];
 const CHIP_PILOTI = [
   { id: "boost", label: "Boost Mode", desc: "Un pilota fa x3 (non il Capitano)", icon: Zap },
   { id: "halo", label: "Halo", desc: "Minimo 0 punti se va in negativo", icon: Shield },
-  { id: "sostituzione", label: "Sost. Griglia", desc: "1 cambio post-qualifica", icon: UserPlus },
   { id: "sesto", label: "Sesto Uomo", desc: "6° pilota temporaneo", icon: Users },
+  { id: "wildcard", label: "Wildcard", desc: "Cambi illimitati senza penalità", icon: Shuffle },
 ];
 
 const CHIP_PREVISIONI = [
   { id: "sicura", label: "Prev. Sicura", desc: "1 previsione vale comunque", icon: ShieldCheck },
   { id: "doppia", label: "Prev. Doppia", desc: "Punti x2 su 1 previsione", icon: CopyIcon },
-  { id: "tardiva", label: "Prev. Tardiva", desc: "Cambia 1 dopo le qualifiche", icon: Timer },
 ];
 
 function getTimeUntil(dateStr: string) {
@@ -61,7 +60,7 @@ function getTimeUntil(dateStr: string) {
   };
 }
 
-type Tab = "formazione" | "previsioni" | "orari" | "risultati";
+type Tab = "formazione" | "previsioni" | "dettaglio";
 
 const PREVISIONE_LABELS: Record<string, string> = {
   safetyCar: "Safety Car",
@@ -72,14 +71,20 @@ const PREVISIONE_LABELS: Record<string, string> = {
   numeroDnf: "Numero DNF",
 };
 
+const CHIP_LABELS: Record<string, string> = {
+  boost: "Boost Mode x3", halo: "Halo", sesto: "Sesto Uomo", wildcard: "Wildcard",
+  sicura: "Prev. Sicura", doppia: "Prev. Doppia",
+};
+
 // ─── Driver row ───
 
 function DriverRow({
   driverNumber, isCaptain, isBoosted, isSestoUomo,
-  onSetPrimoPilota, onRemove, locked,
+  onSetPrimoPilota, onRemove, locked, points,
 }: {
   driverNumber: number; isCaptain: boolean; isBoosted: boolean; isSestoUomo: boolean;
   onSetPrimoPilota?: () => void; onRemove?: () => void; locked: boolean;
+  points?: number | null;
 }) {
   const d = getDriverByNumber(driverNumber);
   if (!d) return null;
@@ -128,7 +133,13 @@ function DriverRow({
         </div>
       </div>
 
-      {!locked && (
+      {points != null && (
+        <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm shrink-0 ${points > 0 ? "text-green-400" : points < 0 ? "text-red-400" : "text-white/20"}`}>
+          {points > 0 ? "+" : ""}{points}
+        </span>
+      )}
+
+      {!locked && points == null && (
         <div className="flex gap-1.5 shrink-0">
           {!isCaptain && !isSestoUomo && onSetPrimoPilota && (
             <button
@@ -159,14 +170,16 @@ function DriverRow({
 export default function GaraPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const nextRace = getNextRace();
-  const round = getCurrentRound();
-  const deadline = getDeadline(nextRace);
-  const sessions = getWeekendSessions(nextRace);
+  const currentRound = getCurrentRound();
+  const [viewRound, setViewRound] = useState(currentRound);
 
-  const scuderia = useScuderia();
-  const form = useFormazione(round);
-  const prev = usePrevisioni(round);
+  const viewRace = getRaceByRound(viewRound) || getNextRace();
+  const isCurrentRound = viewRound === currentRound;
+  const deadline = getDeadline(viewRace);
+  const sessions = getWeekendSessions(viewRace);
+
+  const sq = useSquadra(viewRound);
+  const prev = usePrevisioni(viewRound);
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -178,6 +191,7 @@ export default function GaraPage() {
   const [myWeekendScore, setMyWeekendScore] = useState<{
     pilotiPoints: number;
     previsioniPoints: number;
+    penalitaCambi: number;
     total: number;
     pilotiDettaglio: (PilotaDettaglio & { name: string })[];
     previsioniDettaglio: Record<string, number>;
@@ -193,49 +207,55 @@ export default function GaraPage() {
     return () => clearInterval(timer);
   }, [deadline]);
 
-  // Controlla se la gara e finita (>3h dopo orario gara)
-  const raceDate = new Date(nextRace.date);
-  const isRaceFinished = new Date() > new Date(raceDate.getTime() + 3 * 60 * 60 * 1000);
+  // Reset tab e risultati quando si cambia round
+  useEffect(() => {
+    setWeekendResults(null);
+    setMyWeekendScore(null);
+    setTab("formazione");
+  }, [viewRound]);
 
   // Carica risultati post-gara se disponibili
   useEffect(() => {
-    if (!user || !isSupabaseConfigured || !isRaceFinished) return;
+    if (!user || !isSupabaseConfigured) return;
 
     const supabase = createClient()!;
     supabase
       .from("weekend_results")
       .select("data")
-      .eq("round", round)
+      .eq("round", viewRound)
       .single()
       .then(({ data }) => {
         if (!data) return;
         const results: RaceWeekendResults = data.data;
         setWeekendResults(results);
-        setTab("risultati");
+        setTab("dettaglio");
 
         // Calcola il mio punteggio
-        if (form.loaded && form.confirmed && form.driverNumbers.length > 0) {
+        if (sq.loaded && sq.confirmed && sq.driverNumbers.length > 0) {
           const chipPiloti: ChipPilotiConfig = {
-            chipPiloti: form.chipPiloti,
-            chipPilotiTarget: form.chipPilotiTarget,
-            sestoUomo: form.sestoUomo,
+            chipPiloti: sq.chipPiloti,
+            chipPilotiTarget: sq.chipPilotiTarget,
+            sestoUomo: sq.sestoUomo,
           };
           const chipPrevisioni: ChipPrevisioniConfig = {
             chipAttivo: prev.chipAttivo,
             chipTarget: prev.chipTarget,
           };
           const calc = calcolaPuntiWeekend(
-            form.driverNumbers,
-            form.primoPilota,
+            sq.driverNumbers,
+            sq.primoPilota,
             prev.previsioni,
             results,
             chipPiloti,
             chipPrevisioni
           );
+          // Penalita' cambi (lato client non abbiamo il dato esatto, usiamo quello del hook)
+          const penalita = sq.penalitaTotale;
           setMyWeekendScore({
             pilotiPoints: calc.pilotiPoints,
             previsioniPoints: calc.previsioniPoints,
-            total: calc.total,
+            penalitaCambi: penalita,
+            total: calc.total - penalita,
             pilotiDettaglio: calc.pilotiDettaglio.map((d) => ({
               ...d,
               name: getDriverByNumber(d.driver_number)?.name || `#${d.driver_number}`,
@@ -244,20 +264,28 @@ export default function GaraPage() {
           });
         }
       });
-  }, [user, round, isRaceFinished, form.loaded, form.confirmed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, viewRound, sq.loaded, sq.confirmed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
   };
 
-  const locked = isAfterDeadline(nextRace);
+  const locked = isAfterDeadline(viewRace);
+  const hasResults = !!weekendResults;
+
+  // Round disponibili nel selettore: round corrente + gare passate
+  const pastRaces = RACES_2026.filter((r) => new Date(r.date) <= new Date() && r.round !== currentRound);
+  const selectableRounds = [
+    RACES_2026.find((r) => r.round === currentRound)!,
+    ...pastRaces.reverse(),
+  ].filter(Boolean);
 
   const handleConfermaFormazione = async () => {
-    if (scuderia.drivers.length !== 5) return showToast("Devi avere 5 piloti");
-    if (!form.primoPilota) return showToast("Scegli un Primo Pilota");
+    if (sq.drivers.length !== 5) return showToast("Devi avere 5 piloti");
+    if (!sq.primoPilota) return showToast("Scegli un Primo Pilota");
     setConfirmingForm(true);
-    const ok = await form.conferma(scuderia.driverNumbers);
+    const ok = await sq.conferma();
     setConfirmingForm(false);
     if (ok) showToast("Formazione confermata!");
   };
@@ -275,21 +303,17 @@ export default function GaraPage() {
     prev.setPrevisione(key, current === value ? null : value);
   };
 
-  // Piloti da mostrare: dopo conferma usa formazione.driverNumbers (snapshot DB), prima usa scuderia
-  const displayDriverNumbers = form.confirmed && form.driverNumbers.length > 0
-    ? form.driverNumbers
-    : scuderia.driverNumbers;
-  const displayDrivers = displayDriverNumbers
+  // Piloti da mostrare
+  const displayDrivers = sq.driverNumbers
     .map((num) => {
       const d = getDriverByNumber(num);
       return d ? { driver_number: num, name: d.name, team: d.team, teamColour: d.teamColour, price: d.price } : null;
     })
     .filter((d): d is NonNullable<typeof d> => d !== null);
 
-  // Sesto uomo data
-  const sestoUomoDriver = form.sestoUomo ? getDriverByNumber(form.sestoUomo) : null;
+  const sestoUomoDriver = sq.sestoUomo ? getDriverByNumber(sq.sestoUomo) : null;
 
-  if (authLoading || !scuderia.loaded || !form.loaded || !prev.loaded || !user) {
+  if (authLoading || !sq.loaded || !prev.loaded || !user) {
     return (
       <div className="min-h-screen bg-[#0a0a12] text-white">
         <Navbar />
@@ -299,6 +323,14 @@ export default function GaraPage() {
         <BottomNav />
       </div>
     );
+  }
+
+  // Per il tab dettaglio con risultati, lookup punti per pilota
+  const pilotiPointsMap = new Map<number, number>();
+  if (myWeekendScore) {
+    for (const d of myWeekendScore.pilotiDettaglio) {
+      pilotiPointsMap.set(d.driver_number, d.puntiFinali);
+    }
   }
 
   return (
@@ -312,27 +344,50 @@ export default function GaraPage() {
       )}
 
       <main className="max-w-3xl mx-auto px-4 py-4 pb-bottomnav">
+        {/* ═══ SELETTORE ROUND ═══ */}
+        {selectableRounds.length > 1 && (
+          <div className="mb-3">
+            <div className="relative">
+              <select
+                value={viewRound}
+                onChange={(e) => setViewRound(Number(e.target.value))}
+                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm font-semibold outline-none focus:border-[#E8002D]/40 appearance-none pr-10"
+              >
+                {selectableRounds.map((race) => (
+                  <option key={race.round} value={race.round} className="bg-[#0a0a12]">
+                    R{race.round} — {race.flag} {race.name} {race.round === currentRound ? "(attuale)" : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            </div>
+          </div>
+        )}
+
         {/* ═══ HEADER ═══ */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] tracking-[3px] text-[#E8002D] uppercase font-bold">R{nextRace.round}</span>
+            <span className="text-[10px] tracking-[3px] text-[#E8002D] uppercase font-bold">R{viewRace.round}</span>
             <div className="flex items-center gap-2">
-              {nextRace.sprint && (
+              {viewRace.sprint && (
                 <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">SPRINT</span>
               )}
               {locked && (
                 <span className="bg-white/10 text-white/50 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">BLOCCATO</span>
               )}
+              {hasResults && (
+                <span className="bg-green-500/15 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">COMPLETATO</span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{nextRace.flag}</span>
+            <span className="text-3xl">{viewRace.flag}</span>
             <div>
-              <h1 className="text-lg font-black font-[family-name:var(--font-oswald)] leading-tight">{nextRace.name}</h1>
-              <p className="text-white/40 text-xs">{nextRace.circuit}</p>
+              <h1 className="text-lg font-black font-[family-name:var(--font-oswald)] leading-tight">{viewRace.name}</h1>
+              <p className="text-white/40 text-xs">{viewRace.circuit}</p>
             </div>
           </div>
-          {mounted && !locked && (
+          {mounted && isCurrentRound && !locked && (
             <div className="flex items-center gap-2 mt-3 bg-black/30 rounded-lg px-3 py-2">
               <Clock size={14} className="text-white/30" />
               <span className="text-[10px] tracking-wider text-white/40 uppercase">Deadline:</span>
@@ -346,12 +401,12 @@ export default function GaraPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
-          {([...(weekendResults ? ["risultati" as const] : []), "formazione" as const, "previsioni" as const, "orari" as const]).map((t) => {
-            const labels: Record<Tab, string> = { risultati: "Risultati", formazione: "Formazione", previsioni: "Previsioni", orari: "Orari" };
+          {(["formazione", "previsioni", "dettaglio"] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = { formazione: "Formazione", previsioni: "Previsioni", dettaglio: hasResults ? "Dettaglio" : "Orari" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
-            if (t === "risultati") indicator = <Trophy size={12} className="text-[#E8002D]" />;
-            if (t === "formazione" && form.confirmed) indicator = <Check size={12} className="text-green-400" />;
+            if (t === "dettaglio" && hasResults) indicator = <Trophy size={12} className="text-[#E8002D]" />;
+            if (t === "formazione" && sq.confirmed) indicator = <Check size={12} className="text-green-400" />;
             if (t === "previsioni" && prev.confirmed) indicator = <Check size={12} className="text-green-400" />;
             return (
               <button key={t} onClick={() => setTab(t)}
@@ -374,21 +429,25 @@ export default function GaraPage() {
               </div>
 
               {displayDrivers.length === 0 ? (
-                <Link href="/mercato" className="block text-center border-2 border-dashed border-white/10 rounded-xl p-8 text-white/20 hover:text-white/30 transition-all text-sm tracking-wider uppercase">
-                  Vai al Mercato per scegliere i tuoi piloti
-                </Link>
+                isCurrentRound && !locked ? (
+                  <Link href="/mercato" className="block text-center border-2 border-dashed border-white/10 rounded-xl p-8 text-white/20 hover:text-white/30 transition-all text-sm tracking-wider uppercase">
+                    Vai al Mercato per scegliere i tuoi piloti
+                  </Link>
+                ) : (
+                  <div className="text-center py-8 text-white/20 text-sm">Nessuna formazione per questo round</div>
+                )
               ) : (
                 <div className="space-y-2">
                   {displayDrivers.map((driver) => (
                     <DriverRow
                       key={driver.driver_number}
                       driverNumber={driver.driver_number}
-                      isCaptain={driver.driver_number === form.primoPilota}
-                      isBoosted={form.chipPiloti === "boost" && form.chipPilotiTarget === driver.driver_number}
+                      isCaptain={driver.driver_number === sq.primoPilota}
+                      isBoosted={sq.chipPiloti === "boost" && sq.chipPilotiTarget === driver.driver_number}
                       isSestoUomo={false}
-                      onSetPrimoPilota={() => form.setPrimoPilota(driver.driver_number)}
-                      onRemove={() => scuderia.vendi(driver.driver_number)}
+                      onSetPrimoPilota={() => sq.setPrimoPilota(driver.driver_number)}
                       locked={locked}
+                      points={hasResults ? (pilotiPointsMap.get(driver.driver_number) ?? null) : null}
                     />
                   ))}
 
@@ -396,33 +455,51 @@ export default function GaraPage() {
                     <DriverRow
                       driverNumber={sestoUomoDriver.number}
                       isCaptain={false}
-                      isBoosted={form.chipPiloti === "boost" && form.chipPilotiTarget === sestoUomoDriver.number}
+                      isBoosted={sq.chipPiloti === "boost" && sq.chipPilotiTarget === sestoUomoDriver.number}
                       isSestoUomo={true}
-                      onRemove={() => form.setSestoUomo(null)}
+                      onRemove={() => sq.setSestoUomo(null)}
                       locked={locked}
+                      points={hasResults ? (pilotiPointsMap.get(sestoUomoDriver.number) ?? null) : null}
                     />
                   )}
                 </div>
               )}
 
-              {displayDrivers.length < 5 && !locked && (
+              {displayDrivers.length < 5 && isCurrentRound && !locked && (
                 <Link href="/mercato" className="flex items-center justify-center gap-2 mt-2 border border-dashed border-white/10 rounded-xl p-3 text-white/20 hover:text-white/30 hover:border-white/15 transition-all text-[11px] tracking-wider uppercase">
                   + Aggiungi dal Mercato ({displayDrivers.length}/5) <ChevronRight size={14} />
                 </Link>
               )}
             </div>
 
-            {/* Aggiornamento Piloti */}
+            {/* Chip piloti usati (read-only per round passati) */}
+            {locked && (
+              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
+                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Piloti</div>
+                {sq.chipPiloti ? (
+                  <>
+                    <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+                    {sq.chipPilotiTarget && (
+                      <div className="text-[11px] text-white/40 mt-0.5">Target: {getDriverByNumber(sq.chipPilotiTarget)?.name || `#${sq.chipPilotiTarget}`}</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-white/20">Nessuno</div>
+                )}
+              </div>
+            )}
+
+            {/* Aggiornamento Piloti (editabile) */}
             {!locked && (
               <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
                 <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento Piloti</div>
                 <div className="grid grid-cols-2 gap-2">
                   {CHIP_PILOTI.map((chip) => {
                     const Icon = chip.icon;
-                    const active = form.chipPiloti === chip.id;
+                    const active = sq.chipPiloti === chip.id;
                     return (
                       <button key={chip.id}
-                        onClick={() => form.setChipPiloti(active ? null : chip.id)}
+                        onClick={() => sq.setChipPiloti(active ? null : chip.id)}
                         className={`flex items-start gap-2 p-3 rounded-xl text-left transition-all ${
                           active ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04]"
                         }`}
@@ -438,17 +515,17 @@ export default function GaraPage() {
                 </div>
 
                 {/* Boost: scegli pilota */}
-                {form.chipPiloti === "boost" && (
+                {sq.chipPiloti === "boost" && (
                   <div className="mt-3 bg-black/20 rounded-lg p-3">
                     <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">Scegli pilota per Boost x3</div>
                     <div className="grid grid-cols-1 gap-1">
                       {displayDrivers
-                        .filter((d) => d.driver_number !== form.primoPilota)
+                        .filter((d) => d.driver_number !== sq.primoPilota)
                         .map((d) => {
-                          const sel = form.chipPilotiTarget === d.driver_number;
+                          const sel = sq.chipPilotiTarget === d.driver_number;
                           return (
                             <button key={d.driver_number}
-                              onClick={() => form.setChipPilotiTarget(sel ? null : d.driver_number)}
+                              onClick={() => sq.setChipPilotiTarget(sel ? null : d.driver_number)}
                               className={`flex items-center gap-2 p-2 rounded-lg text-left text-sm transition-all ${
                                 sel ? "bg-amber-500/15 border border-amber-500/30 text-amber-300" : "bg-white/[0.02] border border-white/[0.04] text-white/50 hover:bg-white/[0.04]"
                               }`}
@@ -463,13 +540,13 @@ export default function GaraPage() {
                 )}
 
                 {/* Sesto uomo: scegli pilota */}
-                {form.chipPiloti === "sesto" && !form.sestoUomo && (
+                {sq.chipPiloti === "sesto" && !sq.sestoUomo && (
                   <div className="mt-3 bg-black/20 rounded-lg p-3">
                     <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">Scegli il 6° pilota</div>
                     <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
-                      {DRIVERS_2026.filter((d) => !scuderia.driverNumbers.includes(d.number)).map((d) => (
+                      {DRIVERS_2026.filter((d) => !sq.driverNumbers.includes(d.number)).map((d: typeof DRIVERS_2026[number]) => (
                         <button key={d.number}
-                          onClick={() => form.setSestoUomo(d.number)}
+                          onClick={() => sq.setSestoUomo(d.number)}
                           className="flex items-center gap-2 p-2 rounded-lg text-left text-sm bg-white/[0.02] border border-white/[0.04] text-white/50 hover:bg-white/[0.04] transition-all"
                         >
                           <Circle size={14} className="text-white/20" />
@@ -481,7 +558,7 @@ export default function GaraPage() {
                   </div>
                 )}
 
-                {form.chipPiloti === "sesto" && sestoUomoDriver && (
+                {sq.chipPiloti === "sesto" && sestoUomoDriver && (
                   <div className="mt-3 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-sm text-blue-300 flex items-center gap-2">
                     <CheckCircle2 size={14} />
                     <span>{sestoUomoDriver.name} aggiunto come 6° pilota</span>
@@ -490,27 +567,37 @@ export default function GaraPage() {
               </div>
             )}
 
-            {form.confirmed && (
+            {/* Penalita' cambi */}
+            {sq.penalitaTotale > 0 && (
+              <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3">
+                <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+                <div className="flex-1 text-sm text-amber-400">
+                  Penalità cambi extra: <span className="font-bold font-[family-name:var(--font-jetbrains)]">-{sq.penalitaTotale} punti</span> sul weekend
+                </div>
+              </div>
+            )}
+
+            {sq.confirmed && (
               <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400">
                 <Check size={16} />Formazione confermata
                 {!locked && <span className="text-green-400/50 text-xs ml-auto">Puoi ancora modificare</span>}
               </div>
             )}
 
-            {!locked && (
+            {isCurrentRound && !locked && (
               <button
                 onClick={handleConfermaFormazione}
-                disabled={confirmingForm || scuderia.drivers.length !== 5 || !form.primoPilota}
+                disabled={confirmingForm || sq.drivers.length !== 5 || !sq.primoPilota}
                 className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
-                  scuderia.drivers.length === 5 && form.primoPilota
+                  sq.drivers.length === 5 && sq.primoPilota
                     ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]"
                     : "bg-white/5 text-white/20 cursor-not-allowed"
                 }`}
               >
                 {confirmingForm ? "Conferma in corso..."
-                  : scuderia.drivers.length !== 5 ? `Servono ${5 - scuderia.drivers.length} piloti`
-                  : !form.primoPilota ? "Scegli un Primo Pilota"
-                  : form.confirmed ? "Riconferma Formazione"
+                  : sq.drivers.length !== 5 ? `Servono ${5 - sq.drivers.length} piloti`
+                  : !sq.primoPilota ? "Scegli un Primo Pilota"
+                  : sq.confirmed ? "Riconferma Formazione"
                   : "Conferma Formazione"}
               </button>
             )}
@@ -520,43 +607,109 @@ export default function GaraPage() {
         {/* ═══ TAB PREVISIONI ═══ */}
         {tab === "previsioni" && (
           <div className="space-y-3">
-            {PREVISIONI_CONFIG.map((p) => (
-              <div key={p.key} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                <div className="mb-3">
-                  <h3 className="font-bold text-sm">{p.label}</h3>
-                  <p className="text-[11px] text-white/30 mt-0.5">{p.desc}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => !locked && togglePrevisione(p.key, true)} disabled={locked}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
-                      prev.previsioni[p.key] === true ? "bg-green-500/20 border border-green-500/40 text-green-400"
-                      : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
-                    } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >SI<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.si} pts</span></button>
-                  <button onClick={() => !locked && togglePrevisione(p.key, false)} disabled={locked}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
-                      prev.previsioni[p.key] === false ? "bg-blue-500/20 border border-blue-500/40 text-blue-400"
-                      : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
-                    } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >NO<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.no} pts</span></button>
-                </div>
-              </div>
-            ))}
+            {PREVISIONI_CONFIG.map((p) => {
+              const myAnswer = prev.previsioni[p.key];
+              const resultValue = weekendResults?.events
+                ? p.key === "safetyCar" ? weekendResults.events.safety_car
+                : p.key === "virtualSafetyCar" ? weekendResults.events.virtual_safety_car
+                : p.key === "redFlag" ? weekendResults.events.red_flag
+                : p.key === "gommeWet" ? weekendResults.events.wet_tyres
+                : p.key === "poleVince" ? weekendResults.events.pole_won
+                : null
+                : null;
+              const isCorrect = hasResults && myAnswer !== null && myAnswer === resultValue;
+              const isWrong = hasResults && myAnswer !== null && myAnswer !== resultValue;
 
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-              <h3 className="font-bold text-sm mb-1">Numero DNF esatto</h3>
+              return (
+                <div key={p.key} className={`bg-white/[0.03] border rounded-xl p-4 ${
+                  isCorrect ? "border-green-500/30" : isWrong ? "border-red-500/20" : "border-white/[0.06]"
+                }`}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm">{p.label}</h3>
+                      <p className="text-[11px] text-white/30 mt-0.5">{p.desc}</p>
+                    </div>
+                    {hasResults && resultValue !== null && (
+                      <span className={`text-[10px] font-bold tracking-wider px-2 py-1 rounded ${
+                        resultValue ? "bg-green-500/15 text-green-400" : "bg-blue-500/15 text-blue-400"
+                      }`}>
+                        {resultValue ? "SI" : "NO"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => !locked && togglePrevisione(p.key, true)} disabled={locked}
+                      className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
+                        myAnswer === true
+                          ? isCorrect ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                          : isWrong ? "bg-red-500/15 border border-red-500/30 text-red-400"
+                          : "bg-green-500/20 border border-green-500/40 text-green-400"
+                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                      } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >SI<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.si} pts</span></button>
+                    <button onClick={() => !locked && togglePrevisione(p.key, false)} disabled={locked}
+                      className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
+                        myAnswer === false
+                          ? isCorrect ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                          : isWrong ? "bg-red-500/15 border border-red-500/30 text-red-400"
+                          : "bg-blue-500/20 border border-blue-500/40 text-blue-400"
+                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                      } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >NO<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.no} pts</span></button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className={`bg-white/[0.03] border rounded-xl p-4 ${
+              hasResults && prev.previsioni.numeroDnf !== null
+                ? prev.previsioni.numeroDnf === weekendResults?.events.total_dnf ? "border-green-500/30" : "border-red-500/20"
+                : "border-white/[0.06]"
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-sm">Numero DNF esatto</h3>
+                {hasResults && (
+                  <span className="text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-white/10 text-white/60">
+                    DNF: {weekendResults?.events.total_dnf}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-white/30 mb-3">Quanti piloti si ritireranno? (+{PREVISIONI_PUNTI.numeroDnf.esatto} pts se indovini)</p>
               <div className="flex gap-2 flex-wrap">
-                {Array.from({ length: 8 }, (_, i) => i).map((n) => (
-                  <button key={n} onClick={() => !locked && prev.setNumeroDnf(prev.previsioni.numeroDnf === n ? null : n)} disabled={locked}
-                    className={`w-10 h-10 rounded-lg font-[family-name:var(--font-jetbrains)] font-bold text-sm transition-all ${
-                      prev.previsioni.numeroDnf === n ? "bg-[#E8002D]/20 border border-[#E8002D]/40 text-[#E8002D]"
-                      : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
-                    } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >{n}</button>
-                ))}
+                {Array.from({ length: 8 }, (_, i) => i).map((n) => {
+                  const isSelected = prev.previsioni.numeroDnf === n;
+                  const isExact = hasResults && isSelected && n === weekendResults?.events.total_dnf;
+                  const isMissed = hasResults && isSelected && n !== weekendResults?.events.total_dnf;
+                  return (
+                    <button key={n} onClick={() => !locked && prev.setNumeroDnf(prev.previsioni.numeroDnf === n ? null : n)} disabled={locked}
+                      className={`w-10 h-10 rounded-lg font-[family-name:var(--font-jetbrains)] font-bold text-sm transition-all ${
+                        isExact ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                        : isMissed ? "bg-red-500/15 border border-red-500/30 text-red-400"
+                        : isSelected ? "bg-[#E8002D]/20 border border-[#E8002D]/40 text-[#E8002D]"
+                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                      } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >{n}</button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Chip previsioni usato (read-only per round passati) */}
+            {locked && (
+              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
+                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Previsioni</div>
+                {prev.chipAttivo ? (
+                  <>
+                    <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                    {prev.chipTarget && (
+                      <div className="text-[11px] text-white/40 mt-0.5">Applicato a: {PREVISIONE_LABELS[prev.chipTarget] || prev.chipTarget}</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-white/20">Nessuno</div>
+                )}
+              </div>
+            )}
 
             {!locked && (
               <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
@@ -581,7 +734,6 @@ export default function GaraPage() {
                   })}
                 </div>
 
-                {/* Chip target: a quale previsione applicarlo */}
                 {(prev.chipAttivo === "sicura" || prev.chipAttivo === "doppia") && (
                   <div className="mt-3 bg-black/20 rounded-lg p-3">
                     <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">
@@ -615,7 +767,7 @@ export default function GaraPage() {
               </div>
             )}
 
-            {!locked && (
+            {isCurrentRound && !locked && (
               <button onClick={handleConfermaPrevisioni} disabled={prev.completate < 6 || confirmingPrev}
                 className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
                   prev.completate === 6 ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]" : "bg-white/5 text-white/20 cursor-not-allowed"
@@ -627,171 +779,176 @@ export default function GaraPage() {
           </div>
         )}
 
-        {/* ═══ TAB RISULTATI (post-gara) ═══ */}
-        {tab === "risultati" && weekendResults && (
+        {/* ═══ TAB DETTAGLIO (punteggio post-gara o orari pre-gara) ═══ */}
+        {tab === "dettaglio" && (
           <div className="space-y-4">
-            {myWeekendScore ? (
+            {hasResults && weekendResults ? (
               <>
-                {/* Punteggio totale */}
-                <div className="bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold">Il tuo weekend</div>
-                    <span className="font-[family-name:var(--font-jetbrains)] text-3xl font-black text-[#E8002D]">
-                      {myWeekendScore.total}
-                    </span>
-                  </div>
+                {myWeekendScore ? (
+                  <>
+                    {/* Punteggio totale */}
+                    <div className="bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold">Il tuo weekend</div>
+                        <span className="font-[family-name:var(--font-jetbrains)] text-3xl font-black text-[#E8002D]">
+                          {myWeekendScore.total}
+                        </span>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-black/20 rounded-lg p-3 text-center">
-                      <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.pilotiPoints}</div>
-                      <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
-                    </div>
-                    <div className="bg-black/20 rounded-lg p-3 text-center">
-                      <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.previsioniPoints}</div>
-                      <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
-                    </div>
-                  </div>
-
-                  {/* Dettaglio piloti */}
-                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
-                  <div className="space-y-1 mb-4">
-                    {myWeekendScore.pilotiDettaglio.map((d) => {
-                      const color = getDriverByNumber(d.driver_number)?.teamColour;
-                      return (
-                        <div key={d.driver_number} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
-                          <span className="flex items-center gap-2">
-                            {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `#${color}` }} />}
-                            <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/70"}>
-                              {d.name}
-                            </span>
-                            {d.moltiplicatore === 2 && <span className="text-[9px] text-[#E8002D]/60">x2</span>}
-                            {d.moltiplicatore === 3 && <Zap size={11} className="text-amber-400" />}
-                            {d.isSestoUomo && <Users size={11} className="text-blue-400" />}
-                            {d.haloApplicato && <Shield size={11} className="text-green-400" />}
-                          </span>
-                          <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
-                            {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
-                          </span>
+                      <div className={`grid ${myWeekendScore.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-4`}>
+                        <div className="bg-black/20 rounded-lg p-3 text-center">
+                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.pilotiPoints}</div>
+                          <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="bg-black/20 rounded-lg p-3 text-center">
+                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.previsioniPoints}</div>
+                          <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
+                        </div>
+                        {myWeekendScore.penalitaCambi > 0 && (
+                          <div className="bg-black/20 rounded-lg p-3 text-center">
+                            <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400">-{myWeekendScore.penalitaCambi}</div>
+                            <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
+                          </div>
+                        )}
+                      </div>
 
-                  {/* Dettaglio previsioni */}
-                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
-                  <div className="space-y-1">
-                    {Object.entries(myWeekendScore.previsioniDettaglio).map(([key, pts]) => (
-                      <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
-                        <span className="text-white/60">{PREVISIONE_LABELS[key] || key}</span>
-                        <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
-                          {pts > 0 ? `+${pts}` : "0"}
+                      {/* Dettaglio piloti */}
+                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
+                      <div className="space-y-1 mb-4">
+                        {myWeekendScore.pilotiDettaglio.map((d) => {
+                          const color = getDriverByNumber(d.driver_number)?.teamColour;
+                          return (
+                            <div key={d.driver_number} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                              <span className="flex items-center gap-2">
+                                {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `#${color}` }} />}
+                                <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/70"}>
+                                  {d.name}
+                                </span>
+                                {d.moltiplicatore === 2 && <span className="text-[9px] text-[#E8002D]/60">x2</span>}
+                                {d.moltiplicatore === 3 && <Zap size={11} className="text-amber-400" />}
+                                {d.isSestoUomo && <Users size={11} className="text-blue-400" />}
+                                {d.haloApplicato && <Shield size={11} className="text-green-400" />}
+                              </span>
+                              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
+                                {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Dettaglio previsioni */}
+                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
+                      <div className="space-y-1">
+                        {Object.entries(myWeekendScore.previsioniDettaglio).map(([key, pts]) => (
+                          <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                            <span className="text-white/60">{PREVISIONE_LABELS[key] || key}</span>
+                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
+                              {pts > 0 ? `+${pts}` : "0"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-10">
+                    <div className="text-white/20 text-sm">Non hai confermato la formazione per questa gara</div>
+                  </div>
+                )}
+
+                {/* Eventi della gara */}
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
+                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">Eventi della gara</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Safety Car", value: weekendResults.events.safety_car },
+                      { label: "VSC", value: weekendResults.events.virtual_safety_car },
+                      { label: "Red Flag", value: weekendResults.events.red_flag },
+                      { label: "Gomme Wet", value: weekendResults.events.wet_tyres },
+                      { label: "Pole ha vinto", value: weekendResults.events.pole_won },
+                    ].map((e) => (
+                      <div key={e.label} className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
+                        <span className="text-white/40">{e.label}</span>
+                        <span className={e.value ? "text-green-400 font-bold" : "text-white/20"}>
+                          {e.value ? "SI" : "NO"}
                         </span>
                       </div>
                     ))}
+                    <div className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
+                      <span className="text-white/40">DNF totali</span>
+                      <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/60">
+                        {weekendResults.events.total_dnf}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Link href="/classifica"
+                  className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all"
+                >
+                  Classifica completa <ChevronRight size={14} />
+                </Link>
+              </>
+            ) : (
+              /* Orari sessioni (pre-gara) */
+              <>
+                {(["Venerdì", "Sabato", "Domenica"] as const).map((giorno) => {
+                  const daySessions = sessions.filter((s) => s.day === giorno);
+                  if (daySessions.length === 0) return null;
+                  return (
+                    <div key={giorno}>
+                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">{giorno}</div>
+                      <div className="space-y-1.5">
+                        {daySessions.map((session) => {
+                          const sessionDate = new Date(session.dateTime);
+                          const now = new Date();
+                          const isCompleted = now > new Date(sessionDate.getTime() + 2 * 60 * 60 * 1000);
+                          const isLive = now >= sessionDate && !isCompleted;
+                          const isPractice = session.type === "practice";
+                          return (
+                            <div key={session.shortName}
+                              className={`flex items-center gap-3 rounded-xl p-3 transition-all ${
+                                isLive ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.03] border border-white/[0.06]"
+                              }`}
+                            >
+                              <div className="w-8 flex justify-center">
+                                {isLive ? <div className="w-3 h-3 rounded-full bg-[#E8002D] animate-live-pulse" />
+                                : isCompleted ? <CheckCircle2 size={16} className="text-green-500/50" />
+                                : <Circle size={16} className="text-white/15" />}
+                              </div>
+                              <div className="flex-1">
+                                <div className={`text-sm font-semibold ${isLive ? "text-[#E8002D]" : isPractice ? "text-white/50" : "text-white"}`}>{session.name}</div>
+                                {isPractice && <div className="text-[9px] text-white/20">Nessun punteggio assegnato</div>}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${isLive ? "text-[#E8002D]" : "text-white/50"}`}>
+                                  {sessionDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                                </div>
+                                {isLive && <div className="text-[9px] text-[#E8002D] font-bold tracking-wider">LIVE</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={16} className="text-amber-400/60 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-amber-400/80">Deadline</div>
+                      <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
+                        {viewRace.sprint
+                          ? "Weekend Sprint: devi confermare prima della Sprint Shootout (venerdì). Avrai visto solo FP1."
+                          : "Weekend normale: devi confermare prima delle Qualifiche (sabato). Avrai visto FP1, FP2 e FP3."}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </>
-            ) : (
-              <div className="text-center py-10">
-                <div className="text-white/20 text-sm">Non hai confermato la formazione per questa gara</div>
-                <Link href="/risultati" className="text-[#E8002D] text-sm mt-2 inline-block hover:underline">
-                  Vedi classifica completa
-                </Link>
-              </div>
             )}
-
-            {/* Eventi della gara */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-              <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">Eventi della gara</div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "Safety Car", value: weekendResults.events.safety_car },
-                  { label: "VSC", value: weekendResults.events.virtual_safety_car },
-                  { label: "Red Flag", value: weekendResults.events.red_flag },
-                  { label: "Gomme Wet", value: weekendResults.events.wet_tyres },
-                  { label: "Pole ha vinto", value: weekendResults.events.pole_won },
-                ].map((e) => (
-                  <div key={e.label} className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
-                    <span className="text-white/40">{e.label}</span>
-                    <span className={e.value ? "text-green-400 font-bold" : "text-white/20"}>
-                      {e.value ? "SI" : "NO"}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
-                  <span className="text-white/40">DNF totali</span>
-                  <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/60">
-                    {weekendResults.events.total_dnf}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <Link href="/risultati"
-              className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all"
-            >
-              Classifica completa <ChevronRight size={14} />
-            </Link>
-          </div>
-        )}
-
-        {/* ═══ TAB ORARI ═══ */}
-        {tab === "orari" && (
-          <div className="space-y-4">
-            {(["Venerdì", "Sabato", "Domenica"] as const).map((giorno) => {
-              const daySessions = sessions.filter((s) => s.day === giorno);
-              if (daySessions.length === 0) return null;
-              return (
-                <div key={giorno}>
-                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">{giorno}</div>
-                  <div className="space-y-1.5">
-                    {daySessions.map((session) => {
-                      const sessionDate = new Date(session.dateTime);
-                      const now = new Date();
-                      const isCompleted = now > new Date(sessionDate.getTime() + 2 * 60 * 60 * 1000);
-                      const isLive = now >= sessionDate && !isCompleted;
-                      const isPractice = session.type === "practice";
-                      return (
-                        <div key={session.shortName}
-                          className={`flex items-center gap-3 rounded-xl p-3 transition-all ${
-                            isLive ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.03] border border-white/[0.06]"
-                          }`}
-                        >
-                          <div className="w-8 flex justify-center">
-                            {isLive ? <div className="w-3 h-3 rounded-full bg-[#E8002D] animate-live-pulse" />
-                            : isCompleted ? <CheckCircle2 size={16} className="text-green-500/50" />
-                            : <Circle size={16} className="text-white/15" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className={`text-sm font-semibold ${isLive ? "text-[#E8002D]" : isPractice ? "text-white/50" : "text-white"}`}>{session.name}</div>
-                            {isPractice && <div className="text-[9px] text-white/20">Nessun punteggio assegnato</div>}
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${isLive ? "text-[#E8002D]" : "text-white/50"}`}>
-                              {sessionDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-                            </div>
-                            {isLive && <div className="text-[9px] text-[#E8002D] font-bold tracking-wider">LIVE</div>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle size={16} className="text-amber-400/60 mt-0.5 shrink-0" />
-                <div>
-                  <div className="text-xs font-bold text-amber-400/80">Deadline</div>
-                  <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
-                    {nextRace.sprint
-                      ? "Weekend Sprint: devi confermare prima della Sprint Shootout (venerdì). Avrai visto solo FP1."
-                      : "Weekend normale: devi confermare prima delle Qualifiche (sabato). Avrai visto FP1, FP2 e FP3."}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>

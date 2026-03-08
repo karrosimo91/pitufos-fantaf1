@@ -74,7 +74,7 @@ export default function AltroPage() {
 
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-4 w-full bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 hover:bg-red-500/5 hover:border-red-500/10 transition-all"
+          className="flex items-center gap-4 w-full bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 hover:bg-red-500/5 hover:border-red-500/10 transition-all mb-8"
         >
           <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
             <LogOut size={18} className="text-red-400/60" />
@@ -84,6 +84,38 @@ export default function AltroPage() {
             <div className="text-[11px] text-white/20">{profile?.email || user.email}</div>
           </div>
         </button>
+
+        {/* Info App */}
+        <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-5">
+          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-3">Info App</div>
+          <div className="space-y-3">
+            <div>
+              <div className="text-xs text-white/30">Sviluppata da</div>
+              <div className="text-sm font-bold">Simone Carroccia <span className="text-white/30 font-normal">(karrosimo91)</span></div>
+            </div>
+            <div>
+              <div className="text-xs text-white/30">Versione</div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">v0.96</div>
+            </div>
+            <div>
+              <div className="text-xs text-white/30 mb-1.5">Changelog</div>
+              <div className="space-y-2 text-[12px] text-white/50">
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.96</span> — Pagina gara con selettore round, dettaglio punti, wildcard, conferma cambi a pagamento, regolamento aggiornato</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.95</span> — Sistema leghe (crea/unisciti, codice invito, classifica per lega)</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.94</span> — Pagina admin post-gara, selezione round e DotD</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.93</span> — Motore scoring, mercato con penalita cambi, dashboard live</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.9</span> — Fix formazione DB, pagine info/campionati, BottomNav</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.7</span> — Motore scoring, pagina risultati, weekend_results</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.6</span> — Piloti 2026, conferma squadra/previsioni bloccante</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.5</span> — Calendario, gara dinamica, navbar mobile</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.4</span> — Classifica da Supabase, pagina profilo</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.3</span> — Auth Supabase, login/registrati, store su DB</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.2</span> — Dashboard, mercato, previsioni, classifica</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.1</span> — Landing page con countdown</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
 
       <BottomNav />

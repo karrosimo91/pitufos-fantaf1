@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("id, team_principal_name, scuderia_name");
 
-    const playerScores: { user_id: string; name: string; scuderia: string; weekend_points: number; piloti_points: number; previsioni_points: number }[] = [];
+    const playerScores: { user_id: string; name: string; scuderia: string; weekend_points: number; piloti_points: number; previsioni_points: number; penalita_cambi: number }[] = [];
 
     for (const formazione of formazioni || []) {
       const driverNumbers: number[] = (formazione.driver_numbers || []).map(Number);
@@ -183,13 +183,27 @@ export async function POST(request: NextRequest) {
       const calc = calcolaPuntiWeekend(driverNumbers, formazione.primo_pilota, previsioni, weekendResults, chipPiloti, chipPrevisioni);
       const profile = profiles?.find((p) => p.id === formazione.user_id);
 
+      // Penalita' cambi mercato: 2 gratis, dal 3° in poi -10 ciascuno (wildcard = nessuna penalita')
+      let penalitaCambi = 0;
+      if (formazione.chip_piloti !== "wildcard") {
+        const { data: cambiData } = await supabase
+          .from("mercato_cambi")
+          .select("id")
+          .eq("user_id", formazione.user_id)
+          .eq("round", round);
+        const numCambi = (cambiData || []).length;
+        const cambiExtra = Math.max(0, numCambi - 2);
+        penalitaCambi = cambiExtra * 10;
+      }
+
       playerScores.push({
         user_id: formazione.user_id,
         name: profile?.team_principal_name || "—",
         scuderia: profile?.scuderia_name || "—",
-        weekend_points: calc.total,
+        weekend_points: calc.total - penalitaCambi,
         piloti_points: calc.pilotiPoints,
         previsioni_points: calc.previsioniPoints,
+        penalita_cambi: penalitaCambi,
       });
     }
 
@@ -230,7 +244,7 @@ export async function POST(request: NextRequest) {
         previsioni_points: ps.previsioni_points,
       }, { onConflict: "user_id,round" });
 
-      log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points} + Prev:${ps.previsioni_points}) | Reale: +${realPoints}`);
+      log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points} + Prev:${ps.previsioni_points}${ps.penalita_cambi > 0 ? ` - Cambi:${ps.penalita_cambi}` : ""}) | Reale: +${realPoints}`);
     }
 
     return NextResponse.json({
