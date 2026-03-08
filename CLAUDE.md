@@ -130,9 +130,9 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 | Alonso | Aston Martin | 12 |
 | Bearman | Haas | 11 |
 | Ocon | Haas | 11 |
-| Hulkenberg | Kick Sauber | 10 |
+| Hulkenberg | Audi | 10 |
 | Stroll | Aston Martin | 10 |
-| Bortoleto | Kick Sauber | 9 |
+| Bortoleto | Audi | 9 |
 | Lindblad | Racing Bulls | 9 |
 | Colapinto | Alpine | 8 |
 | Perez | Cadillac | 8 |
@@ -147,7 +147,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - Williams: Sainz, Albon
 - Aston Martin: Alonso, Stroll
 - Haas: Ocon, Bearman
-- Kick Sauber: Hulkenberg, Bortoleto
+- Audi: Hulkenberg, Bortoleto
 - Racing Bulls: Lawson, Lindblad
 - Cadillac: Perez, Bottas
 
