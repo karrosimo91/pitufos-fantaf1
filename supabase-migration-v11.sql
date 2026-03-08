@@ -65,10 +65,8 @@ CREATE POLICY "leghe_insert" ON leghe FOR INSERT WITH CHECK (auth.uid() = creato
 
 ALTER TABLE lega_members ENABLE ROW LEVEL SECURITY;
 
--- Membri possono vedere altri membri delle loro leghe
-CREATE POLICY "lega_members_read" ON lega_members FOR SELECT USING (
-  lega_id IN (SELECT lm.lega_id FROM lega_members lm WHERE lm.user_id = auth.uid())
-);
+-- Utenti autenticati possono vedere i membri delle leghe
+CREATE POLICY "lega_members_read" ON lega_members FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Utenti possono unirsi (inserire se stessi)
 CREATE POLICY "lega_members_insert" ON lega_members FOR INSERT WITH CHECK (auth.uid() = user_id);
