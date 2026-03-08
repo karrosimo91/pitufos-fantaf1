@@ -18,3 +18,21 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Spazio per la bottom nav */
+.pb-bottomnav {
+  padding-bottom: 80px;
+}
+
+/* Animazione pulsazione LIVE */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-live-pulse {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}

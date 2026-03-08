@@ -34,6 +34,21 @@ export interface RaceWeekendResults {
   };
 }
 
+// ─── Configurazione chip piloti ───
+
+export interface ChipPilotiConfig {
+  chipPiloti: string | null;       // "boost" | "halo" | "sostituzione" | "sesto" | null
+  chipPilotiTarget: number | null; // driver_number target per boost
+  sestoUomo: number | null;        // driver_number del 6° pilota
+}
+
+// ─── Configurazione chip previsioni ───
+
+export interface ChipPrevisioniConfig {
+  chipAttivo: string | null;  // "sicura" | "doppia" | "tardiva" | null
+  chipTarget: string | null;  // key della previsione target (es. "safetyCar")
+}
+
 // ─── Calcolo punteggio qualifica ───
 
 export function calcolaQualifica(position: number, nc = false): number {
@@ -51,13 +66,9 @@ export function calcolaSprintShootout(position: number, nc = false): number {
 // ─── Calcolo punteggio sprint ───
 
 export function calcolaSprint(result: DriverResult): number {
-  let punti = 0;
-
   if (result.dnf) return -10;
-
-  punti += PUNTI_SPRINT[result.position] ?? 0;
+  let punti = PUNTI_SPRINT[result.position] ?? 0;
   if (result.fastest_lap) punti += 2;
-
   return punti;
 }
 
@@ -91,45 +102,27 @@ export function calcolaGara(result: DriverResult): number {
 
 // ─── Calcolo punteggio totale pilota nel weekend ───
 
-export function calcolaPuntiPilotaWeekend(
+function calcolaPuntiPilotaBase(
   driverNumber: number,
-  results: RaceWeekendResults,
-  isPrimoPilota: boolean
+  results: RaceWeekendResults
 ): number {
   let punti = 0;
 
-  // Qualifica
   const qualResult = results.qualifying.find((r) => r.driver_number === driverNumber);
-  if (qualResult) {
-    punti += calcolaQualifica(qualResult.position, qualResult.dnf);
-  }
+  if (qualResult) punti += calcolaQualifica(qualResult.position, qualResult.dnf);
 
-  // Sprint shootout (se presente)
   if (results.sprint_shootout) {
     const ssResult = results.sprint_shootout.find((r) => r.driver_number === driverNumber);
-    if (ssResult) {
-      punti += calcolaSprintShootout(ssResult.position, ssResult.dnf);
-    }
+    if (ssResult) punti += calcolaSprintShootout(ssResult.position, ssResult.dnf);
   }
 
-  // Sprint (se presente)
   if (results.sprint) {
     const sprintResult = results.sprint.find((r) => r.driver_number === driverNumber);
-    if (sprintResult) {
-      punti += calcolaSprint(sprintResult);
-    }
+    if (sprintResult) punti += calcolaSprint(sprintResult);
   }
 
-  // Gara
   const raceResult = results.race.find((r) => r.driver_number === driverNumber);
-  if (raceResult) {
-    punti += calcolaGara(raceResult);
-  }
-
-  // Primo Pilota: x2
-  if (isPrimoPilota) {
-    punti *= 2;
-  }
+  if (raceResult) punti += calcolaGara(raceResult);
 
   return punti;
 }
@@ -138,76 +131,59 @@ export function calcolaPuntiPilotaWeekend(
 
 export function calcolaPuntiPrevisioni(
   previsioni: Previsioni,
-  events: RaceWeekendResults["events"]
+  events: RaceWeekendResults["events"],
+  chipPrevisioni?: ChipPrevisioniConfig
 ): { total: number; dettaglio: Record<string, number> } {
   const dettaglio: Record<string, number> = {};
   let total = 0;
 
-  // Safety Car
-  if (previsioni.safetyCar !== null) {
-    const corretto = previsioni.safetyCar === events.safety_car;
-    const pts = corretto
-      ? previsioni.safetyCar
-        ? PREVISIONI_PUNTI.safetyCar.si
-        : PREVISIONI_PUNTI.safetyCar.no
-      : 0;
-    dettaglio.safetyCar = pts;
-    total += pts;
-  }
+  const prevKeys: { key: keyof Omit<Previsioni, "numeroDnf">; eventKey: keyof typeof events; punti: { si: number; no: number } }[] = [
+    { key: "safetyCar", eventKey: "safety_car", punti: PREVISIONI_PUNTI.safetyCar },
+    { key: "virtualSafetyCar", eventKey: "virtual_safety_car", punti: PREVISIONI_PUNTI.virtualSafetyCar },
+    { key: "redFlag", eventKey: "red_flag", punti: PREVISIONI_PUNTI.redFlag },
+    { key: "gommeWet", eventKey: "wet_tyres", punti: PREVISIONI_PUNTI.gommeWet },
+    { key: "poleVince", eventKey: "pole_won", punti: PREVISIONI_PUNTI.poleVince },
+  ];
 
-  // VSC
-  if (previsioni.virtualSafetyCar !== null) {
-    const corretto = previsioni.virtualSafetyCar === events.virtual_safety_car;
-    const pts = corretto
-      ? previsioni.virtualSafetyCar
-        ? PREVISIONI_PUNTI.virtualSafetyCar.si
-        : PREVISIONI_PUNTI.virtualSafetyCar.no
-      : 0;
-    dettaglio.virtualSafetyCar = pts;
-    total += pts;
-  }
+  for (const p of prevKeys) {
+    const valore = previsioni[p.key];
+    if (valore === null) {
+      dettaglio[p.key] = 0;
+      continue;
+    }
 
-  // Red Flag
-  if (previsioni.redFlag !== null) {
-    const corretto = previsioni.redFlag === events.red_flag;
-    const pts = corretto
-      ? previsioni.redFlag
-        ? PREVISIONI_PUNTI.redFlag.si
-        : PREVISIONI_PUNTI.redFlag.no
-      : 0;
-    dettaglio.redFlag = pts;
-    total += pts;
-  }
+    const corretto = valore === (events[p.eventKey] as boolean);
+    let pts = corretto ? (valore ? p.punti.si : p.punti.no) : 0;
 
-  // Gomme Wet
-  if (previsioni.gommeWet !== null) {
-    const corretto = previsioni.gommeWet === events.wet_tyres;
-    const pts = corretto
-      ? previsioni.gommeWet
-        ? PREVISIONI_PUNTI.gommeWet.si
-        : PREVISIONI_PUNTI.gommeWet.no
-      : 0;
-    dettaglio.gommeWet = pts;
-    total += pts;
-  }
+    // Chip: Previsione Sicura — vale comunque
+    if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === p.key && !corretto) {
+      pts = valore ? p.punti.si : p.punti.no;
+    }
 
-  // Pole vince
-  if (previsioni.poleVince !== null) {
-    const corretto = previsioni.poleVince === events.pole_won;
-    const pts = corretto
-      ? previsioni.poleVince
-        ? PREVISIONI_PUNTI.poleVince.si
-        : PREVISIONI_PUNTI.poleVince.no
-      : 0;
-    dettaglio.poleVince = pts;
+    // Chip: Previsione Doppia — punti x2
+    if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === p.key) {
+      pts *= 2;
+    }
+
+    dettaglio[p.key] = pts;
     total += pts;
   }
 
   // Numero DNF
   if (previsioni.numeroDnf !== null) {
-    const pts = previsioni.numeroDnf === events.total_dnf ? PREVISIONI_PUNTI.numeroDnf.esatto : 0;
+    let pts = previsioni.numeroDnf === events.total_dnf ? PREVISIONI_PUNTI.numeroDnf.esatto : 0;
+
+    if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === "numeroDnf" && pts === 0) {
+      pts = PREVISIONI_PUNTI.numeroDnf.esatto;
+    }
+    if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === "numeroDnf") {
+      pts *= 2;
+    }
+
     dettaglio.numeroDnf = pts;
     total += pts;
+  } else {
+    dettaglio.numeroDnf = 0;
   }
 
   return { total, dettaglio };
@@ -215,32 +191,71 @@ export function calcolaPuntiPrevisioni(
 
 // ─── Punteggio totale weekend di un giocatore ───
 
+export interface PilotaDettaglio {
+  driver_number: number;
+  puntiBase: number;
+  moltiplicatore: number; // 1, 2 (primo pilota), o 3 (boost)
+  puntiFinali: number;
+  haloApplicato: boolean;
+  isSestoUomo: boolean;
+}
+
 export function calcolaPuntiWeekend(
   driverNumbers: number[],
   primoPilota: number | null,
   previsioni: Previsioni,
-  results: RaceWeekendResults
+  results: RaceWeekendResults,
+  chipPiloti?: ChipPilotiConfig,
+  chipPrevisioni?: ChipPrevisioniConfig
 ): {
   pilotiPoints: number;
   previsioniPoints: number;
   total: number;
-  pilotiDettaglio: { driver_number: number; points: number }[];
+  pilotiDettaglio: PilotaDettaglio[];
   previsioniDettaglio: Record<string, number>;
 } {
-  // Punti piloti
-  const pilotiDettaglio = driverNumbers.map((num) => ({
-    driver_number: num,
-    points: calcolaPuntiPilotaWeekend(num, results, num === primoPilota),
-  }));
-  const pilotiPoints = pilotiDettaglio.reduce((sum, d) => sum + d.points, 0);
+  // Lista piloti da valutare (5 base + eventuale sesto uomo)
+  const allDrivers = [...driverNumbers];
+  if (chipPiloti?.chipPiloti === "sesto" && chipPiloti.sestoUomo && !allDrivers.includes(chipPiloti.sestoUomo)) {
+    allDrivers.push(chipPiloti.sestoUomo);
+  }
 
-  // Punti previsioni
-  const prev = calcolaPuntiPrevisioni(previsioni, results.events);
+  const pilotiDettaglio: PilotaDettaglio[] = allDrivers.map((num) => {
+    const puntiBase = calcolaPuntiPilotaBase(num, results);
+    const isPrimo = num === primoPilota;
+    const isBoosted = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === num && !isPrimo;
+    const isSestoUomo = chipPiloti?.chipPiloti === "sesto" && chipPiloti.sestoUomo === num;
+
+    let moltiplicatore = 1;
+    if (isPrimo) moltiplicatore = 2;
+    if (isBoosted) moltiplicatore = 3;
+
+    let puntiFinali = puntiBase * moltiplicatore;
+
+    // Chip: Halo — minimo 0 punti se negativo
+    let haloApplicato = false;
+    if (chipPiloti?.chipPiloti === "halo" && puntiFinali < 0) {
+      puntiFinali = 0;
+      haloApplicato = true;
+    }
+
+    return { driver_number: num, puntiBase, moltiplicatore, puntiFinali, haloApplicato, isSestoUomo };
+  });
+
+  const pilotiPoints = pilotiDettaglio.reduce((sum, d) => sum + d.puntiFinali, 0);
+
+  // Punti previsioni (con chip)
+  const prev = calcolaPuntiPrevisioni(previsioni, results.events, chipPrevisioni);
+
+  // Bonus All-in Previsioni: tutte e 6 giuste
+  // (per ora segnaposto, punteggio da definire)
+  const tutteGiuste = Object.values(prev.dettaglio).every((pts) => pts > 0);
+  const bonusAllIn = tutteGiuste ? 0 : 0; // TODO: definire punteggio bonus
 
   return {
     pilotiPoints,
-    previsioniPoints: prev.total,
-    total: pilotiPoints + prev.total,
+    previsioniPoints: prev.total + bonusAllIn,
+    total: pilotiPoints + prev.total + bonusAllIn,
     pilotiDettaglio,
     previsioniDettaglio: prev.dettaglio,
   };

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import DriverCard from "../components/DriverCard";
 import { DRIVERS_2026 } from "../lib/drivers-data";
 import { useScuderia } from "../lib/store";
@@ -25,27 +26,26 @@ export default function MercatoPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleAcquista = async (driver: typeof DRIVERS_2026[number]) => {
-    if (scuderia.confirmed) {
-      showToast("Squadra gia confermata");
-      return;
-    }
-    const success = await scuderia.acquista({
-      driver_number: driver.number,
-      name: driver.name,
-      team: driver.team,
-      price: driver.price,
-      teamColour: driver.teamColour,
-    });
+  const handleAcquista = async (driverNumber: number) => {
+    const driver = DRIVERS_2026.find(d => d.number === driverNumber);
+    if (!driver) return;
+
+    const success = await scuderia.acquista(driverNumber);
     if (success) {
       showToast(`${driver.name} acquistato!`);
     } else if (scuderia.drivers.length >= 5) {
       showToast("Squadra piena (5/5)");
-    } else if (scuderia.drivers.some((d) => d.driver_number === driver.number)) {
+    } else if (scuderia.driverNumbers.includes(driverNumber)) {
       showToast("Pilota gia in squadra");
     } else {
       showToast("Budget insufficiente");
     }
+  };
+
+  const handleVendi = async (driverNumber: number) => {
+    const driver = DRIVERS_2026.find(d => d.number === driverNumber);
+    await scuderia.vendi(driverNumber);
+    if (driver) showToast(`${driver.name} venduto`);
   };
 
   const filtered = DRIVERS_2026
@@ -59,7 +59,7 @@ export default function MercatoPage() {
       return a.team.localeCompare(b.team);
     });
 
-  const isOwned = (num: number) => scuderia.drivers.some((d) => d.driver_number === num);
+  const isOwned = (num: number) => scuderia.driverNumbers.includes(num);
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white">
@@ -71,37 +71,25 @@ export default function MercatoPage() {
         </div>
       )}
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 pb-bottomnav">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
             <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-              {scuderia.confirmed ? "Squadra confermata" : "Compra piloti"}
+              Compra e vendi piloti
             </div>
-            <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-              MERCATO
-            </h1>
+            <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">MERCATO</h1>
           </div>
           <div className="flex gap-6">
             <div className="text-right">
-              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">
-                {scuderia.budget}
-              </div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{scuderia.budget}</div>
               <div className="text-[9px] tracking-[2px] text-white/30">SOLDINI</div>
             </div>
             <div className="text-right">
-              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-white/60">
-                {scuderia.drivers.length}/5
-              </div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-white/60">{scuderia.drivers.length}/5</div>
               <div className="text-[9px] tracking-[2px] text-white/30">PILOTI</div>
             </div>
           </div>
         </div>
-
-        {scuderia.confirmed && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400 mb-6">
-            La tua squadra e stata confermata. Non puoi piu fare modifiche per questo weekend.
-          </div>
-        )}
 
         {/* Filtri */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -131,25 +119,25 @@ export default function MercatoPage() {
 
         {/* Lista piloti */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map((driver) => (
-            <DriverCard
-              key={driver.number}
-              name={driver.name}
-              team={driver.team}
-              teamColour={driver.teamColour}
-              price={driver.price}
-              number={driver.number}
-              actionLabel={isOwned(driver.number) ? "In squadra" : "Acquista"}
-              showActions={!isOwned(driver.number) && !scuderia.confirmed}
-              onSelect={isOwned(driver.number) || scuderia.confirmed ? undefined : () => handleAcquista(driver)}
-            />
-          ))}
+          {filtered.map((driver) => {
+            const owned = isOwned(driver.number);
+            return (
+              <DriverCard
+                key={driver.number}
+                name={driver.name}
+                team={driver.team}
+                teamColour={driver.teamColour}
+                price={driver.price}
+                number={driver.number}
+                actionLabel={owned ? "Vendi" : "Acquista"}
+                showActions={true}
+                onSelect={owned ? () => handleVendi(driver.number) : () => handleAcquista(driver.number)}
+              />
+            );
+          })}
         </div>
       </main>
-
-      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.81
-      </footer>
+      <BottomNav />
     </div>
   );
 }

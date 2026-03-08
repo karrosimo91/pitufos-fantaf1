@@ -2,24 +2,32 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
-import { getNextRace, getPastRaces, RACES_2026 } from "../lib/races";
+import { RACES_2026 } from "../lib/races";
 import { getDriverByNumber } from "../lib/drivers-data";
 import {
   calcolaPuntiWeekend,
   type RaceWeekendResults,
+  type PilotaDettaglio,
+  type ChipPilotiConfig,
+  type ChipPrevisioniConfig,
 } from "../lib/scoring";
 import type { Previsioni } from "../lib/types";
+import { ChevronLeft, ChevronRight, Shield, Zap, Users } from "lucide-react";
 
 interface PlayerResult {
+  userId: string;
   teamPrincipal: string;
   scuderiaName: string;
   pilotiPoints: number;
   previsioniPoints: number;
   total: number;
-  pilotiDettaglio: { driver_number: number; name: string; points: number; isPrimo: boolean }[];
+  pilotiDettaglio: (PilotaDettaglio & { name: string })[];
   previsioniDettaglio: Record<string, number>;
+  chipPiloti: string | null;
+  chipPrevisioni: string | null;
 }
 
 const PREVISIONE_LABELS: Record<string, string> = {
@@ -52,7 +60,7 @@ export default function RisultatiPage() {
       return;
     }
     loadResults(selectedRound);
-  }, [user, selectedRound]);
+  }, [user, selectedRound]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadResults(round: number) {
     setLoading(true);
@@ -76,39 +84,50 @@ export default function RisultatiPage() {
     const parsedResults: RaceWeekendResults = weekendData.data;
     setWeekendResults(parsedResults);
 
-    // Carica tutti i giocatori con le loro scuderie e previsioni
+    // Carica tutti i profili
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, team_principal_name, scuderia_name, scuderia_confirmed");
+      .select("id, team_principal_name, scuderia_name");
 
     if (!profiles) {
       setLoading(false);
       return;
     }
 
-    const confirmedProfiles = profiles.filter((p) => p.scuderia_confirmed);
+    // Carica tutte le formazioni confermate per questo round
+    const { data: formazioni } = await supabase
+      .from("formazioni")
+      .select("*")
+      .eq("round", round)
+      .eq("confirmed", true);
+
+    // Carica tutte le previsioni confermate per questo round
+    const { data: previsioniData } = await supabase
+      .from("previsioni")
+      .select("*")
+      .eq("round", round)
+      .eq("confirmed", true);
+
     const playerResults: PlayerResult[] = [];
 
-    for (const profile of confirmedProfiles) {
-      // Piloti del giocatore
-      const { data: drivers } = await supabase
-        .from("scuderia_drivers")
-        .select("*")
-        .eq("user_id", profile.id);
+    for (const formazione of formazioni || []) {
+      const profile = profiles.find((p) => p.id === formazione.user_id);
+      if (!profile) continue;
 
-      // Previsioni del giocatore
-      const { data: prev } = await supabase
-        .from("previsioni")
-        .select("*")
-        .eq("user_id", profile.id)
-        .eq("round", round)
-        .single();
+      const driverNumbers: number[] = (formazione.driver_numbers || []).map(Number);
+      if (driverNumbers.length === 0) continue;
 
-      if (!drivers || drivers.length === 0) continue;
+      const primoPilota: number | null = formazione.primo_pilota;
 
-      const driverNumbers = drivers.map((d) => d.driver_number);
-      const primoPilota = drivers.find((d) => d.is_primo_pilota)?.driver_number || null;
+      // Chip piloti
+      const chipPiloti: ChipPilotiConfig = {
+        chipPiloti: formazione.chip_piloti,
+        chipPilotiTarget: formazione.chip_piloti_target,
+        sestoUomo: formazione.sesto_uomo,
+      };
 
+      // Previsioni
+      const prev = previsioniData?.find((p) => p.user_id === formazione.user_id);
       const previsioni: Previsioni = prev
         ? {
             safetyCar: prev.safety_car,
@@ -118,18 +137,18 @@ export default function RisultatiPage() {
             poleVince: prev.pole_vince,
             numeroDnf: prev.numero_dnf,
           }
-        : {
-            safetyCar: null,
-            virtualSafetyCar: null,
-            redFlag: null,
-            gommeWet: null,
-            poleVince: null,
-            numeroDnf: null,
-          };
+        : { safetyCar: null, virtualSafetyCar: null, redFlag: null, gommeWet: null, poleVince: null, numeroDnf: null };
 
-      const calc = calcolaPuntiWeekend(driverNumbers, primoPilota, previsioni, parsedResults);
+      // Chip previsioni
+      const chipPrevisioni: ChipPrevisioniConfig = {
+        chipAttivo: prev?.chip_attivo || null,
+        chipTarget: prev?.chip_target || null,
+      };
+
+      const calc = calcolaPuntiWeekend(driverNumbers, primoPilota, previsioni, parsedResults, chipPiloti, chipPrevisioni);
 
       playerResults.push({
+        userId: formazione.user_id,
         teamPrincipal: profile.team_principal_name,
         scuderiaName: profile.scuderia_name,
         pilotiPoints: calc.pilotiPoints,
@@ -138,21 +157,18 @@ export default function RisultatiPage() {
         pilotiDettaglio: calc.pilotiDettaglio.map((d) => ({
           ...d,
           name: getDriverByNumber(d.driver_number)?.name || `#${d.driver_number}`,
-          isPrimo: d.driver_number === primoPilota,
         })),
         previsioniDettaglio: calc.previsioniDettaglio,
+        chipPiloti: formazione.chip_piloti,
+        chipPrevisioni: prev?.chip_attivo || null,
       });
     }
 
     playerResults.sort((a, b) => b.total - a.total);
     setResults(playerResults);
 
-    // Trova il risultato dell'utente corrente
-    const currentProfile = confirmedProfiles.find((p) => p.id === user!.id);
-    if (currentProfile) {
-      const mine = playerResults.find((r) => r.teamPrincipal === currentProfile.team_principal_name);
-      setMyResult(mine || null);
-    }
+    const mine = playerResults.find((r) => r.userId === user!.id);
+    setMyResult(mine || null);
 
     setLoading(false);
   }
@@ -161,14 +177,31 @@ export default function RisultatiPage() {
     <div className="min-h-screen bg-[#0a0a12] text-white">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-            {race.flag} {race.name} — Round {race.round}
+      <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
+        {/* Selettore round */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => setSelectedRound(Math.max(1, selectedRound - 1))}
+            disabled={selectedRound <= 1}
+            className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] disabled:opacity-20"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div className="text-center">
+            <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
+              Round {race.round}/24
+            </div>
+            <h1 className="text-xl font-black font-[family-name:var(--font-oswald)]">
+              {race.flag} {race.name}
+            </h1>
           </div>
-          <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-            RISULTATI
-          </h1>
+          <button
+            onClick={() => setSelectedRound(Math.min(24, selectedRound + 1))}
+            disabled={selectedRound >= 24}
+            className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] disabled:opacity-20"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
 
         {loading ? (
@@ -197,6 +230,27 @@ export default function RisultatiPage() {
                   </span>
                 </div>
 
+                {/* Chip attivi */}
+                {(myResult.chipPiloti || myResult.chipPrevisioni) && (
+                  <div className="flex gap-2 mb-4">
+                    {myResult.chipPiloti && (
+                      <span className="text-[9px] tracking-wider uppercase bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-1 rounded font-bold">
+                        {myResult.chipPiloti === "boost" && "Boost x3"}
+                        {myResult.chipPiloti === "halo" && "Halo"}
+                        {myResult.chipPiloti === "sostituzione" && "Sost. Griglia"}
+                        {myResult.chipPiloti === "sesto" && "Sesto Uomo"}
+                      </span>
+                    )}
+                    {myResult.chipPrevisioni && (
+                      <span className="text-[9px] tracking-wider uppercase bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-1 rounded font-bold">
+                        {myResult.chipPrevisioni === "sicura" && "Prev. Sicura"}
+                        {myResult.chipPrevisioni === "doppia" && "Prev. Doppia"}
+                        {myResult.chipPrevisioni === "tardiva" && "Prev. Tardiva"}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Breakdown piloti */}
                 <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
                   Piloti ({myResult.pilotiPoints} pts)
@@ -204,11 +258,15 @@ export default function RisultatiPage() {
                 <div className="space-y-1 mb-4">
                   {myResult.pilotiDettaglio.map((d) => (
                     <div key={d.driver_number} className="flex items-center justify-between text-sm">
-                      <span className={d.isPrimo ? "text-[#E8002D] font-bold" : "text-white/60"}>
-                        {d.name} {d.isPrimo ? "(x2)" : ""}
+                      <span className={`flex items-center gap-1.5 ${d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/60"}`}>
+                        {d.name}
+                        {d.moltiplicatore === 2 && " (x2)"}
+                        {d.moltiplicatore === 3 && <Zap size={12} />}
+                        {d.isSestoUomo && <Users size={12} />}
+                        {d.haloApplicato && <Shield size={12} className="text-green-400" />}
                       </span>
-                      <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.points >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {d.points > 0 ? "+" : ""}{d.points}
+                      <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
                       </span>
                     </div>
                   ))}
@@ -233,16 +291,16 @@ export default function RisultatiPage() {
 
             {/* Classifica weekend */}
             {results && results.length > 0 && (
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
                 <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold px-4 py-3 border-b border-white/[0.06]">
                   Classifica Weekend
                 </div>
                 {results.map((r, i) => (
                   <div
-                    key={r.teamPrincipal}
+                    key={r.userId}
                     className={`flex items-center justify-between px-4 py-3 ${
-                      i < results.length - 1 ? "border-b border-white/[0.03]" : ""
-                    }`}
+                      r.userId === user?.id ? "bg-[#E8002D]/5" : ""
+                    } ${i < results.length - 1 ? "border-b border-white/[0.03]" : ""}`}
                   >
                     <div className="flex items-center gap-3">
                       <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm w-6 ${i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white/80" : "text-white/30"}`}>
@@ -267,7 +325,7 @@ export default function RisultatiPage() {
             )}
 
             {/* Eventi gara */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 mt-6">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
               <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">
                 Eventi della gara
               </div>
@@ -298,9 +356,7 @@ export default function RisultatiPage() {
         )}
       </main>
 
-      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.81
-      </footer>
+      <BottomNav />
     </div>
   );
 }

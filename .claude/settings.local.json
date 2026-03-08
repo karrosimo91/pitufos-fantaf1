@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(npx next:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(__NEW_LINE_b99e6b01660a0391__ echo:*)",
+      "Bash(__NEW_LINE_e60461c4d9f61cf4__ echo:*)",
+      "Bash(curl:*)",
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)"
     ]
   }
 }

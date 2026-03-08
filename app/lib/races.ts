@@ -45,3 +45,71 @@ export function getPastRaces(): Race[] {
 export function getCurrentRound(): number {
   return getNextRace().round;
 }
+
+export function getRaceByRound(round: number): Race | undefined {
+  return RACES_2026.find((r) => r.round === round);
+}
+
+// ─── Sessioni weekend ───
+
+export interface Session {
+  name: string;
+  shortName: string;
+  day: string; // "Venerdì", "Sabato", "Domenica"
+  dateTime: string; // ISO string
+  type: "practice" | "qualifying" | "sprint_shootout" | "sprint" | "race";
+}
+
+/** Genera le sessioni del weekend basandosi sulla data della gara */
+export function getWeekendSessions(race: Race): Session[] {
+  const raceDate = new Date(race.date);
+  const raceDay = raceDate.getDay(); // 0=dom
+
+  // Calcola venerdì e sabato relativi alla gara (domenica)
+  const friday = new Date(raceDate);
+  friday.setDate(raceDate.getDate() - 2);
+  const saturday = new Date(raceDate);
+  saturday.setDate(raceDate.getDate() - 1);
+
+  if (race.sprint) {
+    // Weekend Sprint: FP1 (ven), Sprint Shootout (ven), Sprint (sab), Qualifica (sab), Gara (dom)
+    return [
+      { name: "Prove Libere 1", shortName: "FP1", day: "Venerdì", dateTime: setTime(friday, 13, 30), type: "practice" },
+      { name: "Sprint Shootout", shortName: "SQ", day: "Venerdì", dateTime: setTime(friday, 17, 30), type: "sprint_shootout" },
+      { name: "Sprint Race", shortName: "Sprint", day: "Sabato", dateTime: setTime(saturday, 12, 0), type: "sprint" },
+      { name: "Qualifiche", shortName: "Quali", day: "Sabato", dateTime: setTime(saturday, 16, 0), type: "qualifying" },
+      { name: "Gran Premio", shortName: "Gara", day: "Domenica", dateTime: race.date, type: "race" },
+    ];
+  }
+
+  // Weekend normale: FP1 (ven), FP2 (ven), FP3 (sab), Qualifica (sab), Gara (dom)
+  return [
+    { name: "Prove Libere 1", shortName: "FP1", day: "Venerdì", dateTime: setTime(friday, 13, 30), type: "practice" },
+    { name: "Prove Libere 2", shortName: "FP2", day: "Venerdì", dateTime: setTime(friday, 17, 0), type: "practice" },
+    { name: "Prove Libere 3", shortName: "FP3", day: "Sabato", dateTime: setTime(saturday, 12, 30), type: "practice" },
+    { name: "Qualifiche", shortName: "Quali", day: "Sabato", dateTime: setTime(saturday, 16, 0), type: "qualifying" },
+    { name: "Gran Premio", shortName: "Gara", day: "Domenica", dateTime: race.date, type: "race" },
+  ];
+}
+
+function setTime(date: Date, hours: number, minutes: number): string {
+  const d = new Date(date);
+  d.setHours(hours, minutes, 0, 0);
+  return d.toISOString();
+}
+
+/** Calcola la deadline: prima delle qualifiche (normali) o Sprint Shootout (sprint) */
+export function getDeadline(race: Race): string {
+  const sessions = getWeekendSessions(race);
+  if (race.sprint) {
+    const sq = sessions.find((s) => s.type === "sprint_shootout");
+    return sq?.dateTime || race.date;
+  }
+  const quali = sessions.find((s) => s.type === "qualifying");
+  return quali?.dateTime || race.date;
+}
+
+/** Controlla se siamo dopo la deadline */
+export function isAfterDeadline(race: Race): boolean {
+  return new Date() >= new Date(getDeadline(race));
+}

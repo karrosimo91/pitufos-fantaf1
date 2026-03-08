@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
 
 export default function ProfiloPage() {
@@ -50,7 +51,7 @@ export default function ProfiloPage() {
     <div className="min-h-screen bg-[#0a0a12] text-white">
       <Navbar />
 
-      <main className="max-w-lg mx-auto px-4 py-8">
+      <main className="max-w-lg mx-auto px-4 py-8 pb-bottomnav">
         <div className="mb-8">
           <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
             Il tuo account
@@ -103,10 +104,7 @@ export default function ProfiloPage() {
           </button>
         </form>
       </main>
-
-      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.81
-      </footer>
+      <BottomNav />
     </div>
   );
 }
