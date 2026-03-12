@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./lib/auth";
 import { RACES_2026, getNextRace, getUpcomingRaces } from "./lib/races";
 import { APP_VERSION } from "./lib/types";
+import CountryFlag from "./components/CountryFlag";
 
 function getTimeUntil(dateStr: string) {
   const now = new Date().getTime();
@@ -87,7 +88,7 @@ export default function Home() {
             Prossima Gara
           </div>
           <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 text-center">
-            <div className="text-4xl mb-2">{nextRace.flag}</div>
+            <div className="mb-2"><CountryFlag countryCode={nextRace.countryCode} size={40} /></div>
             <h2 className="text-xl font-bold mb-1">{nextRace.name}</h2>
             <p className="text-white/40 text-sm mb-1">{nextRace.circuit}</p>
             <div className="flex items-center justify-center gap-2 text-xs text-white/30">
@@ -151,7 +152,7 @@ export default function Home() {
                 className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] rounded-lg px-4 py-3 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{race.flag}</span>
+                  <CountryFlag countryCode={race.countryCode} size={20} />
                   <div>
                     <div className="text-sm font-semibold">{race.name}</div>
                     <div className="text-[11px] text-white/30">{race.circuit}</div>

@@ -1,5 +1,5 @@
 // ─── App Version ───
-export const APP_VERSION = "v0.97";
+export const APP_VERSION = "v0.98";
 
 // ─── Driver ───
 export interface Driver {
@@ -46,6 +46,7 @@ export interface Race {
   name: string;
   circuit: string;
   flag: string;
+  countryCode: string;
   date: string;
   sprint: boolean;
 }

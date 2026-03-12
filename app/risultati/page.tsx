@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
+import CountryFlag from "../components/CountryFlag";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { RACES_2026 } from "../lib/races";
@@ -192,7 +193,7 @@ export default function RisultatiPage() {
               Round {race.round}/24
             </div>
             <h1 className="text-xl font-black font-[family-name:var(--font-oswald)]">
-              {race.flag} {race.name}
+              <CountryFlag countryCode={race.countryCode} size={20} className="mr-2" />{race.name}
             </h1>
           </div>
           <button

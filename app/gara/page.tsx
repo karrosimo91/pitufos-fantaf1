@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
+import CountryFlag from "../components/CountryFlag";
 import { useSquadra, usePrevisioni } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
@@ -387,7 +388,7 @@ export default function GaraPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{viewRace.flag}</span>
+            <CountryFlag countryCode={viewRace.countryCode} size={32} />
             <div>
               <h1 className="text-lg font-black font-[family-name:var(--font-oswald)] leading-tight">{viewRace.name}</h1>
               <p className="text-white/40 text-xs">{viewRace.circuit}</p>

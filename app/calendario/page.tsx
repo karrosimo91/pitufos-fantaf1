@@ -1,6 +1,7 @@
 "use client";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
+import CountryFlag from "../components/CountryFlag";
 import { RACES_2026, getNextRace } from "../lib/races";
 import { APP_VERSION } from "../lib/types";
 
@@ -43,7 +44,7 @@ export default function CalendarioPage() {
                   <div className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm w-8 ${isNext ? "text-[#E8002D]" : "text-white/30"}`}>
                     {String(race.round).padStart(2, "0")}
                   </div>
-                  <span className="text-xl">{race.flag}</span>
+                  <CountryFlag countryCode={race.countryCode} size={24} />
                   <div>
                     <div className={`text-sm font-semibold ${isNext ? "text-white" : ""}`}>{race.name}</div>
                     <div className="text-[11px] text-white/30">{race.circuit}</div>

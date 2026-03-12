@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
+import CountryFlag from "../components/CountryFlag";
 import { useSquadra, usePrevisioni, useAggiornamenti, useDashboardStats } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getNextRace, getCurrentRound, getDeadline } from "../lib/races";
@@ -111,7 +112,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4 mb-4">
-            <div className="text-4xl">{nextRace.flag}</div>
+            <CountryFlag countryCode={nextRace.countryCode} size={40} />
             <div>
               <h2 className="text-lg font-bold font-[family-name:var(--font-oswald)]">{nextRace.name}</h2>
               <p className="text-white/40 text-sm">{nextRace.circuit}</p>

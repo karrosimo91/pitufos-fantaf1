@@ -102,22 +102,19 @@ export function useSquadra(round: number) {
           confirmed: !!data.confirmed,
         });
 
-        if (data.confirmed) {
-          // Formazione confermata: questa è la base
-          setRosaBase((data.driver_numbers || []).map(Number));
-        } else {
-          // Formazione NON confermata (bozza): la base è l'ultima confermata precedente
-          const { data: prev } = await supabase
-            .from("formazioni")
-            .select("driver_numbers")
-            .eq("user_id", user.id)
-            .eq("confirmed", true)
-            .lt("round", round)
-            .order("round", { ascending: false })
-            .limit(1)
-            .single();
-          setRosaBase(prev?.driver_numbers ? (prev.driver_numbers as number[]).map(Number) : []);
-        }
+        // La rosa base è SEMPRE l'ultima confermata di un round PRECEDENTE.
+        // Se non esiste (primo round in assoluto), rosaBase = [] → nessuna penalità.
+        // Questo garantisce che la prima formazione sia sempre modificabile liberamente.
+        const { data: prev } = await supabase
+          .from("formazioni")
+          .select("driver_numbers")
+          .eq("user_id", user.id)
+          .eq("confirmed", true)
+          .lt("round", round)
+          .order("round", { ascending: false })
+          .limit(1)
+          .single();
+        setRosaBase(prev?.driver_numbers ? (prev.driver_numbers as number[]).map(Number) : []);
       } else if (!error || error.code === "PGRST116") {
         // Nessuna formazione per questo round: copia dal round precedente
         const { data: prev } = await supabase

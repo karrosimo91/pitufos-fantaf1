@@ -101,6 +101,8 @@ export default function AltroPage() {
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>
               <div className="space-y-2 text-[12px] text-white/50">
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.98</span> — Bandiere immagine al posto delle emoji, fix penalità prima formazione</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.97</span> — Bugfix prima squadra, modal squadre lega, banner stato weekend, versione centralizzata</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.96</span> — Pagina gara con selettore round, dettaglio punti, wildcard, conferma cambi a pagamento, regolamento aggiornato</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.95</span> — Sistema leghe (crea/unisciti, codice invito, classifica per lega)</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.94</span> — Pagina admin post-gara, selezione round e DotD</div>
