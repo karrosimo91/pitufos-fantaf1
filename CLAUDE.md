@@ -114,28 +114,28 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 
 | Pilota | Team | Soldini |
 |--------|------|---------|
-| Norris | McLaren | 37 |
+| Norris | McLaren | 36 |
 | Verstappen | Red Bull | 36 |
+| Russell | Mercedes | 34 |
 | Piastri | McLaren | 33 |
-| Russell | Mercedes | 32 |
 | Leclerc | Ferrari | 30 |
 | Hamilton | Ferrari | 28 |
-| Antonelli | Mercedes | 23 |
-| Hadjar | Red Bull | 15 |
+| Antonelli | Mercedes | 27 |
+| Hadjar | Red Bull | 17 |
 | Gasly | Alpine | 14 |
 | Sainz | Williams | 14 |
-| Lawson | Racing Bulls | 13 |
 | Albon | Williams | 13 |
 | Alonso | Aston Martin | 12 |
-| Bearman | Haas | 11 |
+| Bearman | Haas | 12 |
 | Ocon | Haas | 11 |
-| Hulkenberg | Audi | 10 |
 | Stroll | Aston Martin | 10 |
+| Lindblad | Racing Bulls | 10 |
+| Hulkenberg | Audi | 9 |
+| Lawson | Racing Bulls | 9 |
 | Bortoleto | Audi | 9 |
-| Lindblad | Racing Bulls | 9 |
 | Colapinto | Alpine | 8 |
 | Perez | Cadillac | 8 |
-| Bottas | Cadillac | 8 |
+| Bottas | Cadillac | 7 |
 
 ### Team 2026 (11 scuderie)
 - Red Bull: Verstappen, Hadjar
