@@ -1,6 +1,8 @@
 "use client";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import { RACES_2026, getNextRace } from "../lib/races";
+import { APP_VERSION } from "../lib/types";
 
 export default function CalendarioPage() {
   const nextRace = getNextRace();
@@ -10,7 +12,7 @@ export default function CalendarioPage() {
     <div className="min-h-screen bg-[#0a0a12] text-white">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-4 py-8 pb-bottomnav">
         <div className="mb-8">
           <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
             Stagione 2026 — 24 Gran Premi
@@ -72,9 +74,10 @@ export default function CalendarioPage() {
         </div>
       </main>
 
-      <footer className="text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.81
+      <footer className="text-center py-8 pb-bottomnav text-white/10 text-[10px] tracking-[3px] uppercase">
+        Los Pitufos FantaF1 — Stagione 2026 — {APP_VERSION}
       </footer>
+      <BottomNav />
     </div>
   );
 }

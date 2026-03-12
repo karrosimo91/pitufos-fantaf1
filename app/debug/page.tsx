@@ -28,9 +28,9 @@ export default function DebugPage() {
   const testReadDrivers = async () => {
     if (!user) return log("ERROR: non loggato");
     const supabase = createClient()!;
-    const { data, error } = await supabase.from("scuderia_drivers").select("*").eq("user_id", user.id);
-    if (error) log(`READ scuderia_drivers ERROR: ${JSON.stringify(error)}`);
-    else log(`READ scuderia_drivers OK: ${data.length} righe — ${JSON.stringify(data)}`);
+    const { data, error } = await supabase.from("formazioni").select("*").eq("user_id", user.id);
+    if (error) log(`READ formazioni ERROR: ${JSON.stringify(error)}`);
+    else log(`READ formazioni OK: ${data.length} righe — ${JSON.stringify(data)}`);
   };
 
   const testReadPrevisioni = async () => {
@@ -65,15 +65,15 @@ export default function DebugPage() {
       log(`  👤 ${p.team_principal_name} — "${p.scuderia_name}" (${p.email})`);
     }
 
-    // Scuderia drivers per ogni utente
-    const { data: allDrivers, error: drvErr } = await supabase.from("scuderia_drivers").select("*");
-    if (drvErr) log(`READ scuderia_drivers ERROR: ${JSON.stringify(drvErr)}`);
+    // Formazioni per ogni utente (ultima confermata)
+    const { data: allFormazioni, error: drvErr } = await supabase.from("formazioni").select("*").eq("confirmed", true);
+    if (drvErr) log(`READ formazioni ERROR: ${JSON.stringify(drvErr)}`);
     else {
-      log(`SCUDERIA_DRIVERS: ${allDrivers?.length || 0} righe totali`);
+      log(`FORMAZIONI CONFERMATE: ${allFormazioni?.length || 0} righe totali`);
       const byUser = new Map<string, number[]>();
-      for (const d of allDrivers || []) {
+      for (const d of allFormazioni || []) {
         if (!byUser.has(d.user_id)) byUser.set(d.user_id, []);
-        byUser.get(d.user_id)!.push(d.driver_number);
+        byUser.get(d.user_id)!.push(...(d.driver_numbers || []));
       }
       for (const [uid, nums] of byUser) {
         const prof = profiles?.find((p) => p.id === uid);

@@ -12,6 +12,7 @@ interface DriverCardProps {
   onSetPrimoPilota?: () => void;
   actionLabel?: string;
   showActions?: boolean;
+  highlight?: boolean;
 }
 
 export default function DriverCard({
@@ -26,13 +27,14 @@ export default function DriverCard({
   onSetPrimoPilota,
   actionLabel = "Acquista",
   showActions = true,
+  highlight = false,
 }: DriverCardProps) {
   const color = `#${teamColour}`;
 
   return (
     <div
       className={`relative bg-white/[0.03] border rounded-xl p-4 transition-all hover:bg-white/[0.06] ${
-        isPrimoPilota ? "border-[#E8002D]/50 shadow-[0_0_15px_rgba(232,0,45,0.1)]" : "border-white/[0.06]"
+        highlight ? "border-amber-400/50 bg-amber-400/5" : isPrimoPilota ? "border-[#E8002D]/50 shadow-[0_0_15px_rgba(232,0,45,0.1)]" : "border-white/[0.06]"
       }`}
     >
       {isPrimoPilota && (

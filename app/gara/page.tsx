@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
@@ -78,7 +78,7 @@ const CHIP_LABELS: Record<string, string> = {
 
 // ─── Driver row ───
 
-function DriverRow({
+const DriverRow = memo(function DriverRow({
   driverNumber, isCaptain, isBoosted, isSestoUomo,
   onSetPrimoPilota, onRemove, locked, points,
 }: {
@@ -161,7 +161,7 @@ function DriverRow({
       )}
     </div>
   );
-}
+});
 
 // ═══════════════════════════════════════════
 // PAGINA GARA
@@ -275,11 +275,13 @@ export default function GaraPage() {
   const hasResults = !!weekendResults;
 
   // Round disponibili nel selettore: round corrente + gare passate
-  const pastRaces = RACES_2026.filter((r) => new Date(r.date) <= new Date() && r.round !== currentRound);
-  const selectableRounds = [
-    RACES_2026.find((r) => r.round === currentRound)!,
-    ...pastRaces.reverse(),
-  ].filter(Boolean);
+  const selectableRounds = useMemo(() => {
+    const pastRaces = RACES_2026.filter((r) => new Date(r.date) <= new Date() && r.round !== currentRound);
+    return [
+      RACES_2026.find((r) => r.round === currentRound)!,
+      ...pastRaces.reverse(),
+    ].filter(Boolean);
+  }, [currentRound]);
 
   const handleConfermaFormazione = async () => {
     if (sq.drivers.length !== 5) return showToast("Devi avere 5 piloti");
@@ -304,14 +306,26 @@ export default function GaraPage() {
   };
 
   // Piloti da mostrare
-  const displayDrivers = sq.driverNumbers
+  const displayDrivers = useMemo(() => sq.driverNumbers
     .map((num) => {
       const d = getDriverByNumber(num);
       return d ? { driver_number: num, name: d.name, team: d.team, teamColour: d.teamColour, price: d.price } : null;
     })
-    .filter((d): d is NonNullable<typeof d> => d !== null);
+    .filter((d): d is NonNullable<typeof d> => d !== null),
+  [sq.driverNumbers]);
 
-  const sestoUomoDriver = sq.sestoUomo ? getDriverByNumber(sq.sestoUomo) : null;
+  const sestoUomoDriver = useMemo(() => sq.sestoUomo ? getDriverByNumber(sq.sestoUomo) : null, [sq.sestoUomo]);
+
+  // Per il tab dettaglio con risultati, lookup punti per pilota
+  const pilotiPointsMap = useMemo(() => {
+    const map = new Map<number, number>();
+    if (myWeekendScore) {
+      for (const d of myWeekendScore.pilotiDettaglio) {
+        map.set(d.driver_number, d.puntiFinali);
+      }
+    }
+    return map;
+  }, [myWeekendScore]);
 
   if (authLoading || !sq.loaded || !prev.loaded || !user) {
     return (
@@ -323,14 +337,6 @@ export default function GaraPage() {
         <BottomNav />
       </div>
     );
-  }
-
-  // Per il tab dettaglio con risultati, lookup punti per pilota
-  const pilotiPointsMap = new Map<number, number>();
-  if (myWeekendScore) {
-    for (const d of myWeekendScore.pilotiDettaglio) {
-      pilotiPointsMap.set(d.driver_number, d.puntiFinali);
-    }
   }
 
   return (
@@ -419,6 +425,43 @@ export default function GaraPage() {
             );
           })}
         </div>
+
+        {/* Banner "Pronto per il GP" */}
+        {isCurrentRound && !locked && sq.confirmed && prev.confirmed && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <Check size={18} className="text-green-400" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-green-400">Pronto per il {viewRace.name}!</div>
+                <div className="text-[11px] text-green-400/50">Formazione e previsioni confermate</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-black/20 rounded-lg px-3 py-2">
+                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Primo Pilota</div>
+                <div className="text-xs font-bold text-[#E8002D]">{sq.primoPilota ? getDriverByNumber(sq.primoPilota)?.name || "—" : "—"}</div>
+              </div>
+              <div className="bg-black/20 rounded-lg px-3 py-2">
+                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Previsioni</div>
+                <div className="text-xs font-bold text-white/60">{prev.completate}/6 complete</div>
+              </div>
+              {sq.chipPiloti && (
+                <div className="bg-black/20 rounded-lg px-3 py-2">
+                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Piloti</div>
+                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+                </div>
+              )}
+              {prev.chipAttivo && (
+                <div className="bg-black/20 rounded-lg px-3 py-2">
+                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Previsioni</div>
+                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ═══ TAB FORMAZIONE ═══ */}
         {tab === "formazione" && (
@@ -582,6 +625,17 @@ export default function GaraPage() {
                 <Check size={16} />Formazione confermata
                 {!locked && <span className="text-green-400/50 text-xs ml-auto">Puoi ancora modificare</span>}
               </div>
+            )}
+
+            {/* Avviso: formazione OK ma previsioni no */}
+            {sq.confirmed && !prev.confirmed && !locked && (
+              <button onClick={() => setTab("previsioni")}
+                className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400 w-full text-left hover:bg-amber-500/15 transition-all"
+              >
+                <AlertTriangle size={16} className="shrink-0" />
+                <span>Mancano le previsioni — tocca per completarle</span>
+                <ChevronRight size={14} className="ml-auto shrink-0 opacity-50" />
+              </button>
             )}
 
             {isCurrentRound && !locked && (
@@ -765,6 +819,17 @@ export default function GaraPage() {
                 <Check size={16} />Previsioni confermate ({prev.completate}/6)
                 {!locked && <span className="text-green-400/50 text-xs ml-auto">Puoi ancora modificare</span>}
               </div>
+            )}
+
+            {/* Avviso: previsioni OK ma formazione no */}
+            {prev.confirmed && !sq.confirmed && !locked && (
+              <button onClick={() => setTab("formazione")}
+                className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400 w-full text-left hover:bg-amber-500/15 transition-all"
+              >
+                <AlertTriangle size={16} className="shrink-0" />
+                <span>Manca la formazione — tocca per completarla</span>
+                <ChevronRight size={14} className="ml-auto shrink-0 opacity-50" />
+              </button>
             )}
 
             {isCurrentRound && !locked && (

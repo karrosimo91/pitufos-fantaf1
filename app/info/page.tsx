@@ -69,6 +69,7 @@ export default function InfoPage() {
           <Accordion title="Mercato e cambi">
             <p>Ogni weekend hai <strong>2 cambi gratuiti</strong> (vendi + compra).</p>
             <p>Dal 3° cambio in poi, ogni cambio costa <strong>-10 punti</strong> sul weekend.</p>
+            <p>Con il chip <strong>Wildcard</strong> attivo, i cambi sono illimitati e senza penalità per quel round.</p>
             <p>Il budget si calcola sempre sulle quotazioni attuali: se compri a 10 e il pilota sale a 12, lo vendi a 12.</p>
             <p>Non puoi andare in negativo con i Soldini.</p>
           </Accordion>

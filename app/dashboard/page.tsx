@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { useSquadra, useAggiornamenti, useDashboardStats } from "../lib/store";
+import { useSquadra, usePrevisioni, useAggiornamenti, useDashboardStats } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getNextRace, getCurrentRound, getDeadline } from "../lib/races";
 import { getDriverByNumber } from "../lib/drivers-data";
+import { isAfterDeadline } from "../lib/races";
 import {
-  Crown, AlertTriangle, ChevronRight,
+  Crown, AlertTriangle, ChevronRight, Check,
   Zap, Shield, UserPlus, Users, ShieldCheck, Copy, Clock, Shuffle,
 } from "lucide-react";
 
@@ -37,8 +38,10 @@ export default function DashboardPage() {
   const nextRace = getNextRace();
   const round = getCurrentRound();
   const sq = useSquadra(round);
+  const prev = usePrevisioni(round);
   const aggiornamenti = useAggiornamenti();
   const dashStats = useDashboardStats();
+  const locked = isAfterDeadline(nextRace);
   const deadline = getDeadline(nextRace);
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
   const [mounted, setMounted] = useState(false);
@@ -133,22 +136,42 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!hasConfirmed ? (
+          {locked ? (
+            <Link href="/gara"
+              className="flex items-center justify-center gap-2 bg-white/[0.03] border border-white/[0.06] text-white/40 font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-white/[0.05] transition-all"
+            >
+              Deadline passata — Vedi dettaglio <ChevronRight size={14} />
+            </Link>
+          ) : sq.confirmed && prev.confirmed ? (
+            <Link href="/gara"
+              className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 transition-all hover:bg-green-500/15"
+            >
+              <Check size={18} className="text-green-400 shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm font-bold text-green-400">Tutto confermato!</div>
+                <div className="text-[11px] text-green-400/60">Formazione e previsioni pronte</div>
+              </div>
+              <ChevronRight size={16} className="text-green-400/40" />
+            </Link>
+          ) : (
             <Link href="/gara"
               className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 transition-all hover:bg-amber-500/15"
             >
               <AlertTriangle size={18} className="text-amber-400 shrink-0" />
               <div className="flex-1">
-                <div className="text-sm font-bold text-amber-400">Non hai ancora confermato!</div>
-                <div className="text-[11px] text-amber-400/60">Formazione e previsioni da completare</div>
+                <div className="text-sm font-bold text-amber-400">Da completare</div>
+                <div className="text-[11px] text-amber-400/60 flex items-center gap-3 mt-0.5">
+                  <span className="flex items-center gap-1">
+                    {sq.confirmed ? <Check size={11} className="text-green-400" /> : <AlertTriangle size={11} />}
+                    Formazione
+                  </span>
+                  <span className="flex items-center gap-1">
+                    {prev.confirmed ? <Check size={11} className="text-green-400" /> : <AlertTriangle size={11} />}
+                    Previsioni
+                  </span>
+                </div>
               </div>
               <ChevronRight size={16} className="text-amber-400/40" />
-            </Link>
-          ) : (
-            <Link href="/gara"
-              className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all"
-            >
-              Vai alla gara <ChevronRight size={14} />
             </Link>
           )}
         </div>

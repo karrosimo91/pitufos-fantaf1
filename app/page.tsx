@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./lib/auth";
 import { RACES_2026, getNextRace, getUpcomingRaces } from "./lib/races";
+import { APP_VERSION } from "./lib/types";
 
 function getTimeUntil(dateStr: string) {
   const now = new Date().getTime();
@@ -174,7 +175,7 @@ export default function Home() {
       </main>
 
       <footer className="relative z-10 text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — v0.81
+        Los Pitufos FantaF1 — Stagione 2026 — {APP_VERSION}
       </footer>
     </div>
   );

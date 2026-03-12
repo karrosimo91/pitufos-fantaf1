@@ -1,3 +1,6 @@
+// ─── App Version ───
+export const APP_VERSION = "v0.96";
+
 // ─── Driver ───
 export interface Driver {
   driver_number: number;

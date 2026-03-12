@@ -53,12 +53,8 @@ CREATE TRIGGER on_auth_user_created_join_lega
 
 ALTER TABLE leghe ENABLE ROW LEVEL SECURITY;
 
--- Tutti possono leggere leghe pubbliche/generali + leghe a cui appartengono
-CREATE POLICY "leghe_read" ON leghe FOR SELECT USING (
-  is_public = true OR is_generale = true OR
-  creator_id = auth.uid() OR
-  id IN (SELECT lega_id FROM lega_members WHERE user_id = auth.uid())
-);
+-- Utenti autenticati possono vedere tutte le leghe (serve per cercare per invite_code)
+CREATE POLICY "leghe_read" ON leghe FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Utenti autenticati possono creare leghe
 CREATE POLICY "leghe_insert" ON leghe FOR INSERT WITH CHECK (auth.uid() = creator_id);
@@ -76,12 +72,14 @@ CREATE POLICY "lega_members_delete" ON lega_members FOR DELETE USING (auth.uid()
 
 -- ═══ RPC: Classifica per lega ═══
 
-CREATE OR REPLACE FUNCTION classifica_lega(p_lega_id uuid)
+CREATE OR REPLACE FUNCTION classifica_lega(p_lega_id uuid, p_round int DEFAULT NULL)
 RETURNS TABLE(
   user_id uuid,
   team_principal_name text,
   scuderia_name text,
   total_points numeric,
+  piloti_points numeric,
+  previsioni_points numeric,
   last_weekend_points numeric
 ) AS $$
 DECLARE
@@ -92,23 +90,44 @@ BEGIN
   SELECT l.round_start, l.round_end INTO v_round_start, v_round_end
   FROM leghe l WHERE l.id = p_lega_id;
 
-  SELECT COALESCE(MAX(ws.round), 0) INTO v_last_round
-  FROM weekend_scores ws
-  JOIN lega_members lm ON ws.user_id = lm.user_id AND lm.lega_id = p_lega_id
-  WHERE ws.round BETWEEN v_round_start AND v_round_end;
+  -- Se p_round specificato, mostra solo quel round
+  IF p_round IS NOT NULL THEN
+    RETURN QUERY
+    SELECT
+      lm.user_id,
+      p.team_principal_name,
+      p.scuderia_name,
+      COALESCE(ws.total_points, 0)::numeric as total_points,
+      COALESCE(ws.piloti_points, 0)::numeric as piloti_points,
+      COALESCE(ws.previsioni_points, 0)::numeric as previsioni_points,
+      COALESCE(ws.total_points, 0)::numeric as last_weekend_points
+    FROM lega_members lm
+    JOIN profiles p ON p.id = lm.user_id
+    LEFT JOIN weekend_scores ws ON ws.user_id = lm.user_id AND ws.round = p_round
+    WHERE lm.lega_id = p_lega_id
+    ORDER BY total_points DESC;
+  ELSE
+    -- Classifica stagionale (somma tutti i round della lega)
+    SELECT COALESCE(MAX(ws.round), 0) INTO v_last_round
+    FROM weekend_scores ws
+    JOIN lega_members lm ON ws.user_id = lm.user_id AND lm.lega_id = p_lega_id
+    WHERE ws.round BETWEEN v_round_start AND v_round_end;
 
-  RETURN QUERY
-  SELECT
-    lm.user_id,
-    p.team_principal_name,
-    p.scuderia_name,
-    COALESCE(SUM(ws.total_points), 0)::numeric as total_points,
-    COALESCE(MAX(CASE WHEN ws.round = v_last_round THEN ws.total_points END), 0)::numeric as last_weekend_points
-  FROM lega_members lm
-  JOIN profiles p ON p.id = lm.user_id
-  LEFT JOIN weekend_scores ws ON ws.user_id = lm.user_id AND ws.round BETWEEN v_round_start AND v_round_end
-  WHERE lm.lega_id = p_lega_id
-  GROUP BY lm.user_id, p.team_principal_name, p.scuderia_name
-  ORDER BY total_points DESC;
+    RETURN QUERY
+    SELECT
+      lm.user_id,
+      p.team_principal_name,
+      p.scuderia_name,
+      COALESCE(SUM(ws.total_points), 0)::numeric as total_points,
+      COALESCE(SUM(ws.piloti_points), 0)::numeric as piloti_points,
+      COALESCE(SUM(ws.previsioni_points), 0)::numeric as previsioni_points,
+      COALESCE(MAX(CASE WHEN ws.round = v_last_round THEN ws.total_points END), 0)::numeric as last_weekend_points
+    FROM lega_members lm
+    JOIN profiles p ON p.id = lm.user_id
+    LEFT JOIN weekend_scores ws ON ws.user_id = lm.user_id AND ws.round BETWEEN v_round_start AND v_round_end
+    WHERE lm.lega_id = p_lega_id
+    GROUP BY lm.user_id, p.team_principal_name, p.scuderia_name
+    ORDER BY total_points DESC;
+  END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
 import { Users, Info, User, LogOut, ChevronRight } from "lucide-react";
+import { APP_VERSION } from "../lib/types";
 
 const MENU_ITEMS = [
   { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
@@ -95,7 +96,7 @@ export default function AltroPage() {
             </div>
             <div>
               <div className="text-xs text-white/30">Versione</div>
-              <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">v0.96</div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">{APP_VERSION}</div>
             </div>
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>

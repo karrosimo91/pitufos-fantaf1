@@ -101,7 +101,23 @@ export function useSquadra(round: number) {
           chipPilotiTarget: data.chip_piloti_target,
           confirmed: !!data.confirmed,
         });
-        setRosaBase((data.driver_numbers || []).map(Number));
+
+        if (data.confirmed) {
+          // Formazione confermata: questa è la base
+          setRosaBase((data.driver_numbers || []).map(Number));
+        } else {
+          // Formazione NON confermata (bozza): la base è l'ultima confermata precedente
+          const { data: prev } = await supabase
+            .from("formazioni")
+            .select("driver_numbers")
+            .eq("user_id", user.id)
+            .eq("confirmed", true)
+            .lt("round", round)
+            .order("round", { ascending: false })
+            .limit(1)
+            .single();
+          setRosaBase(prev?.driver_numbers ? (prev.driver_numbers as number[]).map(Number) : []);
+        }
       } else if (!error || error.code === "PGRST116") {
         // Nessuna formazione per questo round: copia dal round precedente
         const { data: prev } = await supabase
