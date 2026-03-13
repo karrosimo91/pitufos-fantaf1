@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "./lib/auth";
-import { RACES_2026, getNextRace, getUpcomingRaces } from "./lib/races";
+import { RACES_2026, getNextRace, getUpcomingRaces, getDeadline } from "./lib/races";
 import { APP_VERSION } from "./lib/types";
 import CountryFlag from "./components/CountryFlag";
 
@@ -25,14 +25,16 @@ export default function Home() {
   const nextRace = getNextRace();
   const upcoming = getUpcomingRaces(5);
 
+  const deadline = getDeadline(nextRace);
+
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => {
-      setCountdown(getTimeUntil(nextRace.date));
+      setCountdown(getTimeUntil(deadline));
     }, 1000);
-    setCountdown(getTimeUntil(nextRace.date));
+    setCountdown(getTimeUntil(deadline));
     return () => clearInterval(timer);
-  }, [nextRace.date]);
+  }, [deadline]);
 
   const stats = [
     { value: "24", label: "GRAN PREMI" },

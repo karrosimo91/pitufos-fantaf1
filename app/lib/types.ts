@@ -1,5 +1,5 @@
 // ─── App Version ───
-export const APP_VERSION = "v0.99";
+export const APP_VERSION = "v0.99.1";
 
 // ─── Driver ───
 export interface Driver {
@@ -48,6 +48,7 @@ export interface Race {
   flag: string;
   countryCode: string;
   date: string;
+  deadline: string; // ISO — prima di qualifica (normale) o Sprint Shootout (sprint)
   sprint: boolean;
 }
 
