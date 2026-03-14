@@ -762,6 +762,24 @@ export function useLeghe() {
 }
 
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// Hook: useLegaPreferita — Lega preferita (dal profilo DB)
+// ═══════════════════════════════════════════
+
+export function useLegaPreferita() {
+  const { profile, updateProfile } = useAuth();
+
+  const legaId = profile?.lega_preferita || LEGA_GENERALE_ID;
+  const loaded = !!profile;
+
+  const setLegaId = useCallback(async (id: string) => {
+    await updateProfile({ lega_preferita: id });
+  }, [updateProfile]);
+
+  return { legaId, setLegaId, loaded };
+}
+
+// ═══════════════════════════════════════════
 // Hook: useClassificaLega — Classifica filtrata per lega
 // Usa la RPC function classifica_lega
 // ═══════════════════════════════════════════
@@ -823,7 +841,7 @@ export interface DashboardStats {
   loaded: boolean;
 }
 
-export function useDashboardStats() {
+export function useDashboardStats(legaId: string = LEGA_GENERALE_ID) {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalPoints: 0, position: null, totalPlayers: 0,
@@ -836,11 +854,12 @@ export function useDashboardStats() {
       return;
     }
 
+    setStats((s) => ({ ...s, loaded: false }));
     const supabase = createClient()!;
 
     Promise.all([
-      // Classifica Lega Generale (fonte unica di verita')
-      supabase.rpc("classifica_lega", { p_lega_id: LEGA_GENERALE_ID }),
+      // Classifica della lega selezionata
+      supabase.rpc("classifica_lega", { p_lega_id: legaId }),
       // Weekend scores dell'utente (per contare gare giocate)
       supabase
         .from("weekend_scores")
@@ -864,7 +883,7 @@ export function useDashboardStats() {
         loaded: true,
       });
     });
-  }, [user]);
+  }, [user, legaId]);
 
   return stats;
 }

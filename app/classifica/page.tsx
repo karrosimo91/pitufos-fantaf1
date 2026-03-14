@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { useLeghe, useClassificaLega } from "../lib/store";
+import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { getDriverByNumber } from "../lib/drivers-data";
@@ -69,14 +69,25 @@ function ClassificaContent() {
   const legaParam = searchParams.get("lega");
   const { user } = useAuth();
   const { leghe, loaded: legheLoaded } = useLeghe();
-  const [selectedLega, setSelectedLega] = useState(legaParam || LEGA_GENERALE_ID);
+  const { legaId: legaPreferita, loaded: legaPrefLoaded } = useLegaPreferita();
+  const defaultLega = legaParam || (legaPrefLoaded ? legaPreferita : LEGA_GENERALE_ID);
+  const [selectedLega, setSelectedLega] = useState(defaultLega);
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [playerModal, setPlayerModal] = useState<PlayerSquadData | null>(null);
   const [loadingPlayer, setLoadingPlayer] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
+  // Imposta la lega preferita come default (una sola volta al mount)
   useEffect(() => {
-    if (legaParam) setSelectedLega(legaParam);
-  }, [legaParam]);
+    if (initialized) return;
+    if (!legaPrefLoaded) return;
+    if (legaParam) {
+      setSelectedLega(legaParam);
+    } else {
+      setSelectedLega(legaPreferita);
+    }
+    setInitialized(true);
+  }, [legaParam, legaPreferita, legaPrefLoaded, initialized]);
 
   const { classifica, loading } = useClassificaLega(selectedLega, selectedRound);
   const currentLega = leghe.find((l) => l.id === selectedLega);

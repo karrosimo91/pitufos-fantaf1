@@ -5,14 +5,14 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
-import { useSquadra, usePrevisioni, useAggiornamenti, useDashboardStats } from "../lib/store";
+import { useSquadra, usePrevisioni, useAggiornamenti, useDashboardStats, useLeghe, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getNextRace, getCurrentRound, getDeadline } from "../lib/races";
 import { getDriverByNumber } from "../lib/drivers-data";
 import { isAfterDeadline } from "../lib/races";
 import {
   Crown, AlertTriangle, ChevronRight, Check,
-  Zap, Shield, UserPlus, Users, ShieldCheck, Copy, Clock, Shuffle,
+  Zap, Shield, UserPlus, Users, ShieldCheck, Copy, Clock, Shuffle, Trophy,
 } from "lucide-react";
 
 function getTimeUntil(dateStr: string) {
@@ -41,7 +41,10 @@ export default function DashboardPage() {
   const sq = useSquadra(round);
   const prev = usePrevisioni(round);
   const aggiornamenti = useAggiornamenti();
-  const dashStats = useDashboardStats();
+  const { leghe, loaded: legheLoaded } = useLeghe();
+  const { legaId: legaPreferita, setLegaId: setLegaPreferita, loaded: legaPrefLoaded } = useLegaPreferita();
+  const dashStats = useDashboardStats(legaPrefLoaded ? legaPreferita : undefined);
+  const currentLega = leghe.find((l) => l.id === legaPreferita);
   const locked = isAfterDeadline(nextRace);
   const deadline = getDeadline(nextRace);
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -83,6 +86,16 @@ export default function DashboardPage() {
           </h1>
           <div className="text-xs text-white/40 mt-0.5">{profile?.team_principal_name || "—"}</div>
         </div>
+
+        {/* Lega preferita badge */}
+        {legheLoaded && currentLega && (
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy size={12} className="text-[#E8002D]" />
+            <span className="text-[10px] tracking-[2px] text-white/40 uppercase font-bold">
+              {currentLega.is_generale ? "Classifica Generale" : currentLega.name}
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[

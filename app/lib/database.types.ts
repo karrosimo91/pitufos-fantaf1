@@ -39,5 +39,6 @@ export interface DbProfile {
   email: string;
   team_principal_name: string;
   scuderia_name: string;
+  lega_preferita: string | null;
   created_at: string;
 }

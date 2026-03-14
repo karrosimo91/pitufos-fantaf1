@@ -3,15 +3,16 @@ import { useState } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { useLeghe } from "../lib/store";
+import { useLeghe, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { RACES_2026 } from "../lib/races";
-import { ArrowLeft, Plus, LogIn, Copy, Check, Users, Trophy, Lock, Globe } from "lucide-react";
+import { ArrowLeft, Plus, LogIn, Copy, Check, Users, Trophy, Lock, Globe, Star } from "lucide-react";
 import type { Lega } from "../lib/types";
 
 export default function LeghePage() {
   const { user } = useAuth();
   const { leghe, loaded, creaLega, uniscitiConCodice, uniscitiPubblica } = useLeghe();
+  const { legaId: legaPreferita, setLegaId: setLegaPreferita } = useLegaPreferita();
   const [showCrea, setShowCrea] = useState(false);
   const [showUnisciti, setShowUnisciti] = useState(false);
 
@@ -276,6 +277,11 @@ export default function LeghePage() {
                             AUTO
                           </span>
                         )}
+                        {legaPreferita === lega.id && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+                            PREFERITA
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-[11px] text-white/30">
                         <span className="flex items-center gap-1">
@@ -295,12 +301,25 @@ export default function LeghePage() {
                         )}
                       </div>
                     </div>
-                    <Link
-                      href={`/classifica?lega=${lega.id}`}
-                      className="text-[10px] tracking-[2px] text-[#E8002D] uppercase font-bold hover:text-[#E8002D]/70 transition-all"
-                    >
-                      Classifica
-                    </Link>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => setLegaPreferita(lega.id)}
+                        className={`transition-all ${
+                          legaPreferita === lega.id
+                            ? "text-amber-400"
+                            : "text-white/20 hover:text-amber-400/60"
+                        }`}
+                        title={legaPreferita === lega.id ? "Lega preferita" : "Imposta come preferita"}
+                      >
+                        <Star size={18} fill={legaPreferita === lega.id ? "currentColor" : "none"} />
+                      </button>
+                      <Link
+                        href={`/classifica?lega=${lega.id}`}
+                        className="text-[10px] tracking-[2px] text-[#E8002D] uppercase font-bold hover:text-[#E8002D]/70 transition-all"
+                      >
+                        Classifica
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

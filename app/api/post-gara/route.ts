@@ -12,19 +12,24 @@ import { RACES_2026 } from "../../lib/races";
 const OPENF1 = "https://api.openf1.org/v1";
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
+type SessionMode = "sprint_shootout" | "sprint" | "qualifying" | "race";
+
 /**
  * POST /api/post-gara
- * Body: { round: number, admin_key: string, driver_of_the_day?: number }
+ * Body: { round, admin_key, session, driver_of_the_day? }
  *
- * Fa tutto in un colpo:
- * 1. Scarica risultati da OpenF1
- * 2. Salva in weekend_results
- * 3. Calcola punteggi di tutti i giocatori
- * 4. Aggiorna classifica_totale
+ * session: "sprint_shootout" | "sprint" | "qualifying" | "race"
+ *
+ * Ogni sessione:
+ * 1. Scarica risultati da OpenF1 per quella sessione
+ * 2. Salva/aggiorna in weekend_results (merge con dati esistenti)
+ * 3. Ricalcola punteggi piloti da TUTTE le sessioni salvate
+ * 4. Solo "race": calcola anche previsioni e penalità cambi
+ * 5. Aggiorna classifica_totale (delta rispetto al precedente)
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { round, admin_key, driver_of_the_day } = body;
+  const { round, admin_key, session, driver_of_the_day } = body;
 
   const expectedKey = process.env.ADMIN_API_KEY;
   if (!expectedKey || admin_key !== expectedKey) {
@@ -33,6 +38,11 @@ export async function POST(request: NextRequest) {
 
   if (!round || typeof round !== "number" || round < 1 || round > 24) {
     return NextResponse.json({ error: "Round non valido" }, { status: 400 });
+  }
+
+  const validSessions: SessionMode[] = ["sprint_shootout", "sprint", "qualifying", "race"];
+  if (!session || !validSessions.includes(session)) {
+    return NextResponse.json({ error: `Sessione non valida. Usa: ${validSessions.join(", ")}` }, { status: 400 });
   }
 
   const supabase = createServerClient();
@@ -46,20 +56,20 @@ export async function POST(request: NextRequest) {
   }
 
   const log: string[] = [];
+  const mode: SessionMode = session;
 
   try {
     // ═══════════════════════════════════
-    // STEP 1: Fetch risultati da OpenF1
+    // STEP 1: Trova meeting e sessioni OpenF1
     // ═══════════════════════════════════
 
-    log.push("--- STEP 1: Fetch da OpenF1 ---");
+    log.push(`--- STEP 1: Fetch ${mode} da OpenF1 ---`);
 
     const allMeetings = await fetchJson(`${OPENF1}/meetings?year=2026`);
     if (!allMeetings || allMeetings.length === 0) {
       return NextResponse.json({ error: "Nessun meeting trovato per il 2026", log }, { status: 404 });
     }
 
-    // Filtra via pre-season testing
     const meetings = allMeetings
       .filter((m: any) => !m.meeting_name?.toLowerCase().includes("testing"))
       .sort((a: any, b: any) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
@@ -74,59 +84,94 @@ export async function POST(request: NextRequest) {
     const sessions = await fetchJson(`${OPENF1}/sessions?meeting_key=${meetingKey}`);
     log.push(`Sessioni trovate: ${sessions.length}`);
 
-    const qualifyingSession = sessions.find((s: any) => s.session_type === "Qualifying");
-    const raceSession = sessions.find((s: any) => s.session_type === "Race");
-    const sprintShootoutSession = sessions.find((s: any) =>
-      s.session_type === "Sprint Shootout" || s.session_type === "Sprint Qualifying"
-    );
-    const sprintSession = sessions.find((s: any) =>
-      s.session_type === "Sprint" && s.session_name?.toLowerCase() !== "sprint qualifying"
-    );
+    // ═══════════════════════════════════
+    // STEP 2: Fetch dati della sessione richiesta
+    // ═══════════════════════════════════
 
-    if (!raceSession) {
-      return NextResponse.json({ error: "Sessione gara non trovata", log }, { status: 404 });
-    }
+    // Carica weekend_results esistente (da sessioni precedenti)
+    const { data: existingWR } = await supabase
+      .from("weekend_results")
+      .select("data")
+      .eq("round", round)
+      .single();
 
-    // Qualifica
-    let qualifying: DriverResult[] = [];
-    if (qualifyingSession) {
-      qualifying = await fetchSessionResults(qualifyingSession.session_key);
-      log.push(`Qualifica: ${qualifying.length} piloti`);
-    }
+    const prevData: Partial<RaceWeekendResults> = existingWR?.data || {};
 
-    // Gara (usa qualifica come griglia di partenza)
-    const raceKey = raceSession.session_key;
-    const qualGridMap = new Map<number, number>();
-    for (const q of qualifying) {
-      qualGridMap.set(q.driver_number, q.position);
-    }
-    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
-    log.push(`Gara: ${raceResults.length} piloti (con griglia da qualifica)`);
+    // Mantieni i risultati delle sessioni già calcolate
+    let qualifying: DriverResult[] = prevData.qualifying || [];
+    let raceResults: DriverResult[] = prevData.race || [];
+    let sprint_shootout: DriverResult[] | undefined = prevData.sprint_shootout;
+    let sprint: DriverResult[] | undefined = prevData.sprint;
+    let events: RaceWeekendResults["events"] = prevData.events || {
+      safety_car: false, virtual_safety_car: false, red_flag: false,
+      wet_tyres: false, pole_won: false, total_dnf: 0,
+    };
 
-    // Sprint
-    let sprint_shootout: DriverResult[] | undefined;
-    let sprint: DriverResult[] | undefined;
-
-    if (sprintShootoutSession) {
-      sprint_shootout = await fetchSessionResults(sprintShootoutSession.session_key);
+    if (mode === "sprint_shootout") {
+      const ssSession = sessions.find((s: any) =>
+        s.session_type === "Sprint Shootout" || s.session_type === "Sprint Qualifying"
+      );
+      if (!ssSession) {
+        return NextResponse.json({ error: "Sessione Sprint Shootout non trovata", log }, { status: 404 });
+      }
+      sprint_shootout = await fetchSessionResults(ssSession.session_key);
       log.push(`Sprint Shootout: ${sprint_shootout.length} piloti`);
-    }
-    if (sprintSession) {
-      sprint = await fetchSprintResults(sprintSession.session_key);
+
+    } else if (mode === "sprint") {
+      const spSession = sessions.find((s: any) =>
+        s.session_type === "Sprint" && s.session_name?.toLowerCase() !== "sprint qualifying"
+      );
+      if (!spSession) {
+        return NextResponse.json({ error: "Sessione Sprint non trovata", log }, { status: 404 });
+      }
+      sprint = await fetchSprintResults(spSession.session_key);
       log.push(`Sprint: ${sprint.length} piloti`);
+
+    } else if (mode === "qualifying") {
+      const qualSession = sessions.find((s: any) => s.session_type === "Qualifying");
+      if (!qualSession) {
+        return NextResponse.json({ error: "Sessione Qualifica non trovata", log }, { status: 404 });
+      }
+      qualifying = await fetchSessionResults(qualSession.session_key);
+      log.push(`Qualifica: ${qualifying.length} piloti`);
+
+    } else if (mode === "race") {
+      const raceSession = sessions.find((s: any) => s.session_type === "Race");
+      if (!raceSession) {
+        return NextResponse.json({ error: "Sessione Gara non trovata", log }, { status: 404 });
+      }
+      const raceKey = raceSession.session_key;
+
+      // Griglia di partenza = risultato qualifica (già salvato o fetch ora)
+      const qualGridMap = new Map<number, number>();
+      for (const q of qualifying) {
+        qualGridMap.set(q.driver_number, q.position);
+      }
+      if (qualGridMap.size === 0) {
+        log.push("ATTENZIONE: nessun dato qualifica trovato — posizioni guadagnate/perse non calcolate");
+      }
+
+      raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
+      log.push(`Gara: ${raceResults.length} piloti`);
+
+      // Eventi (solo dalla gara)
+      events = await fetchRaceEvents(raceKey);
+      const poleDriver = qualifying.find((d) => d.position === 1);
+      const raceWinner = raceResults.find((d) => d.position === 1);
+      events.pole_won = !!(poleDriver && raceWinner && poleDriver.driver_number === raceWinner.driver_number);
+
+      log.push(`Eventi: SC=${events.safety_car} VSC=${events.virtual_safety_car} RF=${events.red_flag} Wet=${events.wet_tyres} DNF=${events.total_dnf} PoleWon=${events.pole_won}`);
     }
 
-    // Eventi
-    const events = await fetchRaceEvents(raceKey);
-    const poleDriver = qualifying.find((d) => d.position === 1);
-    const raceWinner = raceResults.find((d) => d.position === 1);
-    events.pole_won = !!(poleDriver && raceWinner && poleDriver.driver_number === raceWinner.driver_number);
+    // Salva weekend_results (merge di tutte le sessioni)
+    const weekendResults: RaceWeekendResults = {
+      qualifying,
+      race: raceResults,
+      sprint_shootout,
+      sprint,
+      events,
+    };
 
-    log.push(`Eventi: SC=${events.safety_car} VSC=${events.virtual_safety_car} RF=${events.red_flag} Wet=${events.wet_tyres} DNF=${events.total_dnf} PoleWon=${events.pole_won}`);
-
-    const weekendResults: RaceWeekendResults = { qualifying, race: raceResults, sprint_shootout, sprint, events };
-
-    // Salva in DB
     const { error: saveErr } = await supabase
       .from("weekend_results")
       .upsert({ round, data: weekendResults, updated_at: new Date().toISOString() }, { onConflict: "round" });
@@ -137,7 +182,7 @@ export async function POST(request: NextRequest) {
     log.push("weekend_results salvato OK");
 
     // ═══════════════════════════════════
-    // STEP 2: Calcola punteggi
+    // STEP 3: Calcola punteggi giocatori
     // ═══════════════════════════════════
 
     log.push("--- STEP 2: Calcolo punteggi ---");
@@ -148,17 +193,28 @@ export async function POST(request: NextRequest) {
       .eq("round", round)
       .eq("confirmed", true);
 
-    const { data: previsioniData } = await supabase
-      .from("previsioni")
-      .select("*")
-      .eq("round", round)
-      .eq("confirmed", true);
-
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, team_principal_name, scuderia_name");
 
-    const playerScores: { user_id: string; name: string; scuderia: string; weekend_points: number; piloti_points: number; previsioni_points: number; penalita_cambi: number }[] = [];
+    // Previsioni: solo se mode === "race"
+    let previsioniData: any[] | null = null;
+    if (mode === "race") {
+      const { data } = await supabase
+        .from("previsioni")
+        .select("*")
+        .eq("round", round)
+        .eq("confirmed", true);
+      previsioniData = data;
+    }
+
+    const isPostRace = mode === "race";
+
+    const playerScores: {
+      user_id: string; name: string; scuderia: string;
+      weekend_points: number; piloti_points: number;
+      previsioni_points: number; penalita_cambi: number;
+    }[] = [];
 
     for (const formazione of formazioni || []) {
       const driverNumbers: number[] = (formazione.driver_numbers || []).map(Number);
@@ -170,30 +226,44 @@ export async function POST(request: NextRequest) {
         sestoUomo: formazione.sesto_uomo,
       };
 
-      const prev = previsioniData?.find((p) => p.user_id === formazione.user_id);
-      const previsioni: Previsioni = prev
-        ? { safetyCar: prev.safety_car, virtualSafetyCar: prev.virtual_safety_car, redFlag: prev.red_flag, gommeWet: prev.gomme_wet, poleVince: prev.pole_vince, numeroDnf: prev.numero_dnf }
-        : { safetyCar: null, virtualSafetyCar: null, redFlag: null, gommeWet: null, poleVince: null, numeroDnf: null };
-
-      const chipPrevisioni: ChipPrevisioniConfig = {
-        chipAttivo: prev?.chip_attivo || null,
-        chipTarget: prev?.chip_target || null,
+      // Previsioni: solo post-race, altrimenti tutte null (0 punti)
+      let previsioni: Previsioni = {
+        safetyCar: null, virtualSafetyCar: null, redFlag: null,
+        gommeWet: null, poleVince: null, numeroDnf: null,
       };
+      let chipPrevisioni: ChipPrevisioniConfig = { chipAttivo: null, chipTarget: null };
+
+      if (isPostRace) {
+        const prev = previsioniData?.find((p) => p.user_id === formazione.user_id);
+        if (prev) {
+          previsioni = {
+            safetyCar: prev.safety_car,
+            virtualSafetyCar: prev.virtual_safety_car,
+            redFlag: prev.red_flag,
+            gommeWet: prev.gomme_wet,
+            poleVince: prev.pole_vince,
+            numeroDnf: prev.numero_dnf,
+          };
+          chipPrevisioni = {
+            chipAttivo: prev.chip_attivo || null,
+            chipTarget: prev.chip_target || null,
+          };
+        }
+      }
 
       const calc = calcolaPuntiWeekend(driverNumbers, formazione.primo_pilota, previsioni, weekendResults, chipPiloti, chipPrevisioni);
       const profile = profiles?.find((p) => p.id === formazione.user_id);
 
-      // Penalita' cambi mercato: 2 gratis, dal 3° in poi -10 ciascuno (wildcard = nessuna penalita')
+      // Penalità cambi: solo post-race
       let penalitaCambi = 0;
-      if (formazione.chip_piloti !== "wildcard") {
+      if (isPostRace && formazione.chip_piloti !== "wildcard") {
         const { data: cambiData } = await supabase
           .from("mercato_cambi")
           .select("id")
           .eq("user_id", formazione.user_id)
           .eq("round", round);
         const numCambi = (cambiData || []).length;
-        const cambiExtra = Math.max(0, numCambi - 2);
-        penalitaCambi = cambiExtra * 10;
+        penalitaCambi = Math.max(0, numCambi - 2) * 10;
       }
 
       playerScores.push({
@@ -211,15 +281,29 @@ export async function POST(request: NextRequest) {
     log.push(`Giocatori calcolati: ${playerScores.length}`);
 
     // ═══════════════════════════════════
-    // STEP 3: Aggiorna classifiche
+    // STEP 4: Aggiorna classifiche
     // ═══════════════════════════════════
 
     log.push("--- STEP 3: Aggiorna classifiche ---");
 
     for (let i = 0; i < playerScores.length; i++) {
       const ps = playerScores[i];
-      const realPoints = PUNTI_REALE[i] ?? 0;
 
+      // Punti "reale" solo post-race (classifica definitiva del weekend)
+      const realPoints = isPostRace ? (PUNTI_REALE[i] ?? 0) : 0;
+
+      // Leggi punteggio precedente di questo round (da sessioni già calcolate)
+      const { data: prevScore } = await supabase
+        .from("weekend_scores")
+        .select("total_points")
+        .eq("user_id", ps.user_id)
+        .eq("round", round)
+        .single();
+
+      const prevRoundPoints = prevScore?.total_points ?? 0;
+      const delta = ps.weekend_points - prevRoundPoints;
+
+      // Aggiorna classifica_totale con il delta
       const { data: existing } = await supabase
         .from("classifica_totale")
         .select("total_points, real_points")
@@ -230,12 +314,13 @@ export async function POST(request: NextRequest) {
         user_id: ps.user_id,
         team_principal_name: ps.name,
         scuderia_name: ps.scuderia,
-        total_points: (existing?.total_points ?? 0) + ps.weekend_points,
+        total_points: (existing?.total_points ?? 0) + delta,
         last_weekend_points: ps.weekend_points,
         real_points: (existing?.real_points ?? 0) + realPoints,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
+      // Salva/aggiorna weekend_scores
       await supabase.from("weekend_scores").upsert({
         user_id: ps.user_id,
         round,
@@ -244,12 +329,13 @@ export async function POST(request: NextRequest) {
         previsioni_points: ps.previsioni_points,
       }, { onConflict: "user_id,round" });
 
-      log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points} + Prev:${ps.previsioni_points}${ps.penalita_cambi > 0 ? ` - Cambi:${ps.penalita_cambi}` : ""}) | Reale: +${realPoints}`);
+      log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points}${isPostRace ? ` + Prev:${ps.previsioni_points}` : ""}${ps.penalita_cambi > 0 ? ` - Cambi:${ps.penalita_cambi}` : ""}${delta !== ps.weekend_points ? ` | delta: +${delta}` : ""})${isPostRace ? ` | Reale: +${realPoints}` : ""}`);
     }
 
     return NextResponse.json({
       success: true,
       round,
+      session: mode,
       gara: meeting.meeting_name,
       giocatori: playerScores.length,
       classifica: playerScores.map((ps, i) => ({
@@ -257,9 +343,15 @@ export async function POST(request: NextRequest) {
         nome: ps.name,
         scuderia: ps.scuderia,
         punti_weekend: ps.weekend_points,
-        punti_reale: PUNTI_REALE[i] ?? 0,
+        punti_reale: isPostRace ? (PUNTI_REALE[i] ?? 0) : undefined,
       })),
-      eventi: events,
+      eventi: isPostRace ? events : undefined,
+      sessioni_calcolate: {
+        sprint_shootout: (weekendResults.sprint_shootout?.length ?? 0) > 0,
+        sprint: (weekendResults.sprint?.length ?? 0) > 0,
+        qualifying: weekendResults.qualifying.length > 0,
+        race: weekendResults.race.length > 0,
+      },
       log,
     });
 
@@ -271,12 +363,9 @@ export async function POST(request: NextRequest) {
 // ─── Helper functions ───
 
 async function fetchJson(url: string): Promise<any[]> {
-  console.log(`[DEBUG] fetchJson: ${url}`);
   const res = await fetch(url, { cache: "no-store" });
-  console.log(`[DEBUG] fetchJson: status=${res.status} ok=${res.ok}`);
   if (!res.ok) return [];
   const data = await res.json();
-  console.log(`[DEBUG] fetchJson: isArray=${Array.isArray(data)} length=${Array.isArray(data) ? data.length : 'N/A'}`);
   return data;
 }
 
@@ -303,7 +392,6 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     if (r.driver_number) lastPositions.set(r.driver_number, r);
   }
 
-  // Usa griglia da qualifica (passata come parametro)
   const gridMap = qualGridMap ?? new Map<number, number>();
 
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);

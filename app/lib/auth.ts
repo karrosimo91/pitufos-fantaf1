@@ -90,7 +90,7 @@ export function useAuth() {
     setProfile(null);
   }
 
-  async function updateProfile(updates: Partial<Pick<DbProfile, "team_principal_name" | "scuderia_name">>) {
+  async function updateProfile(updates: Partial<Pick<DbProfile, "team_principal_name" | "scuderia_name" | "lega_preferita">>) {
     if (!user) return;
     const supabase = createClient();
     if (!supabase) return;

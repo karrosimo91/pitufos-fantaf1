@@ -14,8 +14,10 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   const [round, setRound] = useState(1);
+  const [session, setSession] = useState<string>("sprint_shootout");
   const [dotd, setDotd] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -33,8 +35,8 @@ export default function AdminPage() {
     setResult(null);
     setLogs([]);
     try {
-      const body: any = { round, admin_key: ADMIN_API_KEY };
-      if (dotd) body.driver_of_the_day = dotd;
+      const body: any = { round, admin_key: ADMIN_API_KEY, session };
+      if (session === "race" && dotd) body.driver_of_the_day = dotd;
 
       const res = await fetch("/api/post-gara", {
         method: "POST",
@@ -146,44 +148,112 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Driver of the Day */}
+        {/* Selezione Sessione */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
           <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
-            Driver of the Day
+            Sessione da calcolare
           </label>
-          <select
-            value={dotd ?? ""}
-            onChange={(e) => setDotd(e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
-          >
-            <option value="" className="bg-[#0a0a12]">— Nessuno / Non ancora annunciato —</option>
-            {driversSorted.map((d) => (
-              <option key={d.number} value={d.number} className="bg-[#0a0a12]">
-                #{d.number} {d.name} ({d.team})
-              </option>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "sprint_shootout", label: "Sprint Qualifiche", desc: "Solo punti piloti SS", sprint: true },
+              { value: "sprint", label: "Sprint Race", desc: "Solo punti piloti Sprint", sprint: true },
+              { value: "qualifying", label: "Qualifica", desc: "Solo punti piloti Quali" },
+              { value: "race", label: "Gara", desc: "Piloti + Previsioni + Penalita" },
+            ].filter((s) => !s.sprint || race?.sprint).map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setSession(s.value)}
+                className={`p-3 rounded-xl text-left transition-all border ${
+                  session === s.value
+                    ? "bg-[#E8002D]/20 border-[#E8002D]/40 text-white"
+                    : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
+                }`}
+              >
+                <div className="text-sm font-bold">{s.label}</div>
+                <div className="text-[10px] text-white/30 mt-1">{s.desc}</div>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
-        {/* Bottone */}
-        <button
-          onClick={handlePostGara}
-          disabled={loading}
-          className={`w-full py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-            loading
-              ? "bg-white/10 text-white/30 cursor-wait"
-              : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white hover:scale-[1.01] active:scale-[0.99]"
-          }`}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-3">
-              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Calcolo in corso...
-            </span>
-          ) : (
-            `Calcola Round ${round}`
-          )}
-        </button>
+        {/* Driver of the Day — solo per mode "race" */}
+        {session === "race" && (
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+            <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+              Driver of the Day
+            </label>
+            <select
+              value={dotd ?? ""}
+              onChange={(e) => setDotd(e.target.value ? Number(e.target.value) : null)}
+              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
+            >
+              <option value="" className="bg-[#0a0a12]">— Nessuno / Non ancora annunciato —</option>
+              {driversSorted.map((d) => (
+                <option key={d.number} value={d.number} className="bg-[#0a0a12]">
+                  #{d.number} {d.name} ({d.team})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Bottoni */}
+        <div className="flex gap-3">
+          <button
+            onClick={handlePostGara}
+            disabled={loading || resetting}
+            className={`flex-1 py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
+              loading || resetting
+                ? "bg-white/10 text-white/30 cursor-wait"
+                : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white hover:scale-[1.01] active:scale-[0.99]"
+            }`}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-3">
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Calcolo in corso...
+              </span>
+            ) : (
+              `Calcola ${session === "sprint_shootout" ? "Sprint Quali" : session === "sprint" ? "Sprint" : session === "qualifying" ? "Qualifica" : "Gara"} R${round}`
+            )}
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm(`Sei sicuro di voler azzerare i punteggi del Round ${round}?`)) return;
+              setResetting(true);
+              setResult(null);
+              setLogs([]);
+              try {
+                const res = await fetch("/api/reset-round", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ round, admin_key: ADMIN_API_KEY }),
+                });
+                const data = await res.json();
+                setResult(data);
+                if (data.log) setLogs(data.log);
+              } catch (err: any) {
+                setResult({ error: err.message });
+              }
+              setResetting(false);
+            }}
+            disabled={loading || resetting}
+            className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
+              loading || resetting
+                ? "bg-white/10 text-white/30 cursor-wait"
+                : "bg-orange-600 hover:bg-orange-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
+            }`}
+          >
+            {resetting ? (
+              <span className="flex items-center justify-center gap-3">
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Reset...
+              </span>
+            ) : (
+              "RESET"
+            )}
+          </button>
+        </div>
 
         {/* Risultato */}
         {result && (
@@ -199,12 +269,28 @@ export default function AdminPage() {
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="text-[10px] tracking-[2px] text-[#E8002D] uppercase font-bold">
-                      Classifica Weekend
+                      {result.session === "race" ? "Classifica Weekend" : `Parziale — ${result.session}`}
                     </div>
                     <div className="text-xs text-white/30">
                       {result.gara} — {result.giocatori} giocatori
                     </div>
                   </div>
+
+                  {/* Sessioni calcolate */}
+                  {result.sessioni_calcolate && (
+                    <div className="flex gap-2 mb-4 flex-wrap">
+                      {Object.entries(result.sessioni_calcolate).map(([key, done]) => (
+                        <span
+                          key={key}
+                          className={`text-[10px] px-2 py-1 rounded-lg font-bold ${
+                            done ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/[0.03] text-white/20 border border-white/[0.05]"
+                          }`}
+                        >
+                          {key.replace("_", " ").toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     {result.classifica?.map((c: any) => (
@@ -225,9 +311,11 @@ export default function AdminPage() {
                           <div className="font-[family-name:var(--font-jetbrains)] font-bold text-lg">
                             {c.punti_weekend}
                           </div>
-                          <div className="text-[10px] text-white/30">
-                            Reale: +{c.punti_reale}
-                          </div>
+                          {c.punti_reale != null && (
+                            <div className="text-[10px] text-white/30">
+                              Reale: +{c.punti_reale}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
