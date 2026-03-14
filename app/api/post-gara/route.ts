@@ -107,36 +107,44 @@ export async function POST(request: NextRequest) {
       wet_tyres: false, pole_won: false, total_dnf: 0,
     };
 
+    // OpenF1 session matching: usare session_name perché session_type è ambiguo
+    // Sprint Qualifying → type="Qualifying", name="Sprint Qualifying"
+    // Sprint            → type="Race",       name="Sprint"
+    // Qualifying        → type="Qualifying", name="Qualifying"
+    // Race              → type="Race",       name="Race"
+
     if (mode === "sprint_shootout") {
       const ssSession = sessions.find((s: any) =>
-        s.session_type === "Sprint Shootout" || s.session_type === "Sprint Qualifying"
+        s.session_name?.toLowerCase().includes("sprint") && s.session_name?.toLowerCase().includes("quali")
       );
       if (!ssSession) {
         return NextResponse.json({ error: "Sessione Sprint Shootout non trovata", log }, { status: 404 });
       }
       sprint_shootout = await fetchSessionResults(ssSession.session_key);
-      log.push(`Sprint Shootout: ${sprint_shootout.length} piloti`);
+      log.push(`Sprint Shootout (key: ${ssSession.session_key}): ${sprint_shootout.length} piloti`);
 
     } else if (mode === "sprint") {
       const spSession = sessions.find((s: any) =>
-        s.session_type === "Sprint" && s.session_name?.toLowerCase() !== "sprint qualifying"
+        s.session_name?.toLowerCase() === "sprint"
       );
       if (!spSession) {
         return NextResponse.json({ error: "Sessione Sprint non trovata", log }, { status: 404 });
       }
       sprint = await fetchSprintResults(spSession.session_key);
-      log.push(`Sprint: ${sprint.length} piloti`);
+      log.push(`Sprint (key: ${spSession.session_key}): ${sprint.length} piloti`);
 
     } else if (mode === "qualifying") {
-      const qualSession = sessions.find((s: any) => s.session_type === "Qualifying");
+      const qualSession = sessions.find((s: any) =>
+        s.session_name?.toLowerCase() === "qualifying"
+      );
       if (!qualSession) {
         return NextResponse.json({ error: "Sessione Qualifica non trovata", log }, { status: 404 });
       }
       qualifying = await fetchSessionResults(qualSession.session_key);
-      log.push(`Qualifica: ${qualifying.length} piloti`);
+      log.push(`Qualifica (key: ${qualSession.session_key}): ${qualifying.length} piloti`);
 
     } else if (mode === "race") {
-      const raceSession = sessions.find((s: any) => s.session_type === "Race");
+      const raceSession = sessions.find((s: any) => s.session_name?.toLowerCase() === "race");
       if (!raceSession) {
         return NextResponse.json({ error: "Sessione Gara non trovata", log }, { status: 404 });
       }

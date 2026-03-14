@@ -238,14 +238,19 @@ export default function GaraPage() {
             chipPilotiTarget: sq.chipPilotiTarget,
             sestoUomo: sq.sestoUomo,
           };
-          const chipPrevisioni: ChipPrevisioniConfig = {
-            chipAttivo: prev.chipAttivo,
-            chipTarget: prev.chipTarget,
+          // Previsioni e chip previsioni solo se la gara è stata calcolata
+          const garaCalcolata = results.race.length > 0;
+          const previsioniPerCalcolo = garaCalcolata ? prev.previsioni : {
+            safetyCar: null, virtualSafetyCar: null, redFlag: null,
+            gommeWet: null, poleVince: null, numeroDnf: null,
           };
+          const chipPrevisioni: ChipPrevisioniConfig = garaCalcolata
+            ? { chipAttivo: prev.chipAttivo, chipTarget: prev.chipTarget }
+            : { chipAttivo: null, chipTarget: null };
           const calc = calcolaPuntiWeekend(
             sq.driverNumbers,
             sq.primoPilota,
-            prev.previsioni,
+            previsioniPerCalcolo,
             results,
             chipPiloti,
             chipPrevisioni
@@ -664,7 +669,8 @@ export default function GaraPage() {
           <div className="space-y-3">
             {PREVISIONI_CONFIG.map((p) => {
               const myAnswer = prev.previsioni[p.key];
-              const resultValue = weekendResults?.events
+              const garaCalcolata = (weekendResults?.race?.length ?? 0) > 0;
+              const resultValue = garaCalcolata && weekendResults?.events
                 ? p.key === "safetyCar" ? weekendResults.events.safety_car
                 : p.key === "virtualSafetyCar" ? weekendResults.events.virtual_safety_car
                 : p.key === "redFlag" ? weekendResults.events.red_flag
@@ -672,8 +678,8 @@ export default function GaraPage() {
                 : p.key === "poleVince" ? weekendResults.events.pole_won
                 : null
                 : null;
-              const isCorrect = hasResults && myAnswer !== null && myAnswer === resultValue;
-              const isWrong = hasResults && myAnswer !== null && myAnswer !== resultValue;
+              const isCorrect = garaCalcolata && myAnswer !== null && myAnswer === resultValue;
+              const isWrong = garaCalcolata && myAnswer !== null && myAnswer !== resultValue;
 
               return (
                 <div key={p.key} className={`bg-white/[0.03] border rounded-xl p-4 ${
@@ -717,13 +723,13 @@ export default function GaraPage() {
             })}
 
             <div className={`bg-white/[0.03] border rounded-xl p-4 ${
-              hasResults && prev.previsioni.numeroDnf !== null
+              (() => { const gc = (weekendResults?.race?.length ?? 0) > 0; return gc && prev.previsioni.numeroDnf !== null
                 ? prev.previsioni.numeroDnf === weekendResults?.events.total_dnf ? "border-green-500/30" : "border-red-500/20"
-                : "border-white/[0.06]"
+                : "border-white/[0.06]"; })()
             }`}>
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-sm">Numero DNF esatto</h3>
-                {hasResults && (
+                {(weekendResults?.race?.length ?? 0) > 0 && (
                   <span className="text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-white/10 text-white/60">
                     DNF: {weekendResults?.events.total_dnf}
                   </span>
@@ -733,8 +739,9 @@ export default function GaraPage() {
               <div className="flex gap-2 flex-wrap">
                 {Array.from({ length: 8 }, (_, i) => i).map((n) => {
                   const isSelected = prev.previsioni.numeroDnf === n;
-                  const isExact = hasResults && isSelected && n === weekendResults?.events.total_dnf;
-                  const isMissed = hasResults && isSelected && n !== weekendResults?.events.total_dnf;
+                  const garaCalcolata = (weekendResults?.race?.length ?? 0) > 0;
+                  const isExact = garaCalcolata && isSelected && n === weekendResults?.events.total_dnf;
+                  const isMissed = garaCalcolata && isSelected && n !== weekendResults?.events.total_dnf;
                   return (
                     <button key={n} onClick={() => !locked && prev.setNumeroDnf(prev.previsioni.numeroDnf === n ? null : n)} disabled={locked}
                       className={`w-10 h-10 rounded-lg font-[family-name:var(--font-jetbrains)] font-bold text-sm transition-all ${
@@ -923,8 +930,8 @@ export default function GaraPage() {
                   </div>
                 )}
 
-                {/* Eventi della gara */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
+                {/* Eventi della gara — solo se la gara è stata calcolata */}
+                {weekendResults.race.length > 0 && <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
                   <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">Eventi della gara</div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
@@ -948,7 +955,7 @@ export default function GaraPage() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 <Link href="/classifica"
                   className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all"
