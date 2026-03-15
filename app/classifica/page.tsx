@@ -7,8 +7,15 @@ import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { getDriverByNumber } from "../lib/drivers-data";
-import { ChevronDown, X, Eye } from "lucide-react";
+import { ChevronDown, X, Eye, Zap, Shield, Users } from "lucide-react";
 import { RACES_2026, getRaceByRound, isAfterDeadline } from "../lib/races";
+import {
+  calcolaPuntiWeekend,
+  type RaceWeekendResults,
+  type PilotaDettaglio,
+  type ChipPilotiConfig,
+  type ChipPrevisioniConfig,
+} from "../lib/scoring";
 
 const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -44,6 +51,15 @@ interface PlayerSquadData {
   } | null;
   chipPrevisioni: string | null;
   chipPrevisioniTarget: string | null;
+  // Score calcolato (se weekend_results disponibili)
+  score: {
+    pilotiPoints: number;
+    previsioniPoints: number;
+    penalitaCambi: number;
+    total: number;
+    pilotiDettaglio: (PilotaDettaglio & { name: string })[];
+    previsioniDettaglio: Record<string, number>;
+  } | null;
 }
 
 const CHIP_LABELS: Record<string, { label: string; icon: string }> = {
@@ -63,6 +79,15 @@ const PREVISIONI_LABELS: { key: string; label: string }[] = [
   { key: "pole_vince", label: "Pole vince" },
   { key: "numero_dnf", label: "N° DNF" },
 ];
+
+const PREVISIONE_SCORE_LABELS: Record<string, string> = {
+  safetyCar: "Safety Car",
+  virtualSafetyCar: "Virtual SC",
+  redFlag: "Red Flag",
+  gommeWet: "Gomme Wet",
+  poleVince: "Pole vince",
+  numeroDnf: "N° DNF",
+};
 
 function ClassificaContent() {
   const searchParams = useSearchParams();
@@ -107,7 +132,7 @@ function ClassificaContent() {
 
     const supabase = createClient()!;
 
-    const [formRes, prevRes] = await Promise.all([
+    const [formRes, prevRes, wrRes, cambiRes] = await Promise.all([
       supabase
         .from("formazioni")
         .select("driver_numbers, primo_pilota, sesto_uomo, chip_piloti, chip_piloti_target")
@@ -122,16 +147,69 @@ function ClassificaContent() {
         .eq("round", selectedRound)
         .eq("confirmed", true)
         .single(),
+      supabase
+        .from("weekend_results")
+        .select("data")
+        .eq("round", selectedRound)
+        .single(),
+      supabase
+        .from("mercato_cambi")
+        .select("id")
+        .eq("user_id", entry.user_id)
+        .eq("round", selectedRound),
     ]);
 
     const form = formRes.data;
     const prev = prevRes.data;
+    const weekendResults: RaceWeekendResults | null = wrRes.data?.data ?? null;
+    const driverNumbers = form?.driver_numbers ? (form.driver_numbers as number[]).map(Number) : [];
+    const numCambi = (cambiRes.data || []).length;
+    const isWildcard = form?.chip_piloti === "wildcard";
+    const penalitaCambi = isWildcard ? 0 : Math.max(0, numCambi - 2) * 10;
+
+    // Calcola score se ci sono risultati e formazione
+    let score: PlayerSquadData["score"] = null;
+    if (weekendResults && driverNumbers.length > 0) {
+      const chipPiloti: ChipPilotiConfig = {
+        chipPiloti: form?.chip_piloti ?? null,
+        chipPilotiTarget: form?.chip_piloti_target ?? null,
+        sestoUomo: form?.sesto_uomo ?? null,
+      };
+      const garaCalcolata = weekendResults.race.length > 0;
+      const previsioniPerCalcolo = garaCalcolata && prev ? {
+        safetyCar: prev.safety_car,
+        virtualSafetyCar: prev.virtual_safety_car,
+        redFlag: prev.red_flag,
+        gommeWet: prev.gomme_wet,
+        poleVince: prev.pole_vince,
+        numeroDnf: prev.numero_dnf,
+      } : {
+        safetyCar: null, virtualSafetyCar: null, redFlag: null,
+        gommeWet: null, poleVince: null, numeroDnf: null,
+      };
+      const chipPrevisioni: ChipPrevisioniConfig = garaCalcolata && prev
+        ? { chipAttivo: prev.chip_attivo || null, chipTarget: prev.chip_target || null }
+        : { chipAttivo: null, chipTarget: null };
+
+      const calc = calcolaPuntiWeekend(driverNumbers, form?.primo_pilota ?? null, previsioniPerCalcolo, weekendResults, chipPiloti, chipPrevisioni);
+      score = {
+        pilotiPoints: calc.pilotiPoints,
+        previsioniPoints: calc.previsioniPoints,
+        penalitaCambi,
+        total: calc.total - penalitaCambi,
+        pilotiDettaglio: calc.pilotiDettaglio.map((d) => ({
+          ...d,
+          name: getDriverByNumber(d.driver_number)?.name || `#${d.driver_number}`,
+        })),
+        previsioniDettaglio: calc.previsioniDettaglio,
+      };
+    }
 
     setPlayerModal({
       userId: entry.user_id,
       teamPrincipalName: entry.team_principal_name,
       scuderiaName: entry.scuderia_name,
-      driverNumbers: form?.driver_numbers ? (form.driver_numbers as number[]).map(Number) : [],
+      driverNumbers,
       primoPilota: form?.primo_pilota ?? null,
       sestoUomo: form?.sesto_uomo ?? null,
       chipPiloti: form?.chip_piloti ?? null,
@@ -146,6 +224,7 @@ function ClassificaContent() {
       } : null,
       chipPrevisioni: prev?.chip_attivo ?? null,
       chipPrevisioniTarget: prev?.chip_target ?? null,
+      score,
     });
 
     setLoadingPlayer(false);
@@ -360,143 +439,185 @@ function ClassificaContent() {
               </button>
             </div>
 
-            <div className="px-5 py-4 space-y-5">
-              {/* Rosa piloti */}
-              <div>
-                <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Rosa Piloti</div>
-                <div className="space-y-2">
-                  {playerModal.driverNumbers.length > 0 ? playerModal.driverNumbers.map((num) => {
-                    const d = getDriverByNumber(num);
-                    if (!d) return null;
-                    const isPP = num === playerModal.primoPilota;
-                    const isSesto = num === playerModal.sestoUomo;
-                    const isBoostTarget = playerModal.chipPiloti === "boost" && num === playerModal.chipPilotiTarget;
-                    const color = `#${d.teamColour}`;
-                    return (
-                      <div
-                        key={num}
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                          isPP
-                            ? "border-[#E8002D]/40 bg-[#E8002D]/5"
-                            : isBoostTarget
-                            ? "border-amber-400/40 bg-amber-400/5"
-                            : isSesto
-                            ? "border-blue-400/30 bg-blue-400/5"
-                            : "border-white/[0.06] bg-white/[0.02]"
-                        }`}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                          style={{ backgroundColor: `${color}30`, color }}
-                        >
-                          <span className="font-[family-name:var(--font-jetbrains)]">{num}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm truncate">{d.name}</div>
-                          <div className="text-[10px] text-white/30">{d.team}</div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isPP && (
-                            <span className="text-[8px] tracking-wider font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded">
-                              x2
-                            </span>
-                          )}
-                          {isBoostTarget && (
-                            <span className="text-[8px] tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
-                              x3
-                            </span>
-                          )}
-                          {isSesto && (
-                            <span className="text-[8px] tracking-wider font-bold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">
-                              6°
-                            </span>
-                          )}
-                          <div className="font-[family-name:var(--font-jetbrains)] text-xs font-bold" style={{ color }}>
-                            {d.price}
-                          </div>
-                        </div>
+            <div className="px-5 py-4 space-y-4">
+              {playerModal.score ? (
+                <>
+                  {/* Punteggio totale */}
+                  <div className="bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold">Weekend R{selectedRound}</div>
+                      <span className="font-[family-name:var(--font-jetbrains)] text-3xl font-black text-[#E8002D]">
+                        {playerModal.score.total}
+                      </span>
+                    </div>
+
+                    <div className={`grid ${playerModal.score.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-4`}>
+                      <div className="bg-black/20 rounded-lg p-3 text-center">
+                        <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{playerModal.score.pilotiPoints}</div>
+                        <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
                       </div>
-                    );
-                  }) : (
-                    <div className="text-white/20 text-sm text-center py-4">Nessuna formazione confermata</div>
-                  )}
-                </div>
-              </div>
+                      <div className="bg-black/20 rounded-lg p-3 text-center">
+                        <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{playerModal.score.previsioniPoints}</div>
+                        <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
+                      </div>
+                      {playerModal.score.penalitaCambi > 0 && (
+                        <div className="bg-black/20 rounded-lg p-3 text-center">
+                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400">-{playerModal.score.penalitaCambi}</div>
+                          <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
+                        </div>
+                      )}
+                    </div>
 
-              {/* Chip piloti */}
-              {playerModal.chipPiloti && (
-                <div>
-                  <div className="text-[9px] tracking-[3px] text-white/40 uppercase font-bold mb-2">Chip Piloti</div>
-                  <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                    <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
-                    <span className="text-xs font-bold text-amber-400">
-                      {CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Previsioni */}
-              <div>
-                <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Previsioni</div>
-                {playerModal.previsioni ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {PREVISIONI_LABELS.map(({ key, label }) => {
-                      const val = playerModal.previsioni![key as keyof typeof playerModal.previsioni];
-                      const isChipTarget = playerModal.chipPrevisioniTarget === key;
-                      return (
-                        <div
-                          key={key}
-                          className={`flex items-center justify-between p-2.5 rounded-lg border ${
-                            isChipTarget
-                              ? "border-amber-400/30 bg-amber-400/5"
-                              : "border-white/[0.06] bg-white/[0.02]"
-                          }`}
-                        >
-                          <span className="text-[11px] text-white/50">{label}</span>
-                          <span className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${
-                            key === "numero_dnf"
-                              ? "text-white"
-                              : val === true
-                              ? "text-green-400"
-                              : val === false
-                              ? "text-red-400"
-                              : "text-white/20"
-                          }`}>
-                            {key === "numero_dnf"
-                              ? (val !== null ? val : "—")
-                              : val === true
-                              ? "SÌ"
-                              : val === false
-                              ? "NO"
-                              : "—"
-                            }
-                            {isChipTarget && (
-                              <span className="ml-1 text-amber-400">
-                                {playerModal.chipPrevisioni === "doppia" ? "x2" : "✓"}
+                    {/* Dettaglio piloti */}
+                    <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
+                    <div className="space-y-1 mb-4">
+                      {playerModal.score.pilotiDettaglio.map((d) => {
+                        const color = getDriverByNumber(d.driver_number)?.teamColour;
+                        return (
+                          <div key={d.driver_number} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                            <span className="flex items-center gap-2">
+                              {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `#${color}` }} />}
+                              <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/70"}>
+                                {d.name}
                               </span>
-                            )}
+                              {d.moltiplicatore === 2 && <span className="text-[9px] text-[#E8002D]/60">x2</span>}
+                              {d.moltiplicatore === 3 && <Zap size={11} className="text-amber-400" />}
+                              {d.isSestoUomo && <Users size={11} className="text-blue-400" />}
+                              {d.haloApplicato && <Shield size={11} className="text-green-400" />}
+                            </span>
+                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
+                              {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dettaglio previsioni */}
+                    <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
+                    <div className="space-y-1">
+                      {Object.entries(playerModal.score.previsioniDettaglio).map(([key, pts]) => (
+                        <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                          <span className="text-white/60">{PREVISIONE_SCORE_LABELS[key] || key}</span>
+                          <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
+                            {pts > 0 ? `+${pts}` : "0"}
                           </span>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-white/20 text-sm text-center py-4">Nessuna previsione confermata</div>
-                )}
-              </div>
 
-              {/* Chip previsioni */}
-              {playerModal.chipPrevisioni && (
-                <div>
-                  <div className="text-[9px] tracking-[3px] text-white/40 uppercase font-bold mb-2">Chip Previsioni</div>
-                  <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                    <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
-                    <span className="text-xs font-bold text-amber-400">
-                      {CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}
-                    </span>
+                  {/* Chip attivi */}
+                  {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
+                    <div className="flex flex-wrap gap-2">
+                      {playerModal.chipPiloti && (
+                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
+                          <span className="text-xs font-bold text-amber-400">
+                            {CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}
+                          </span>
+                        </div>
+                      )}
+                      {playerModal.chipPrevisioni && (
+                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
+                          <span className="text-xs font-bold text-amber-400">
+                            {CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Pre-gara: mostra rosa e previsioni senza punti */}
+                  <div>
+                    <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Rosa Piloti</div>
+                    <div className="space-y-2">
+                      {playerModal.driverNumbers.length > 0 ? playerModal.driverNumbers.map((num) => {
+                        const d = getDriverByNumber(num);
+                        if (!d) return null;
+                        const isPP = num === playerModal.primoPilota;
+                        const isSesto = num === playerModal.sestoUomo;
+                        const isBoostTarget = playerModal.chipPiloti === "boost" && num === playerModal.chipPilotiTarget;
+                        const color = `#${d.teamColour}`;
+                        return (
+                          <div
+                            key={num}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                              isPP ? "border-[#E8002D]/40 bg-[#E8002D]/5"
+                              : isBoostTarget ? "border-amber-400/40 bg-amber-400/5"
+                              : isSesto ? "border-blue-400/30 bg-blue-400/5"
+                              : "border-white/[0.06] bg-white/[0.02]"
+                            }`}
+                          >
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{ backgroundColor: `${color}30`, color }}>
+                              <span className="font-[family-name:var(--font-jetbrains)]">{num}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-sm truncate">{d.name}</div>
+                              <div className="text-[10px] text-white/30">{d.team}</div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isPP && <span className="text-[8px] tracking-wider font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded">x2</span>}
+                              {isBoostTarget && <span className="text-[8px] tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">x3</span>}
+                              {isSesto && <span className="text-[8px] tracking-wider font-bold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">6°</span>}
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="text-white/20 text-sm text-center py-4">Nessuna formazione confermata</div>
+                      )}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Previsioni pre-gara */}
+                  <div>
+                    <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Previsioni</div>
+                    {playerModal.previsioni ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {PREVISIONI_LABELS.map(({ key, label }) => {
+                          const val = playerModal.previsioni![key as keyof typeof playerModal.previsioni];
+                          return (
+                            <div key={key} className="flex items-center justify-between p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                              <span className="text-[11px] text-white/50">{label}</span>
+                              <span className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${
+                                key === "numero_dnf" ? "text-white"
+                                : val === true ? "text-green-400"
+                                : val === false ? "text-red-400"
+                                : "text-white/20"
+                              }`}>
+                                {key === "numero_dnf" ? (val !== null ? val : "—") : val === true ? "SÌ" : val === false ? "NO" : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-white/20 text-sm text-center py-4">Nessuna previsione confermata</div>
+                    )}
+                  </div>
+
+                  {/* Chip */}
+                  {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
+                    <div className="flex flex-wrap gap-2">
+                      {playerModal.chipPiloti && (
+                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
+                          <span className="text-xs font-bold text-amber-400">{CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}</span>
+                        </div>
+                      )}
+                      {playerModal.chipPrevisioni && (
+                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
+                          <span className="text-xs font-bold text-amber-400">{CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
