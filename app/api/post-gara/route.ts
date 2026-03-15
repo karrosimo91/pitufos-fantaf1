@@ -394,10 +394,11 @@ async function fetchSessionResults(sessionKey: number): Promise<DriverResult[]> 
 }
 
 async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGridMap?: Map<number, number>): Promise<DriverResult[]> {
-  const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-  const lastPositions = new Map<number, any>();
-  for (const r of positions) {
-    if (r.driver_number) lastPositions.set(r.driver_number, r);
+  // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ)
+  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
+  const resultMap = new Map<number, any>();
+  for (const sr of sessionResults) {
+    if (sr.driver_number) resultMap.set(sr.driver_number, sr);
   }
 
   const gridMap = qualGridMap ?? new Map<number, number>();
@@ -412,24 +413,29 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     }
   }
 
+  // Penalità da race_control (session_result non le ha)
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
-  const retiredDrivers = new Set<number>();
   const penalizedDrivers = new Set<number>();
   for (const rc of raceControl) {
     const msg = (rc.message || "").toUpperCase();
-    if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-      if (rc.driver_number) retiredDrivers.add(rc.driver_number);
-    }
     if (msg.includes("PENALTY") && !msg.includes("GRID") && !msg.includes("REPRIMAND")) {
       if (rc.driver_number) penalizedDrivers.add(rc.driver_number);
     }
   }
 
-  return Array.from(lastPositions.values()).map((r) => ({
+  // Fallback: se session_result non ha dati, usa position come prima
+  if (resultMap.size === 0) {
+    const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
+    for (const r of positions) {
+      if (r.driver_number) resultMap.set(r.driver_number, r);
+    }
+  }
+
+  return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number,
     position: r.position,
     grid_position: gridMap.get(r.driver_number) || undefined,
-    dnf: retiredDrivers.has(r.driver_number),
+    dnf: !!(r.dnf || r.dns || r.dsq),
     fastest_lap: r.driver_number === fastestLapDriver,
     driver_of_the_day: r.driver_number === dotdNumber,
     penalty: penalizedDrivers.has(r.driver_number),
@@ -437,10 +443,11 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
 }
 
 async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
-  const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-  const lastPositions = new Map<number, any>();
-  for (const r of positions) {
-    if (r.driver_number) lastPositions.set(r.driver_number, r);
+  // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ)
+  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
+  const resultMap = new Map<number, any>();
+  for (const sr of sessionResults) {
+    if (sr.driver_number) resultMap.set(sr.driver_number, sr);
   }
 
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);
@@ -453,41 +460,45 @@ async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
     }
   }
 
-  const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
-  const retiredDrivers = new Set<number>();
-  for (const rc of raceControl) {
-    const msg = (rc.message || "").toUpperCase();
-    if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-      if (rc.driver_number) retiredDrivers.add(rc.driver_number);
+  // Fallback: se session_result non ha dati, usa position
+  if (resultMap.size === 0) {
+    const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
+    for (const r of positions) {
+      if (r.driver_number) resultMap.set(r.driver_number, r);
     }
   }
 
-  return Array.from(lastPositions.values()).map((r) => ({
+  return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number,
     position: r.position,
-    dnf: retiredDrivers.has(r.driver_number),
+    dnf: !!(r.dnf || r.dns || r.dsq),
     fastest_lap: r.driver_number === fastestLapDriver,
   }));
 }
 
 async function fetchRaceEvents(sessionKey: number): Promise<RaceWeekendResults["events"]> {
+  // SC, VSC, Red Flag da race_control
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
 
   let safety_car = false;
   let virtual_safety_car = false;
   let red_flag = false;
-  const retiredDrivers = new Set<number>();
 
   for (const rc of raceControl) {
     const msg = (rc.message || "").toUpperCase();
     if (msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL")) safety_car = true;
     if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtual_safety_car = true;
-    if (msg.includes("RED FLAG")) red_flag = true;
-    if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-      if (rc.driver_number) retiredDrivers.add(rc.driver_number);
-    }
+    if (rc.flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) red_flag = true;
   }
 
+  // DNF/DNS/DSQ da session_result (fonte ufficiale)
+  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
+  let total_dnf = 0;
+  for (const sr of sessionResults) {
+    if (sr.dnf || sr.dns || sr.dsq) total_dnf++;
+  }
+
+  // Gomme wet da stints
   const stints = await fetchJson(`${OPENF1}/stints?session_key=${sessionKey}`);
   let wet_tyres = false;
   for (const stint of stints) {
@@ -498,5 +509,5 @@ async function fetchRaceEvents(sessionKey: number): Promise<RaceWeekendResults["
     }
   }
 
-  return { safety_car, virtual_safety_car, red_flag, wet_tyres, pole_won: false, total_dnf: retiredDrivers.size };
+  return { safety_car, virtual_safety_car, red_flag, wet_tyres, pole_won: false, total_dnf };
 }

@@ -27,19 +27,27 @@ export const RACES_2026: Race[] = [
   { round: 24, name: "Abu Dhabi Grand Prix",       circuit: "Abu Dhabi",    flag: "🇦🇪", countryCode: "ae", date: "2026-12-06T13:00:00Z", deadline: "2026-12-05T14:00:00Z", sprint: false },
 ];
 
+/** Giorno dopo la gara (mezzanotte UTC del lunedì) */
+function raceEndDate(race: Race): Date {
+  const d = new Date(race.date);
+  d.setUTCDate(d.getUTCDate() + 1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
 export function getNextRace(): Race {
   const now = new Date();
-  return RACES_2026.find((r) => new Date(r.date) > now) || RACES_2026[0];
+  return RACES_2026.find((r) => raceEndDate(r) > now) || RACES_2026[0];
 }
 
 export function getUpcomingRaces(count = 5): Race[] {
   const now = new Date();
-  return RACES_2026.filter((r) => new Date(r.date) > now).slice(0, count);
+  return RACES_2026.filter((r) => raceEndDate(r) > now).slice(0, count);
 }
 
 export function getPastRaces(): Race[] {
   const now = new Date();
-  return RACES_2026.filter((r) => new Date(r.date) <= now);
+  return RACES_2026.filter((r) => raceEndDate(r) <= now);
 }
 
 export function getCurrentRound(): number {

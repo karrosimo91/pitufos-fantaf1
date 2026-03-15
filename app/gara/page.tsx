@@ -8,7 +8,7 @@ import CountryFlag from "../components/CountryFlag";
 import { useSquadra, usePrevisioni } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
-import { RACES_2026, getNextRace, getCurrentRound, getWeekendSessions, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
+import { RACES_2026, getNextRace, getCurrentRound, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
 import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import {
@@ -177,7 +177,6 @@ export default function GaraPage() {
   const viewRace = getRaceByRound(viewRound) || getNextRace();
   const isCurrentRound = viewRound === currentRound;
   const deadline = getDeadline(viewRace);
-  const sessions = getWeekendSessions(viewRace);
 
   const sq = useSquadra(viewRound);
   const prev = usePrevisioni(viewRound);
@@ -413,8 +412,8 @@ export default function GaraPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
-          {(["formazione", "previsioni", "dettaglio"] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = { formazione: "Formazione", previsioni: "Previsioni", dettaglio: hasResults ? "Dettaglio" : "Orari" };
+          {(["formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = { formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
             if (t === "dettaglio" && hasResults) indicator = <Trophy size={12} className="text-[#E8002D]" />;
@@ -963,65 +962,7 @@ export default function GaraPage() {
                   Classifica completa <ChevronRight size={14} />
                 </Link>
               </>
-            ) : (
-              /* Orari sessioni (pre-gara) */
-              <>
-                {(["Venerdì", "Sabato", "Domenica"] as const).map((giorno) => {
-                  const daySessions = sessions.filter((s) => s.day === giorno);
-                  if (daySessions.length === 0) return null;
-                  return (
-                    <div key={giorno}>
-                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">{giorno}</div>
-                      <div className="space-y-1.5">
-                        {daySessions.map((session) => {
-                          const sessionDate = new Date(session.dateTime);
-                          const now = new Date();
-                          const isCompleted = now > new Date(sessionDate.getTime() + 2 * 60 * 60 * 1000);
-                          const isLive = now >= sessionDate && !isCompleted;
-                          const isPractice = session.type === "practice";
-                          return (
-                            <div key={session.shortName}
-                              className={`flex items-center gap-3 rounded-xl p-3 transition-all ${
-                                isLive ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.03] border border-white/[0.06]"
-                              }`}
-                            >
-                              <div className="w-8 flex justify-center">
-                                {isLive ? <div className="w-3 h-3 rounded-full bg-[#E8002D] animate-live-pulse" />
-                                : isCompleted ? <CheckCircle2 size={16} className="text-green-500/50" />
-                                : <Circle size={16} className="text-white/15" />}
-                              </div>
-                              <div className="flex-1">
-                                <div className={`text-sm font-semibold ${isLive ? "text-[#E8002D]" : isPractice ? "text-white/50" : "text-white"}`}>{session.name}</div>
-                                {isPractice && <div className="text-[9px] text-white/20">Nessun punteggio assegnato</div>}
-                              </div>
-                              <div className="text-right shrink-0">
-                                <div className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${isLive ? "text-[#E8002D]" : "text-white/50"}`}>
-                                  {sessionDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-                                </div>
-                                {isLive && <div className="text-[9px] text-[#E8002D] font-bold tracking-wider">LIVE</div>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle size={16} className="text-amber-400/60 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-amber-400/80">Deadline</div>
-                      <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
-                        {viewRace.sprint
-                          ? "Weekend Sprint: devi confermare prima della Sprint Shootout (venerdì). Avrai visto solo FP1."
-                          : "Weekend normale: devi confermare prima delle Qualifiche (sabato). Avrai visto FP1, FP2 e FP3."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+            ) : null}
           </div>
         )}
       </main>
