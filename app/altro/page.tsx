@@ -5,8 +5,9 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
-import { Users, Info, User, LogOut, ChevronRight } from "lucide-react";
+import { Users, Info, User, LogOut, ChevronRight, Scale } from "lucide-react";
 import { APP_VERSION } from "../lib/types";
+import { useCdaMembership } from "../lib/use-cda";
 
 const MENU_ITEMS = [
   { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
@@ -17,6 +18,7 @@ const MENU_ITEMS = [
 export default function AltroPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { isMember: isCda } = useCdaMembership();
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -52,6 +54,21 @@ export default function AltroPage() {
         </div>
 
         <div className="space-y-2 mb-8">
+          {isCda && (
+            <Link
+              href="/cda"
+              className="flex items-center gap-4 bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-4 hover:bg-white/[0.06] transition-all"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#E8002D]/10 flex items-center justify-center shrink-0">
+                <Scale size={18} className="text-[#E8002D]/60" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-bold">CDA Los Pitufos</div>
+                <div className="text-[11px] text-white/30">Sezione riservata ai membri di Los Pitufos</div>
+              </div>
+              <ChevronRight size={16} className="text-white/20" />
+            </Link>
+          )}
           {MENU_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
@@ -101,6 +118,7 @@ export default function AltroPage() {
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>
               <div className="space-y-2 text-[12px] text-white/50">
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99.42</span> — Pagina CDA Los Pitufos, PWA (installa da browser), email reminder pre-deadline</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99</span> — Quotazioni piloti 2026 aggiornate, reset formazioni</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.98</span> — Bandiere immagine al posto delle emoji, fix penalità prima formazione</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.97</span> — Bugfix prima squadra, modal squadre lega, banner stato weekend, versione centralizzata</div>

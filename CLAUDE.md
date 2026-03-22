@@ -100,14 +100,14 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 2. **Classifica Reale:** ogni weekend i giocatori vengono classificati per punteggio. Top 10 prendono punti F1 (25-18-15-12-10-8-6-4-2-1), gli altri 0.
 
 ## Punti aperti (da definire col team)
-1. Costruttori: aggiungere 1 costruttore? Se sì, ricalibrazione budget
-2. Gestione mercato: numero cambi gratuiti (1, 2 o 3), accumulo, penalità extra
-3. Wildcard: se cambi limitati, entra come Aggiornamento?
-4. Budget definitivo: 100 Soldini base, ricalcolo se costruttori
-5. All-in Previsioni: punteggio bonus
-6. Weekend Perfetto: punteggio super bonus
-7. Scudo Capitano: Primo Pilota x2 solo sui bonus? Aggiornamento extra?
-8. Algoritmo variazione quotazioni piloti post-GP
+1. ~~Costruttori~~ — CHIUSO: no costruttori
+2. ~~Gestione mercato~~ — CHIUSO: 2 cambi gratis, extra -10 punti (già implementato)
+3. ~~Wildcard~~ — CHIUSO: già implementata come Aggiornamento Piloti
+4. ~~Budget~~ — CHIUSO: 100 Soldini confermati
+5. ~~All-in Previsioni~~ — CHIUSO: rimosso
+6. ~~Weekend Perfetto~~ — CHIUSO: rimosso
+7. Scudo Capitano: sarà Aggiornamento Piloti extra (x2 solo bonus, malus x1) — IN ATTESA decisione CDA
+8. Algoritmo variazione quotazioni: proposta a fasce (≥40: +3, 25-39: +2, 10-24: +1, 0-9: 0, -1/-10: -1, ≤-11: -2, min 5, max 45) — IN ATTESA decisione CDA
 
 ## Quotazioni Piloti 2026 (confermate)
 Budget: 100 Soldini, 5 piloti per scuderia.
