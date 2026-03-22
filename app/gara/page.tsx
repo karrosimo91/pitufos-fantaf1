@@ -11,6 +11,7 @@ import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { RACES_2026, getNextRace, getCurrentRound, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
 import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
+import { useCdaCompleted } from "../lib/use-cda";
 import {
   calcolaPuntiWeekend,
   type RaceWeekendResults,
@@ -180,6 +181,7 @@ export default function GaraPage() {
 
   const sq = useSquadra(viewRound);
   const prev = usePrevisioni(viewRound);
+  const { canPlay: cdaCanPlay } = useCdaCompleted();
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -289,6 +291,7 @@ export default function GaraPage() {
   }, [currentRound]);
 
   const handleConfermaFormazione = async () => {
+    if (cdaCanPlay === false) return showToast("Completa il questionario CDA prima di giocare!");
     if (sq.drivers.length !== 5) return showToast("Devi avere 5 piloti");
     if (!sq.primoPilota) return showToast("Scegli un Primo Pilota");
     setConfirmingForm(true);
@@ -298,6 +301,7 @@ export default function GaraPage() {
   };
 
   const handleConfermaPrevisioni = async () => {
+    if (cdaCanPlay === false) return showToast("Completa il questionario CDA prima di giocare!");
     setConfirmingPrev(true);
     const ok = await prev.confermaPrevisioni();
     setConfirmingPrev(false);
@@ -430,6 +434,17 @@ export default function GaraPage() {
             );
           })}
         </div>
+
+        {/* Banner CDA: questionario non completato */}
+        {cdaCanPlay === false && isCurrentRound && !locked && (
+          <Link href="/cda"
+            className="flex items-center gap-3 bg-[#E8002D]/10 border border-[#E8002D]/20 rounded-xl px-4 py-3 mb-4 hover:bg-[#E8002D]/15 transition-all"
+          >
+            <AlertTriangle size={16} className="text-[#E8002D] shrink-0" />
+            <span className="text-sm text-[#E8002D]">Completa il questionario CDA per poter confermare</span>
+            <ChevronRight size={14} className="ml-auto text-[#E8002D]/50 shrink-0" />
+          </Link>
+        )}
 
         {/* Banner "Pronto per il GP" */}
         {isCurrentRound && !locked && sq.confirmed && prev.confirmed && (

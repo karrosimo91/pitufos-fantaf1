@@ -118,7 +118,7 @@ export default function AltroPage() {
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>
               <div className="space-y-2 text-[12px] text-white/50">
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99.42</span> — Pagina CDA Los Pitufos, PWA (installa da browser), email reminder pre-deadline</div>
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99.42</span> — Pagina CDA Los Pitufos con votazione regolamento, PWA (installa da browser), blocco conferma per membri CDA senza questionario completato</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99</span> — Quotazioni piloti 2026 aggiornate, reset formazioni</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.98</span> — Bandiere immagine al posto delle emoji, fix penalità prima formazione</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.97</span> — Bugfix prima squadra, modal squadre lega, banner stato weekend, versione centralizzata</div>

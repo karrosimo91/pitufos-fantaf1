@@ -47,6 +47,52 @@ export function useCdaMembership() {
   return { isMember, loading };
 }
 
+// ─── Hook: check se membro CDA ha completato il questionario ───
+// Ritorna: null (non membro, può giocare), true (completato), false (non completato)
+export function useCdaCompleted() {
+  const { user } = useAuth();
+  const [canPlay, setCanPlay] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) {
+      setCanPlay(null);
+      setLoading(false);
+      return;
+    }
+    const supabase = createClient();
+    if (!supabase) { setLoading(false); return; }
+
+    (async () => {
+      // Check membership
+      const { data: member } = await supabase
+        .from("lega_members")
+        .select("lega_id")
+        .eq("lega_id", CDA_LEAGUE_ID)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!member) {
+        // Non membro CDA, può giocare liberamente
+        setCanPlay(null);
+        setLoading(false);
+        return;
+      }
+
+      // Membro CDA: conta voti
+      const { count } = await supabase
+        .from("cda_voti")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+
+      setCanPlay((count || 0) >= ALL_QUESTIONS.length);
+      setLoading(false);
+    })();
+  }, [user]);
+
+  return { canPlay, loading };
+}
+
 // ─── Hook completo: voti locali + salvataggio finale ───
 export function useCda() {
   const { user } = useAuth();
