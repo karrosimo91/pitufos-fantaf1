@@ -7,7 +7,9 @@ import BottomNav from "../components/BottomNav";
 import { ArrowLeft, ChevronDown, ChevronRight, Check, X, MessageSquare, CheckCheck, Send } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useCda } from "../lib/use-cda";
-import { CDA_SECTIONS, TOTAL_QUESTIONS, type CdaQuestion } from "../lib/cda-questions";
+import { CDA_SECTIONS_V2, TOTAL_QUESTIONS_V2, CDA_QUESTIONNAIRE_V2_ID, CDA_QUESTIONNAIRE_V2_LABEL } from "../lib/cda-questions-v2";
+import { ALL_QUESTIONS_V2 } from "../lib/cda-questions-v2";
+import type { CdaQuestion } from "../lib/cda-questions";
 
 function VoteButton({
   active,
@@ -197,7 +199,7 @@ function SectionAccordion({
 export default function CdaPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { isMember, loading, draft, summary, totalMembers, setVote, setAllOk, submit, submitting, submitted, hasChanges } = useCda();
+  const { isMember, loading, draft, summary, totalMembers, setVote, setAllOk, submit, submitting, submitted, hasChanges } = useCda(CDA_QUESTIONNAIRE_V2_ID, ALL_QUESTIONS_V2);
   const [submitError, setSubmitError] = useState(false);
 
   if (authLoading || loading) {
@@ -236,9 +238,9 @@ export default function CdaPage() {
   }
 
   const votedCount = Object.keys(draft).length;
-  const progress = Math.round((votedCount / TOTAL_QUESTIONS) * 100);
-  const allAnswered = votedCount === TOTAL_QUESTIONS;
-  const missingCount = TOTAL_QUESTIONS - votedCount;
+  const progress = Math.round((votedCount / TOTAL_QUESTIONS_V2) * 100);
+  const allAnswered = votedCount === TOTAL_QUESTIONS_V2;
+  const missingCount = TOTAL_QUESTIONS_V2 - votedCount;
 
   const handleSubmit = async () => {
     setSubmitError(false);
@@ -260,8 +262,9 @@ export default function CdaPage() {
             Sezione riservata al Consiglio di Amministrazione LP
           </div>
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)]">
-            VOTA IL REGOLAMENTO
+            {CDA_QUESTIONNAIRE_V2_LABEL.toUpperCase()}
           </h1>
+          <p className="text-white/30 text-xs mt-1">Vota le modifiche proposte ai punteggi</p>
         </div>
 
         {/* Progress */}
@@ -269,7 +272,7 @@ export default function CdaPage() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-white/40">Il tuo progresso</span>
             <span className="font-[family-name:var(--font-jetbrains)] text-xs font-bold">
-              {votedCount}/{TOTAL_QUESTIONS}
+              {votedCount}/{TOTAL_QUESTIONS_V2}
             </span>
           </div>
           <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -290,7 +293,7 @@ export default function CdaPage() {
 
         {/* Sezioni */}
         <div className="space-y-2 mb-6">
-          {CDA_SECTIONS.map((section) => {
+          {CDA_SECTIONS_V2.map((section) => {
             const sectionVoted = section.questions.filter((q) => draft[q.id]).length;
             const sectionComplete = sectionVoted === section.questions.length;
             const badge = `${sectionVoted}/${section.questions.length}`;

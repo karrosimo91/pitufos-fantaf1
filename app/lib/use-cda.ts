@@ -2,7 +2,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 import { useAuth } from "./auth";
-import { CDA_LEAGUE_ID, ALL_QUESTIONS } from "./cda-questions";
+import { CDA_LEAGUE_ID, ALL_QUESTIONS, type CdaQuestion } from "./cda-questions";
+import { ALL_QUESTIONS_V2, CDA_QUESTIONNAIRE_V2_ID } from "./cda-questions-v2";
+
+// ─── Questionario attivo (bloccante) ───
+// Cambia qui per rendere bloccante un nuovo questionario
+export const ACTIVE_QUESTIONNAIRE_ID = CDA_QUESTIONNAIRE_V2_ID;
+export const ACTIVE_QUESTIONS = ALL_QUESTIONS_V2;
 
 export interface CdaVote {
   voto: "ok" | "ko" | "proposta";
@@ -47,7 +53,7 @@ export function useCdaMembership() {
   return { isMember, loading };
 }
 
-// ─── Hook: check se membro CDA ha completato il questionario ───
+// ─── Hook: check se membro CDA ha completato il questionario ATTIVO ───
 // Ritorna: null (non membro, può giocare), true (completato), false (non completato)
 export function useCdaCompleted() {
   const { user } = useAuth();
@@ -73,19 +79,19 @@ export function useCdaCompleted() {
         .maybeSingle();
 
       if (!member) {
-        // Non membro CDA, può giocare liberamente
         setCanPlay(null);
         setLoading(false);
         return;
       }
 
-      // Membro CDA: conta voti
+      // Membro CDA: conta voti del questionario attivo
       const { count } = await supabase
         .from("cda_voti")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("questionnaire_id", ACTIVE_QUESTIONNAIRE_ID);
 
-      setCanPlay((count || 0) >= ALL_QUESTIONS.length);
+      setCanPlay((count || 0) >= ACTIVE_QUESTIONS.length);
       setLoading(false);
     })();
   }, [user]);
@@ -94,7 +100,11 @@ export function useCdaCompleted() {
 }
 
 // ─── Hook completo: voti locali + salvataggio finale ───
-export function useCda() {
+// questionnaireId e questions sono parametri per supportare questionari diversi
+export function useCda(
+  questionnaireId: string = ACTIVE_QUESTIONNAIRE_ID,
+  questions: CdaQuestion[] = ACTIVE_QUESTIONS,
+) {
   const { user } = useAuth();
   const { isMember, loading: memberLoading } = useCdaMembership();
   const [draft, setDraft] = useState<Record<string, CdaVote>>({});
@@ -113,7 +123,8 @@ export function useCda() {
 
     const { data: allVotes } = await supabase
       .from("cda_voti")
-      .select("user_id, question_id, voto, proposta_testo");
+      .select("user_id, question_id, voto, proposta_testo")
+      .eq("questionnaire_id", questionnaireId);
 
     if (!allVotes) { setLoading(false); return; }
 
@@ -126,7 +137,7 @@ export function useCda() {
     }
     setSavedVotes(mine);
     setDraft(mine);
-    setSubmitted(Object.keys(mine).length === ALL_QUESTIONS.length);
+    setSubmitted(Object.keys(mine).length === questions.length);
 
     // Riepilogo per domanda (voti degli altri)
     const sum: Record<string, VoteSummary> = {};
@@ -148,7 +159,7 @@ export function useCda() {
     setTotalMembers(uniqueUsers.size);
 
     setLoading(false);
-  }, [user, isMember]);
+  }, [user, isMember, questionnaireId, questions.length]);
 
   useEffect(() => {
     if (!memberLoading && isMember) loadVotes();
@@ -176,7 +187,6 @@ export function useCda() {
       setDraft((prev) => {
         const next = { ...prev };
         for (const id of questionIds) {
-          // Non sovrascrivere se già votato diversamente
           if (!next[id]) {
             next[id] = { voto: "ok", proposta_testo: null };
           }
@@ -194,14 +204,14 @@ export function useCda() {
     const supabase = createClient();
     if (!supabase) return false;
 
-    // Controlla che tutte le domande abbiano risposta
-    const missing = ALL_QUESTIONS.filter((q) => !draft[q.id]);
+    const missing = questions.filter((q) => !draft[q.id]);
     if (missing.length > 0) return false;
 
     setSubmitting(true);
 
-    const rows = ALL_QUESTIONS.map((q) => ({
+    const rows = questions.map((q) => ({
       user_id: user.id,
+      questionnaire_id: questionnaireId,
       question_id: q.id,
       voto: draft[q.id].voto,
       proposta_testo: draft[q.id].proposta_testo,
@@ -210,7 +220,7 @@ export function useCda() {
 
     const { error } = await supabase
       .from("cda_voti")
-      .upsert(rows, { onConflict: "user_id,question_id" });
+      .upsert(rows, { onConflict: "user_id,question_id,questionnaire_id" });
 
     setSubmitting(false);
 
@@ -221,9 +231,8 @@ export function useCda() {
       return true;
     }
     return false;
-  }, [user, draft, loadVotes]);
+  }, [user, draft, loadVotes, questionnaireId, questions]);
 
-  // Controlla se il draft è diverso dai voti salvati
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(savedVotes);
 
   return {
