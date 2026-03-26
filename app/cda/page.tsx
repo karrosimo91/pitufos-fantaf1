@@ -4,11 +4,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { ArrowLeft, ChevronDown, ChevronRight, Check, X, MessageSquare, CheckCheck, Send } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Check, X, CheckCheck, Send } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useCda } from "../lib/use-cda";
-import { CDA_SECTIONS_V2, TOTAL_QUESTIONS_V2, CDA_QUESTIONNAIRE_V2_ID, CDA_QUESTIONNAIRE_V2_LABEL } from "../lib/cda-questions-v2";
-import { ALL_QUESTIONS_V2 } from "../lib/cda-questions-v2";
+import { CDA_SECTIONS_V2, TOTAL_QUESTIONS_V2, CDA_QUESTIONNAIRE_V2_ID, CDA_QUESTIONNAIRE_V2_LABEL, ALL_QUESTIONS_V2 } from "../lib/cda-questions-v2";
 import type { CdaQuestion } from "../lib/cda-questions";
 
 function VoteButton({
@@ -44,25 +43,8 @@ function QuestionCard({
   question: CdaQuestion;
   myVote?: { voto: string; proposta_testo: string | null };
   voteSummary?: { ok: number; ko: number; proposta: number; proposte_testi: string[] };
-  onVote: (voto: "ok" | "ko" | "proposta", testo?: string) => void;
+  onVote: (voto: "ok" | "ko", testo?: string) => void;
 }) {
-  const [showPropostaInput, setShowPropostaInput] = useState(false);
-  const [propostaTesto, setPropostaTesto] = useState(myVote?.proposta_testo || "");
-  const [showProposte, setShowProposte] = useState(false);
-
-  const handlePropostaClick = () => {
-    if (myVote?.voto === "proposta") {
-      setShowPropostaInput(!showPropostaInput);
-    } else {
-      setShowPropostaInput(true);
-    }
-  };
-
-  const handlePropostaConfirm = () => {
-    onVote("proposta", propostaTesto);
-    setShowPropostaInput(false);
-  };
-
   const s = voteSummary || { ok: 0, ko: 0, proposta: 0, proposte_testi: [] };
 
   return (
@@ -87,57 +69,12 @@ function QuestionCard({
           label="KO"
           onClick={() => onVote("ko")}
         />
-        <VoteButton
-          active={myVote?.voto === "proposta"}
-          color="bg-amber-500/20 text-amber-400"
-          icon={<MessageSquare size={12} />}
-          label="Proposta"
-          onClick={handlePropostaClick}
-        />
       </div>
 
-      {showPropostaInput && (
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={propostaTesto}
-            onChange={(e) => setPropostaTesto(e.target.value)}
-            placeholder="La tua proposta..."
-            maxLength={500}
-            className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500/30"
-          />
-          <button
-            onClick={handlePropostaConfirm}
-            className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-500/30 transition-all"
-          >
-            Conferma
-          </button>
-        </div>
-      )}
-
-      {/* Riepilogo voti (solo se ci sono voti salvati dagli altri) */}
-      {(s.ok > 0 || s.ko > 0 || s.proposta > 0) && (
+      {(s.ok > 0 || s.ko > 0) && (
         <div className="flex items-center gap-3 text-[10px]">
           {s.ok > 0 && <span className="text-emerald-400/60">OK: {s.ok}</span>}
           {s.ko > 0 && <span className="text-red-400/60">KO: {s.ko}</span>}
-          {s.proposta > 0 && (
-            <button
-              onClick={() => setShowProposte(!showProposte)}
-              className="text-amber-400/60 hover:text-amber-400 transition-all"
-            >
-              Proposte: {s.proposta} {showProposte ? "▾" : "▸"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {showProposte && s.proposte_testi.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {s.proposte_testi.map((t, i) => (
-            <div key={i} className="text-[11px] text-amber-400/50 bg-amber-500/[0.05] rounded px-2 py-1">
-              &quot;{t}&quot;
-            </div>
-          ))}
         </div>
       )}
     </div>
