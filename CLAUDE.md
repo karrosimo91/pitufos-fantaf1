@@ -10,7 +10,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - **Dati live:** OpenF1 abbonamento €9.90/mese, connessione WebSocket per real-time durante le gare
 - **Repo:** github.com/karrosimo91/pitufos-fantaf1
 
-## Regolamento v0.1 — Elementi confermati
+## Regolamento v1.0 — Approvato dal CDA
 
 ### Struttura
 - Ogni giocatore si chiama "Team Principal"
@@ -86,10 +86,6 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 **Aggiornamenti Previsioni:**
 - **Previsione Sicura:** 1 previsione dà punti comunque (indovini o no)
 - **Previsione Doppia:** punti x2 su 1 previsione
-
-### Bonus Automatici
-- **All-in Previsioni:** tutte e 6 le previsioni giuste = bonus automatico (punteggio DA DEFINIRE)
-- **Weekend Perfetto:** Primo Pilota vince + tutte previsioni giuste = super bonus (punteggio DA DEFINIRE)
 
 ### Deadline
 - Weekend normali: prima delle qualifiche (sabato) — hai visto FP1, FP2, FP3
@@ -172,16 +168,21 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)
-- 75 domande in 11 sezioni, voto OK/KO/Proposta, invio finale
-- Tabella `cda_voti` su Supabase
-- Membri CDA devono completare il questionario per poter confermare formazione/previsioni
+- Sistema versionato: `questionnaire_id` su tabella `cda_voti` (v1_regolamento, v2_modifica_punteggi)
+- Questionario attivo (bloccante) configurabile in `use-cda.ts` → `ACTIVE_QUESTIONNAIRE_ID`
+- Membri CDA devono completare il questionario attivo per poter confermare formazione/previsioni
 - Nota: `lega_members` ha PK composita (lega_id, user_id), NO colonna `id`
 
-## Live Scoring (pronto, non attivo)
-- 3 file implementati ma non collegati: `use-live-session.ts`, `use-live-scoring.ts`, `LiveDashboard.tsx`
-- Approccio: client-side polling OpenF1 ogni 15 sec
-- Richiede abbonamento OpenF1 €9.90/mese (in votazione CDA)
-- Per attivare: importare hooks + componente nel dashboard/gara page
+## Live Scoring (attivo)
+- WebSocket MQTT via `wss://mqtt.openf1.org:8084/mqtt` (OpenF1 Sponsor, €9.90/mese)
+- Token OAuth2 generato da `/api/openf1-token` (env vars: `OPENF1_USERNAME`, `OPENF1_PASSWORD`)
+- `use-live-session.ts`: rileva sessione attiva (polling REST ogni 60 sec)
+- `use-live-ws.ts`: connessione WebSocket MQTT, subscribe a v1/position, v1/race_control, v1/laps, v1/stints
+- `use-live-scoring.ts`: calcolo punti provvisori in tempo reale usando `scoring.ts`
+- `LiveTab.tsx`: componente UI con posizioni piloti, previsioni live, feed race control
+- Integrato in `/gara` con badge LIVE e tab auto-switch
+- Dati push istantanei, nessun polling durante la sessione
+- Debug mode: `/gara?debug_live=true` per testare con dati mock
 
 ## PWA
 - manifest.json, service worker (sw.js), icone PNG (192/512)
