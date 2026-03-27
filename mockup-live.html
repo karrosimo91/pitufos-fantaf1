@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Los Pitufos — Live Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;700;800&family=Oswald:wght@400;500;600;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a12;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Header Gara ─── */
+  .race-header {
+    background: linear-gradient(180deg, rgba(232,0,45,0.08) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding: 16px;
+    text-align: center;
+  }
+  .race-header .round {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+  }
+  .race-header .flag { font-size: 28px; margin: 6px 0; }
+  .race-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+  .race-header .circuit {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 2px;
+  }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(232,0,45,0.15);
+    border: 1px solid rgba(232,0,45,0.3);
+    color: #E8002D;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: #E8002D;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(232,0,45,0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 8px 4px rgba(232,0,45,0.3); }
+  }
+
+  /* ─── Tabs ─── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 16px;
+    margin-top: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    color: #E8002D;
+    border-bottom-color: #E8002D;
+  }
+
+  /* ─── Content ─── */
+  .content { padding: 16px; }
+
+  /* ─── Punteggio totale ─── */
+  .my-score {
+    background: linear-gradient(135deg, rgba(232,0,45,0.1) 0%, rgba(232,0,45,0.03) 100%);
+    border: 1px solid rgba(232,0,45,0.15);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .my-score .label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .my-score .points {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 42px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+  }
+  .my-score .breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+  .my-score .breakdown span { font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── Piloti Grid ─── */
+  .section-title {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .driver-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    transition: all 0.3s;
+  }
+  .driver-row.mine {
+    border-color: rgba(232,0,45,0.25);
+    background: rgba(232,0,45,0.04);
+  }
+  .driver-row.captain {
+    border-color: rgba(232,0,45,0.4);
+    background: rgba(232,0,45,0.06);
+    box-shadow: 0 0 12px rgba(232,0,45,0.08);
+  }
+  .driver-row.boosted {
+    border-color: rgba(245,158,11,0.4);
+    background: rgba(245,158,11,0.04);
+  }
+  .driver-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .driver-pos {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 800;
+    width: 24px;
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+  }
+  .driver-pos.top3 { color: #E8002D; }
+  .team-color {
+    width: 3px;
+    height: 28px;
+    border-radius: 2px;
+  }
+  .driver-info .name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .driver-info .team {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+  }
+  .driver-badge {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+  }
+  .badge-captain { background: rgba(232,0,45,0.2); color: #E8002D; }
+  .badge-boost { background: rgba(245,158,11,0.2); color: #f59e0b; }
+  .driver-points {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .pts-positive { color: #34d399; }
+  .pts-negative { color: #f87171; }
+  .pts-zero { color: rgba(255,255,255,0.15); }
+  .multiplier {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    margin-left: 2px;
+  }
+
+  /* ─── Previsioni ─── */
+  .previsioni-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .prev-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.5s;
+  }
+  .prev-card.correct {
+    background: rgba(52,211,153,0.06);
+    border-color: rgba(52,211,153,0.3);
+  }
+  .prev-card.wrong {
+    background: rgba(248,113,113,0.04);
+    border-color: rgba(248,113,113,0.15);
+  }
+  .prev-card.waiting {
+    border-color: rgba(255,255,255,0.06);
+  }
+  .prev-card .prev-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 4px;
+  }
+  .prev-card .prev-answer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .prev-card.correct .prev-answer { color: #34d399; }
+  .prev-card.wrong .prev-answer { color: #f87171; }
+  .prev-card.waiting .prev-answer { color: rgba(255,255,255,0.2); }
+  .prev-card .prev-pts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .prev-card.correct .prev-pts { color: rgba(52,211,153,0.6); }
+  .prev-card.wrong .prev-pts { color: rgba(248,113,113,0.4); }
+  .prev-card.waiting .prev-pts { color: rgba(255,255,255,0.1); }
+
+  .prev-card-wide {
+    grid-column: span 2;
+  }
+
+  /* ─── Race Control Feed ─── */
+  .rc-feed {
+    margin-bottom: 16px;
+  }
+  .rc-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-left: 2px solid rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+    font-size: 11px;
+    transition: all 0.3s;
+  }
+  .rc-msg.sc { border-left-color: #f59e0b; background: rgba(245,158,11,0.04); }
+  .rc-msg.vsc { border-left-color: #f59e0b; background: rgba(245,158,11,0.03); }
+  .rc-msg.rf { border-left-color: #E8002D; background: rgba(232,0,45,0.04); }
+  .rc-msg.green { border-left-color: #34d399; }
+  .rc-msg.penalty { border-left-color: #a78bfa; background: rgba(167,139,250,0.04); }
+  .rc-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    white-space: nowrap;
+    min-width: 40px;
+  }
+  .rc-text { color: rgba(255,255,255,0.6); }
+  .rc-text strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+
+  /* ─── Classifica Weekend ─── */
+  .classifica-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .classifica-row.me {
+    background: rgba(232,0,45,0.06);
+    border-color: rgba(232,0,45,0.2);
+  }
+  .classifica-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .classifica-pos {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 800;
+    width: 24px;
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+  }
+  .classifica-row.me .classifica-pos { color: #E8002D; }
+  .classifica-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .classifica-scuderia {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+  }
+  .classifica-pts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 800;
+    color: rgba(255,255,255,0.7);
+  }
+  .classifica-row.me .classifica-pts { color: #fff; }
+
+  /* ─── Bottom Nav ─── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(10,10,18,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 20px;
+  }
+  .nav-item {
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    font-weight: 600;
+  }
+  .nav-item.active { color: #E8002D; }
+  .nav-icon { font-size: 18px; margin-bottom: 2px; }
+
+  .spacer { height: 80px; }
+
+  /* ─── Tab switching ─── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .update-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.15);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 8px;
+  }
+  .update-dot {
+    width: 4px; height: 4px;
+    background: #34d399;
+    border-radius: 50%;
+    animation: pulse2 2s ease-in-out infinite;
+  }
+  @keyframes pulse2 {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER GARA ═══ -->
+<div class="race-header">
+  <div class="round">R03 / 24</div>
+  <div class="flag">🇦🇺</div>
+  <h1>AUSTRALIAN GRAND PRIX</h1>
+  <div class="circuit">Albert Park Circuit — Melbourne</div>
+  <div class="live-badge">
+    <span class="live-dot"></span>
+    LIVE — Gara Lap 42/58
+  </div>
+</div>
+
+<!-- ═══ TABS ═══ -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('live')">Live</div>
+  <div class="tab" onclick="switchTab('previsioni')">Previsioni</div>
+  <div class="tab" onclick="switchTab('classifica')">Classifica</div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<!-- TAB: LIVE                       -->
+<!-- ═══════════════════════════════ -->
+<div class="tab-content active" id="tab-live">
+<div class="content">
+
+  <!-- Punteggio provvisorio -->
+  <div class="my-score">
+    <div class="label">Punteggio provvisorio</div>
+    <div class="points">87</div>
+    <div class="breakdown">
+      <div>Piloti: <span>62</span></div>
+      <div>Previsioni: <span>25</span></div>
+    </div>
+    <div class="update-indicator">
+      <span class="update-dot"></span>
+      Aggiornato 3s fa
+    </div>
+  </div>
+
+  <!-- I tuoi piloti -->
+  <div class="section-title">I tuoi piloti (5/5)</div>
+
+  <div class="driver-row captain">
+    <div class="driver-left">
+      <div class="driver-pos top3">1</div>
+      <div class="team-color" style="background: #ff8000"></div>
+      <div class="driver-info">
+        <div class="name">Norris <span class="driver-badge badge-captain">CAP x2</span></div>
+        <div class="team">McLaren</div>
+      </div>
+    </div>
+    <div>
+      <span class="driver-points pts-positive">+50</span>
+      <span class="multiplier">×2</span>
+    </div>
+  </div>
+
+  <div class="driver-row mine">
+    <div class="driver-left">
+      <div class="driver-pos top3">3</div>
+      <div class="team-color" style="background: #e80020"></div>
+      <div class="driver-info">
+        <div class="name">Leclerc</div>
+        <div class="team">Ferrari</div>
+      </div>
+    </div>
+    <span class="driver-points pts-positive">+19</span>
+  </div>
+
+  <div class="driver-row mine">
+    <div class="driver-left">
+      <div class="driver-pos">7</div>
+      <div class="team-color" style="background: #00d2be"></div>
+      <div class="driver-info">
+        <div class="name">Russell</div>
+        <div class="team">Mercedes</div>
+      </div>
+    </div>
+    <span class="driver-points pts-positive">+8</span>
+  </div>
+
+  <div class="driver-row boosted">
+    <div class="driver-left">
+      <div class="driver-pos">11</div>
+      <div class="team-color" style="background: #0090ff"></div>
+      <div class="driver-info">
+        <div class="name">Hadjar <span class="driver-badge badge-boost">BOOST x3</span></div>
+        <div class="team">Red Bull</div>
+      </div>
+    </div>
+    <div>
+      <span class="driver-points pts-zero">0</span>
+      <span class="multiplier">×3</span>
+    </div>
+  </div>
+
+  <div class="driver-row mine" style="border-color: rgba(248,113,113,0.2); background: rgba(248,113,113,0.03);">
+    <div class="driver-left">
+      <div class="driver-pos" style="color: #f87171;">DNF</div>
+      <div class="team-color" style="background: #006f62"></div>
+      <div class="driver-info">
+        <div class="name" style="color: rgba(255,255,255,0.4); text-decoration: line-through;">Alonso</div>
+        <div class="team">Aston Martin</div>
+      </div>
+    </div>
+    <span class="driver-points pts-negative">-10</span>
+  </div>
+
+  <!-- Previsioni Mini -->
+  <div class="section-title" style="margin-top: 16px;">Previsioni live</div>
+  <div class="previsioni-grid">
+    <div class="prev-card correct">
+      <div class="prev-label">Safety Car</div>
+      <div class="prev-answer">SI ✓</div>
+      <div class="prev-pts">+4 pts</div>
+    </div>
+    <div class="prev-card wrong">
+      <div class="prev-label">VSC</div>
+      <div class="prev-answer">NO ✗</div>
+      <div class="prev-pts">0 pts</div>
+    </div>
+    <div class="prev-card waiting">
+      <div class="prev-label">Red Flag</div>
+      <div class="prev-answer">NO — in attesa</div>
+      <div class="prev-pts">+3 pts se giusto</div>
+    </div>
+    <div class="prev-card correct">
+      <div class="prev-label">Gomme Wet</div>
+      <div class="prev-answer">NO ✓</div>
+      <div class="prev-pts">+2 pts</div>
+    </div>
+    <div class="prev-card waiting">
+      <div class="prev-label">Pole vince</div>
+      <div class="prev-answer">SI — in attesa</div>
+      <div class="prev-pts">+4 pts se giusto</div>
+    </div>
+    <div class="prev-card correct">
+      <div class="prev-label">Numero DNF</div>
+      <div class="prev-answer">2 ✓ (per ora)</div>
+      <div class="prev-pts">+5 pts se finale</div>
+    </div>
+  </div>
+
+  <!-- Race Control Feed -->
+  <div class="section-title">Race Control</div>
+  <div class="rc-feed">
+    <div class="rc-msg green">
+      <div class="rc-time">L42</div>
+      <div class="rc-text"><strong>GREEN FLAG</strong> — Track clear</div>
+    </div>
+    <div class="rc-msg sc">
+      <div class="rc-time">L38</div>
+      <div class="rc-text"><strong>SAFETY CAR</strong> deployed</div>
+    </div>
+    <div class="rc-msg penalty">
+      <div class="rc-time">L35</div>
+      <div class="rc-text"><strong>PENALTY</strong> — Stroll: 5 sec time penalty (track limits)</div>
+    </div>
+    <div class="rc-msg" style="border-left-color: #f87171;">
+      <div class="rc-time">L33</div>
+      <div class="rc-text"><strong>RETIRED</strong> — Alonso (mechanical)</div>
+    </div>
+    <div class="rc-msg vsc">
+      <div class="rc-time">L28</div>
+      <div class="rc-text"><strong>VSC</strong> deployed — debris on track</div>
+    </div>
+    <div class="rc-msg" style="border-left-color: #f87171;">
+      <div class="rc-time">L15</div>
+      <div class="rc-text"><strong>RETIRED</strong> — Bottas (collision damage)</div>
+    </div>
+    <div class="rc-msg green">
+      <div class="rc-time">L01</div>
+      <div class="rc-text"><strong>LIGHTS OUT</strong> — Race started</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<!-- TAB: PREVISIONI                 -->
+<!-- ═══════════════════════════════ -->
+<div class="tab-content" id="tab-previsioni">
+<div class="content">
+  <div class="section-title">Le tue previsioni — Round 3</div>
+  <p style="font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 12px;">Stato aggiornato in tempo reale</p>
+
+  <div class="previsioni-grid">
+    <div class="prev-card correct" style="padding: 16px;">
+      <div class="prev-label">Safety Car</div>
+      <div class="prev-answer" style="font-size: 18px;">SI ✓</div>
+      <div class="prev-pts" style="font-size: 13px;">+4 punti</div>
+    </div>
+    <div class="prev-card wrong" style="padding: 16px;">
+      <div class="prev-label">Virtual Safety Car</div>
+      <div class="prev-answer" style="font-size: 18px;">NO ✗</div>
+      <div class="prev-pts" style="font-size: 13px;">0 punti</div>
+    </div>
+    <div class="prev-card waiting" style="padding: 16px;">
+      <div class="prev-label">Red Flag</div>
+      <div class="prev-answer" style="font-size: 18px;">NO</div>
+      <div class="prev-pts" style="font-size: 13px;">in attesa...</div>
+    </div>
+    <div class="prev-card correct" style="padding: 16px;">
+      <div class="prev-label">Gomme Wet</div>
+      <div class="prev-answer" style="font-size: 18px;">NO ✓</div>
+      <div class="prev-pts" style="font-size: 13px;">+2 punti</div>
+    </div>
+    <div class="prev-card waiting" style="padding: 16px;">
+      <div class="prev-label">Pole vince la gara</div>
+      <div class="prev-answer" style="font-size: 18px;">SI</div>
+      <div class="prev-pts" style="font-size: 13px;">in attesa...</div>
+    </div>
+    <div class="prev-card correct prev-card-wide" style="padding: 16px;">
+      <div class="prev-label">Numero DNF</div>
+      <div class="prev-answer" style="font-size: 18px;">2 ✓ (provvisorio)</div>
+      <div class="prev-pts" style="font-size: 13px;">+5 punti se resta così</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 12px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: #34d399;">+11</div>
+    <div style="font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.3); text-transform: uppercase;">punti previsioni provvisori</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<!-- TAB: CLASSIFICA                 -->
+<!-- ═══════════════════════════════ -->
+<div class="tab-content" id="tab-classifica">
+<div class="content">
+  <div class="section-title">Classifica Weekend — Round 3 (provvisoria)</div>
+  <p style="font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 12px;">Top 10 prendono punti Classifica Reale</p>
+
+  <div class="classifica-row">
+    <div class="classifica-left">
+      <div class="classifica-pos" style="color: #E8002D;">1</div>
+      <div>
+        <div class="classifica-name">McLaren Supremacy</div>
+        <div class="classifica-scuderia">@PapaRossi</div>
+      </div>
+    </div>
+    <div class="classifica-pts">112</div>
+  </div>
+
+  <div class="classifica-row me">
+    <div class="classifica-left">
+      <div class="classifica-pos">2</div>
+      <div>
+        <div class="classifica-name">Scuderia Pitufa</div>
+        <div class="classifica-scuderia">@TuNome</div>
+      </div>
+    </div>
+    <div class="classifica-pts">87</div>
+  </div>
+
+  <div class="classifica-row">
+    <div class="classifica-left">
+      <div class="classifica-pos">3</div>
+      <div>
+        <div class="classifica-name">Red Bull Destroyers</div>
+        <div class="classifica-scuderia">@MarcoF1</div>
+      </div>
+    </div>
+    <div class="classifica-pts">83</div>
+  </div>
+
+  <div class="classifica-row">
+    <div class="classifica-left">
+      <div class="classifica-pos">4</div>
+      <div>
+        <div class="classifica-name">Ferrari Forever</div>
+        <div class="classifica-scuderia">@GiuliaSpeed</div>
+      </div>
+    </div>
+    <div class="classifica-pts">71</div>
+  </div>
+
+  <div class="classifica-row">
+    <div class="classifica-left">
+      <div class="classifica-pos">5</div>
+      <div>
+        <div class="classifica-name">Pit Stop Kings</div>
+        <div class="classifica-scuderia">@AndreaGP</div>
+      </div>
+    </div>
+    <div class="classifica-pts">58</div>
+  </div>
+</div>
+</div>
+
+<div class="spacer"></div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-icon">📊</div>Dashboard</div>
+  <div class="nav-item active"><div class="nav-icon">🏎️</div>Gara</div>
+  <div class="nav-item"><div class="nav-icon">💰</div>Mercato</div>
+  <div class="nav-item"><div class="nav-icon">🏆</div>Classifica</div>
+  <div class="nav-item"><div class="nav-icon">⋯</div>Altro</div>
+</div>
+
+<script>
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>
