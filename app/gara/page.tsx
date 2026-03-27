@@ -14,6 +14,7 @@ import { PREVISIONI_PUNTI } from "../lib/types";
 import { useCdaCompleted } from "../lib/use-cda";
 import { useLiveSession } from "../lib/use-live-session";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
 import {
@@ -174,7 +175,15 @@ const DriverRow = memo(function DriverRow({
 // PAGINA GARA
 // ═══════════════════════════════════════════
 
-export default function GaraPage() {
+export default function GaraPageWrapper() {
+  return (
+    <Suspense>
+      <GaraPage />
+    </Suspense>
+  );
+}
+
+function GaraPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const currentRound = getCurrentRound();
