@@ -12,6 +12,9 @@ import { RACES_2026, getNextRace, getCurrentRound, getDeadline, isAfterDeadline,
 import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import { useCdaCompleted } from "../lib/use-cda";
+import { useLiveSession } from "../lib/use-live-session";
+import dynamic from "next/dynamic";
+const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
 import {
   calcolaPuntiWeekend,
   type RaceWeekendResults,
@@ -63,7 +66,7 @@ function getTimeUntil(dateStr: string) {
   };
 }
 
-type Tab = "formazione" | "previsioni" | "dettaglio";
+type Tab = "formazione" | "previsioni" | "dettaglio" | "live";
 
 const PREVISIONE_LABELS: Record<string, string> = {
   safetyCar: "Safety Car",
@@ -183,6 +186,7 @@ export default function GaraPage() {
   const sq = useSquadra(viewRound);
   const prev = usePrevisioni(viewRound);
   const { canPlay: cdaCanPlay } = useCdaCompleted();
+  const { isLive, session: liveSession } = useLiveSession();
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -216,6 +220,13 @@ export default function GaraPage() {
     setMyWeekendScore(null);
     setTab("formazione");
   }, [viewRound]);
+
+  // Auto-switch al tab Live quando c'è sessione attiva
+  useEffect(() => {
+    if (isLive && isCurrentRound && tab === "formazione") {
+      setTab("live");
+    }
+  }, [isLive, isCurrentRound]);
 
   // Carica risultati post-gara se disponibili
   useEffect(() => {
@@ -394,6 +405,12 @@ export default function GaraPage() {
               {hasResults && (
                 <span className="bg-green-500/15 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">COMPLETATO</span>
               )}
+              {isLive && isCurrentRound && (
+                <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
+                  <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
+                  LIVE
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -417,10 +434,11 @@ export default function GaraPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
-          {(["formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = { formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
+          {([...(isLive && isCurrentRound ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = { live: "Live", formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
+            if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />;
             if (t === "dettaglio" && hasResults) indicator = <Trophy size={12} className="text-[#E8002D]" />;
             if (t === "formazione" && sq.confirmed) indicator = <Check size={12} className="text-green-400" />;
             if (t === "previsioni" && prev.confirmed) indicator = <Check size={12} className="text-green-400" />;
@@ -482,6 +500,19 @@ export default function GaraPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* ═══ TAB LIVE ═══ */}
+        {tab === "live" && isLive && liveSession && (
+          <LiveTab
+            sessionKey={liveSession.sessionKey}
+            sessionType={liveSession.sessionName}
+            driverNumbers={sq.driverNumbers}
+            primoPilota={sq.primoPilota}
+            chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}
+            chipPrevisioni={prev.chipAttivo ? { chipAttivo: prev.chipAttivo, chipTarget: prev.chipTarget } : null}
+            previsioni={prev.previsioni}
+          />
         )}
 
         {/* ═══ TAB FORMAZIONE ═══ */}
