@@ -45,13 +45,13 @@ function PilotaLiveRow({ p, primoPilota, chipPiloti }: {
           {p.isDnf ? "DNF" : `P${p.position}`}
         </div>
         {driver && (
-          <div className="w-[3px] h-7 rounded-full" style={{ backgroundColor: `#${driver.team_colour || "555"}` }} />
+          <div className="w-[3px] h-7 rounded-full" style={{ backgroundColor: `#${driver.teamColour || "555"}` }} />
         )}
         <div>
           <div className={`text-[13px] font-semibold ${p.isDnf ? "text-white/40 line-through" : ""}`}>
-            {driver?.name_acronym || `#${p.driver_number}`}
+            {driver?.name || `#${p.driver_number}`}
           </div>
-          <div className="text-[10px] text-white/30">{driver?.team_name || ""}</div>
+          <div className="text-[10px] text-white/30">{driver?.team || ""}</div>
         </div>
         {p.isFastestLap && (
           <span className="text-[8px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">FL</span>
