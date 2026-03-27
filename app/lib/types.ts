@@ -77,8 +77,8 @@ export interface Lega {
 
 // ─── Punteggi ───
 export const PUNTI_QUALIFICA = {
-  1: 8, 2: 6, 3: 5, 4: 4, 5: 4,
-  6: 3, 7: 3, 8: 3, 9: 3, 10: 3,
+  1: 8, 2: 6, 3: 4, 4: 3, 5: 3,
+  6: 2, 7: 2, 8: 2, 9: 2, 10: 2,
   11: 1, 12: 1, 13: 1, 14: 1, 15: 1, 16: 1,
   17: -1, 18: -1, 19: -1, 20: -1, 21: -1, 22: -1,
 } as Record<number, number>;
@@ -91,7 +91,7 @@ export const PUNTI_SPRINT_SHOOTOUT = {
 } as Record<number, number>;
 
 export const PUNTI_SPRINT = {
-  1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1,
+  1: 8, 2: 5, 3: 4, 4: 3, 5: 2, 6: 0, 7: 0, 8: 0,
 } as Record<number, number>;
 
 export const PUNTI_GARA = {
@@ -103,6 +103,6 @@ export const PREVISIONI_PUNTI = {
   virtualSafetyCar: { si: 5, no: 5 },
   redFlag: { si: 7, no: 3 },
   gommeWet: { si: 8, no: 2 },
-  poleVince: { si: 3, no: 7 },
-  numeroDnf: { esatto: 8 },
+  poleVince: { si: 4, no: 7 },
+  numeroDnf: { esatto: 5 },
 };

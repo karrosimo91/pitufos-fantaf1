@@ -79,9 +79,9 @@ export default function InfoPage() {
             <PuntiTable rows={[
               ["Pole (P1)", "+8"],
               ["P2", "+6"],
-              ["P3", "+5"],
-              ["P4 - P5", "+4"],
-              ["P6 - P10 (Q3)", "+3"],
+              ["P3", "+4"],
+              ["P4 - P5", "+3"],
+              ["P6 - P10 (Q3)", "+2"],
               ["P11 - P16 (Q2)", "+1"],
               ["P17 - P22 (Q1)", "-1"],
               ["NC / DSQ / No tempo", "-5"],
@@ -106,13 +106,11 @@ export default function InfoPage() {
           <Accordion title="Punteggi Sprint Race">
             <PuntiTable rows={[
               ["P1", "+8"],
-              ["P2", "+7"],
-              ["P3", "+6"],
-              ["P4", "+5"],
-              ["P5", "+4"],
-              ["P6", "+3"],
-              ["P7", "+2"],
-              ["P8", "+1"],
+              ["P2", "+5"],
+              ["P3", "+4"],
+              ["P4", "+3"],
+              ["P5", "+2"],
+              ["P6 - P8", "0"],
               ["P9 - P22", "0"],
               ["Giro veloce sprint", "+2"],
               ["DNF sprint", "-10"],
@@ -135,7 +133,7 @@ export default function InfoPage() {
               ["P10", "+1"],
               ["P11 - P22", "0"],
               ["Posizione guadagnata vs griglia", "+1 /pos"],
-              ["Posizione persa vs griglia", "-0.5 /pos"],
+              ["Posizione persa vs griglia", "-1 /pos"],
               ["Giro veloce", "+3"],
               ["Driver of the Day", "+5"],
               ["DNF / Ritiro", "-15"],
@@ -155,9 +153,9 @@ export default function InfoPage() {
               ["Red Flag: NO", "+3"],
               ["Gomme wet: SI", "+8"],
               ["Gomme wet: NO", "+2"],
-              ["Pole vince: SI", "+3"],
+              ["Pole vince: SI", "+4"],
               ["Pole vince: NO", "+7"],
-              ["Numero DNF esatto", "+8"],
+              ["Numero DNF esatto", "+5"],
             ]} />
             <p className="text-xs text-white/30">Previsione sbagliata = 0 punti.</p>
           </Accordion>

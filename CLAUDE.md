@@ -31,9 +31,9 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ### Punteggi Qualifica GP
 - Pole: +8
 - P2: +6
-- P3: +5
-- P4-P5: +4
-- P6-P10 (resto Q3): +3
+- P3: +4
+- P4-P5: +3
+- P6-P10 (resto Q3): +2
 - P11-P16 (Q2): +1
 - P17-P22 (Q1): -1
 - NC/DSQ/No tempo: -5
@@ -49,7 +49,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - NC: -3
 
 ### Punteggi Sprint Race
-- P1: +8, P2: +7, P3: +6, P4: +5, P5: +4, P6: +3, P7: +2, P8: +1, P9-P22: 0
+- P1: +8, P2: +5, P3: +4, P4: +3, P5: +2, P6-P8: 0, P9-P22: 0
 - Giro veloce sprint: +2
 - DNF sprint: -10
 - NO posizioni guadagnate/perse in sprint
@@ -57,7 +57,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ### Punteggi Gara (Gran Premio)
 - P1: +25, P2: +18, P3: +15, P4: +12, P5: +10, P6: +8, P7: +6, P8: +4, P9: +2, P10: +1, P11-P22: 0
 - Posizione guadagnata vs griglia: +1 per posizione
-- Posizione persa vs griglia: -0.5 per posizione
+- Posizione persa vs griglia: -1 per posizione
 - Giro veloce: +3
 - Driver of the Day: +5
 - DNF/Ritiro: -15
@@ -69,8 +69,8 @@ Punti differenziati SI vs NO (evento raro premia di più):
 - Virtual Safety Car: SI +5 / NO +5 / Sbagliata 0
 - Red Flag: SI +7 / NO +3 / Sbagliata 0
 - Gomme wet usate: SI +8 / NO +2 / Sbagliata 0
-- Pole vince la gara: SI +3 / NO +7 / Sbagliata 0
-- Numero DNF esatto: +8 se indovini / 0 se sbagli
+- Pole vince la gara: SI +4 / NO +7 / Sbagliata 0
+- Numero DNF esatto: +5 se indovini / 0 se sbagli
 
 ### Aggiornamenti (Chip) — dalla fabbrica
 Ogni chip ha 2 utilizzi: 1 prima della pausa estiva, 1 dopo. Se non lo usi, scade.

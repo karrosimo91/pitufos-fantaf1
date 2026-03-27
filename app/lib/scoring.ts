@@ -88,7 +88,7 @@ export function calcolaGara(result: DriverResult): number {
       if (diff > 0) {
         punti += diff * 1; // +1 per posizione guadagnata
       } else if (diff < 0) {
-        punti += diff * 0.5; // -0.5 per posizione persa
+        punti += diff * 1; // -1 per posizione persa
       }
     }
   }
