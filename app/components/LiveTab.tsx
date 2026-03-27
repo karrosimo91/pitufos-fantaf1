@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useLiveScoring, type LivePilotaScore, type LivePrevisioneStatus } from "../lib/use-live-scoring";
 import { type LiveRaceControl } from "../lib/use-live-ws";
 import { getDriverByNumber } from "../lib/drivers-data";
@@ -183,6 +184,7 @@ function useMockData(driverNumbers: number[], primoPilota: number | null, chipPi
 export default function LiveTab({
   sessionKey,
   sessionType,
+  meetingKey,
   driverNumbers,
   primoPilota,
   chipPiloti,
@@ -193,6 +195,7 @@ export default function LiveTab({
 }: {
   sessionKey: number;
   sessionType: string;
+  meetingKey?: number;
   driverNumbers: number[];
   primoPilota: number | null;
   chipPiloti: ChipPilotiConfig | null;
@@ -208,9 +211,47 @@ export default function LiveTab({
   qualifyingPole?: number | null;
   debug?: boolean;
 }) {
+  // Fetch grid positions dalla qualifica (per posizioni guadagnate/perse in gara)
+  const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
+  useEffect(() => {
+    if (debug || !meetingKey) return;
+    const isRaceSession = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint");
+    if (!isRaceSession) return;
+
+    (async () => {
+      try {
+        // Trova la sessione qualifica di questo meeting
+        const sessRes = await fetch(`https://api.openf1.org/v1/sessions?meeting_key=${meetingKey}`, { cache: "no-store" });
+        if (!sessRes.ok) return;
+        const sessions = await sessRes.json();
+        const qualiSession = sessions.find((s: { session_name: string }) =>
+          s.session_name?.toLowerCase() === "qualifying"
+        );
+        if (!qualiSession) return;
+
+        // Fetch posizioni qualifica
+        const posRes = await fetch(`https://api.openf1.org/v1/position?session_key=${qualiSession.session_key}`, { cache: "no-store" });
+        if (!posRes.ok) return;
+        const posData = await posRes.json();
+
+        // Prendi l'ultima posizione per ogni pilota (risultato finale qualifica)
+        const grid = new Map<number, number>();
+        for (const p of posData) {
+          if (p.driver_number && p.position) {
+            const existing = grid.get(p.driver_number);
+            if (!existing || p.date > (posData.find((x: { driver_number: number; position: number }) => x.driver_number === p.driver_number && x.position === existing)?.date || "")) {
+              grid.set(p.driver_number, p.position);
+            }
+          }
+        }
+        setGridPositions(grid);
+      } catch { /* non bloccante */ }
+    })();
+  }, [meetingKey, sessionType, debug]);
+
   const realLive = useLiveScoring(
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
-    chipPiloti, chipPrevisioni, previsioni, qualifyingPole
+    chipPiloti, chipPrevisioni, previsioni, qualifyingPole, gridPositions
   );
   const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
   const live = debug ? mockLive : realLive;

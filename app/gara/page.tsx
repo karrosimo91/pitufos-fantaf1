@@ -521,6 +521,7 @@ function GaraPage() {
           <LiveTab
             sessionKey={liveSession.sessionKey}
             sessionType={liveSession.sessionName}
+            meetingKey={liveSession.meetingKey}
             driverNumbers={sq.driverNumbers}
             primoPilota={sq.primoPilota}
             chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}

@@ -88,6 +88,7 @@ export function useLiveScoring(
     numeroDnf: number | null;
   },
   qualifyingPole?: number | null, // driver_number del pole sitter (per "pole vince")
+  gridPositions?: Map<number, number>, // driver_number → grid position (dalla qualifica)
 ) {
   const { positions, raceControl, fastestLap, stints, connected } = useLiveWebSocket(sessionKey);
 
@@ -132,8 +133,10 @@ export function useLiveScoring(
         };
         puntiBase = calcolaSprint(driverResult);
       } else if (isRace) {
+        const grid = gridPositions?.get(driverNum);
         const driverResult: DriverResult = {
           driver_number: driverNum, position, dnf: isDnf,
+          grid_position: grid,
           fastest_lap: isFastestLap, driver_of_the_day: false, penalty: false,
         };
         puntiBase = calcolaGara(driverResult);
@@ -240,7 +243,7 @@ export function useLiveScoring(
       connected,
     };
   }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected,
-    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni, qualifyingPole]);
+    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni, qualifyingPole, gridPositions]);
 
   return result;
 }
