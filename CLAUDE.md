@@ -169,6 +169,29 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - `/current/driverstandings.json` → classifica piloti
 - `/current/constructorstandings.json` → classifica costruttori
 
+## CDA Los Pitufos
+- Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)
+- 75 domande in 11 sezioni, voto OK/KO/Proposta, invio finale
+- Tabella `cda_voti` su Supabase
+- Membri CDA devono completare il questionario per poter confermare formazione/previsioni
+- Nota: `lega_members` ha PK composita (lega_id, user_id), NO colonna `id`
+
+## Live Scoring (pronto, non attivo)
+- 3 file implementati ma non collegati: `use-live-session.ts`, `use-live-scoring.ts`, `LiveDashboard.tsx`
+- Approccio: client-side polling OpenF1 ogni 15 sec
+- Richiede abbonamento OpenF1 €9.90/mese (in votazione CDA)
+- Per attivare: importare hooks + componente nel dashboard/gara page
+
+## PWA
+- manifest.json, service worker (sw.js), icone PNG (192/512)
+- Installabile da Safari → Aggiungi alla schermata Home
+- RegisterSW.tsx nel layout
+
+## Email Reminder (pronto, non attivo)
+- API `/api/send-reminders` implementata con Resend
+- NON attiva: serve dominio verificato per mandare email a tutti
+- Vercel Cron non utilizzabile su piano Hobby (solo 1/giorno)
+
 ## Design
 - Tema scuro, colore primario #E8002D (rosso F1)
 - Font: Oswald per titoli, JetBrains Mono per numeri, Inter per testo
