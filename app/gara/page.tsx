@@ -40,6 +40,7 @@ type PrevisioneKey = (typeof PREVISIONI_CONFIG)[number]["key"];
 const CHIP_PILOTI = [
   { id: "boost", label: "Boost Mode", desc: "Un pilota fa x3 (non il Capitano)", icon: Zap },
   { id: "halo", label: "Halo", desc: "Minimo 0 punti se va in negativo", icon: Shield },
+  { id: "scudo", label: "Scudo Capitano", desc: "Capitano x2 solo bonus, malus x1", icon: ShieldCheck },
   { id: "sesto", label: "Sesto Uomo", desc: "6° pilota temporaneo", icon: Users },
   { id: "wildcard", label: "Wildcard", desc: "Cambi illimitati senza penalità", icon: Shuffle },
 ];
@@ -74,7 +75,7 @@ const PREVISIONE_LABELS: Record<string, string> = {
 };
 
 const CHIP_LABELS: Record<string, string> = {
-  boost: "Boost Mode x3", halo: "Halo", sesto: "Sesto Uomo", wildcard: "Wildcard",
+  boost: "Boost Mode x3", halo: "Halo", scudo: "Scudo Capitano", sesto: "Sesto Uomo", wildcard: "Wildcard",
   sicura: "Prev. Sicura", doppia: "Prev. Doppia",
 };
 

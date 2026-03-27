@@ -26,7 +26,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ### Primo Pilota (Capitano)
 - Ogni weekend scegli obbligatoriamente 1 pilota come Primo Pilota
 - Punteggio x2 (bonus E malus)
-- Se il Primo Pilota fa DNF (-15), il malus raddoppiato diventa -30
+- Se il Primo Pilota fa DNF (-10), il malus raddoppiato diventa -20
 
 ### Punteggi Qualifica GP
 - Pole: +8
@@ -51,7 +51,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ### Punteggi Sprint Race
 - P1: +8, P2: +5, P3: +4, P4: +3, P5: +2, P6-P8: 0, P9-P22: 0
 - Giro veloce sprint: +2
-- DNF sprint: -10
+- DNF sprint: -5
 - NO posizioni guadagnate/perse in sprint
 
 ### Punteggi Gara (Gran Premio)
@@ -60,7 +60,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - Posizione persa vs griglia: -1 per posizione
 - Giro veloce: +3
 - Driver of the Day: +5
-- DNF/Ritiro: -15
+- DNF/Ritiro: -10
 - Penalità in gara/post gara: -5
 
 ### Previsioni (6 per weekend)
@@ -79,6 +79,7 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 **Aggiornamenti Piloti:**
 - **Boost Mode (x3):** un pilota DIVERSO dal Primo Pilota fa x3 per tutto il weekend
 - **Halo:** se un tuo pilota va in negativo, il minimo è 0 punti
+- **Scudo Capitano:** Primo Pilota x2 solo sui bonus, malus restano x1
 - **Sesto Uomo:** aggiungi un 6° pilota temporaneo per un weekend (qualsiasi pilota)
 - **Wildcard:** cambi illimitati senza penalità per quel round
 
@@ -106,8 +107,8 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 4. ~~Budget~~ — CHIUSO: 100 Soldini confermati
 5. ~~All-in Previsioni~~ — CHIUSO: rimosso
 6. ~~Weekend Perfetto~~ — CHIUSO: rimosso
-7. Scudo Capitano: sarà Aggiornamento Piloti extra (x2 solo bonus, malus x1) — IN ATTESA decisione CDA
-8. Algoritmo variazione quotazioni: proposta a fasce (≥40: +3, 25-39: +2, 10-24: +1, 0-9: 0, -1/-10: -1, ≤-11: -2, min 5, max 45) — IN ATTESA decisione CDA
+7. ~~Scudo Capitano~~ — CHIUSO: approvato CDA, implementato come chip piloti (x2 solo bonus, malus x1)
+8. ~~Algoritmo variazione quotazioni~~ — CHIUSO: approvato CDA, da implementare (fasce: ≥40: +3, 25-39: +2, 10-24: +1, 0-9: 0, -1/-10: -1, ≤-11: -2, min 5, max 45)
 
 ## Quotazioni Piloti 2026 (confermate)
 Budget: 100 Soldini, 5 piloti per scuderia.

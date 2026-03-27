@@ -113,7 +113,7 @@ export default function InfoPage() {
               ["P6 - P8", "0"],
               ["P9 - P22", "0"],
               ["Giro veloce sprint", "+2"],
-              ["DNF sprint", "-10"],
+              ["DNF sprint", "-5"],
             ]} />
             <p className="text-xs text-white/30">Nessun punto per posizioni guadagnate/perse in sprint.</p>
           </Accordion>
@@ -136,7 +136,7 @@ export default function InfoPage() {
               ["Posizione persa vs griglia", "-1 /pos"],
               ["Giro veloce", "+3"],
               ["Driver of the Day", "+5"],
-              ["DNF / Ritiro", "-15"],
+              ["DNF / Ritiro", "-10"],
               ["Penalita in gara", "-5"],
             ]} />
           </Accordion>
@@ -169,6 +169,7 @@ export default function InfoPage() {
             <PuntiTable rows={[
               ["Boost Mode (x3)", "Un pilota diverso dal Capitano fa x3"],
               ["Halo", "Se un pilota va in negativo, minimo 0 punti"],
+              ["Scudo Capitano", "Capitano x2 solo bonus, malus restano x1"],
               ["Sesto Uomo", "6o pilota temporaneo per un weekend"],
               ["Wildcard", "Cambi illimitati senza penalita"],
             ]} />

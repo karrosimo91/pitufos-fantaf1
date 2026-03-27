@@ -37,7 +37,7 @@ export interface RaceWeekendResults {
 // ─── Configurazione chip piloti ───
 
 export interface ChipPilotiConfig {
-  chipPiloti: string | null;       // "boost" | "halo" | "sostituzione" | "sesto" | null
+  chipPiloti: string | null;       // "boost" | "halo" | "scudo" | "sesto" | "wildcard" | null
   chipPilotiTarget: number | null; // driver_number target per boost
   sestoUomo: number | null;        // driver_number del 6° pilota
 }
@@ -66,7 +66,7 @@ export function calcolaSprintShootout(position: number, nc = false): number {
 // ─── Calcolo punteggio sprint ───
 
 export function calcolaSprint(result: DriverResult): number {
-  if (result.dnf) return -10;
+  if (result.dnf) return -5;
   let punti = PUNTI_SPRINT[result.position] ?? 0;
   if (result.fastest_lap) punti += 2;
   return punti;
@@ -78,7 +78,7 @@ export function calcolaGara(result: DriverResult): number {
   let punti = 0;
 
   if (result.dnf) {
-    punti -= 15;
+    punti -= 10;
   } else {
     punti += PUNTI_GARA[result.position] ?? 0;
 
@@ -230,7 +230,14 @@ export function calcolaPuntiWeekend(
     if (isPrimo) moltiplicatore = 2;
     if (isBoosted) moltiplicatore = 3;
 
-    let puntiFinali = puntiBase * moltiplicatore;
+    let puntiFinali: number;
+
+    // Chip: Scudo Capitano — Primo Pilota x2 solo bonus, malus x1
+    if (isPrimo && chipPiloti?.chipPiloti === "scudo") {
+      puntiFinali = puntiBase > 0 ? puntiBase * 2 : puntiBase;
+    } else {
+      puntiFinali = puntiBase * moltiplicatore;
+    }
 
     // Chip: Halo — minimo 0 punti se negativo
     let haloApplicato = false;
