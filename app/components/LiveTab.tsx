@@ -1,10 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLiveScoring, type LivePilotaScore, type LivePrevisioneStatus } from "../lib/use-live-scoring";
-import { type LiveRaceControl } from "../lib/use-live-ws";
+import { useLiveWebSocket, type LiveRaceControl } from "../lib/use-live-ws";
 import { getDriverByNumber } from "../lib/drivers-data";
 import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff } from "lucide-react";
-import type { ChipPilotiConfig, ChipPrevisioniConfig } from "../lib/scoring";
+import { createClient, isSupabaseConfigured } from "../lib/supabase";
+import {
+  calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
+  type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig,
+} from "../lib/scoring";
 
 // ─── Sub-components ───
 
@@ -181,10 +185,22 @@ function useMockData(driverNumbers: number[], primoPilota: number | null, chipPi
   };
 }
 
+// ─── Tipo classifica ───
+
+interface ClassificaEntry {
+  userId: string;
+  scuderiaName: string;
+  tpName: string;
+  points: number;
+  isMe: boolean;
+}
+
 export default function LiveTab({
   sessionKey,
   sessionType,
   meetingKey,
+  round,
+  userId,
   driverNumbers,
   primoPilota,
   chipPiloti,
@@ -196,6 +212,8 @@ export default function LiveTab({
   sessionKey: number;
   sessionType: string;
   meetingKey?: number;
+  round: number;
+  userId?: string;
   driverNumbers: number[];
   primoPilota: number | null;
   chipPiloti: ChipPilotiConfig | null;
@@ -249,14 +267,141 @@ export default function LiveTab({
     })();
   }, [meetingKey, sessionType, debug]);
 
+  // Fetch formazioni confermate di tutti i giocatori per la classifica
+  const [allFormazioni, setAllFormazioni] = useState<{
+    user_id: string; driver_numbers: number[]; primo_pilota: number | null;
+    chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
+    scuderia_name?: string; tp_name?: string;
+  }[]>([]);
+
+  useEffect(() => {
+    if (debug || !round || !isSupabaseConfigured) return;
+    const supabase = createClient();
+    if (!supabase) return;
+
+    (async () => {
+      const { data } = await supabase
+        .from("formazioni")
+        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
+        .eq("round", round)
+        .eq("confirmed", true);
+
+      if (!data) return;
+
+      // Fetch nomi profili
+      const userIds = data.map((f) => f.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, scuderia_name, team_principal_name")
+        .in("id", userIds);
+
+      const profileMap = new Map<string, { scuderia: string; tp: string }>();
+      for (const p of profiles || []) {
+        profileMap.set(p.id, { scuderia: p.scuderia_name || "—", tp: p.team_principal_name || "—" });
+      }
+
+      setAllFormazioni(data.map((f) => ({
+        ...f,
+        driver_numbers: (f.driver_numbers || []).map(Number),
+        scuderia_name: profileMap.get(f.user_id)?.scuderia,
+        tp_name: profileMap.get(f.user_id)?.tp,
+      })));
+    })();
+  }, [round, debug]);
+
   const realLive = useLiveScoring(
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
     chipPiloti, chipPrevisioni, previsioni, qualifyingPole, gridPositions
   );
+
+  // Accedi ai dati WS raw per calcolare punti degli altri (solo se non debug)
+  const wsData = useLiveWebSocket(debug ? null : sessionKey);
+
+  // Calcola classifica weekend live
+  const classifica = useMemo<ClassificaEntry[]>(() => {
+    if (debug) {
+      return [
+        { userId: "1", scuderiaName: "McLaren Supremacy", tpName: "@PapaRossi", points: 112, isMe: false },
+        { userId: "2", scuderiaName: "Scuderia Pitufa", tpName: "@TuNome", points: 87, isMe: true },
+        { userId: "3", scuderiaName: "Red Bull Destroyers", tpName: "@MarcoF1", points: 83, isMe: false },
+        { userId: "4", scuderiaName: "Ferrari Forever", tpName: "@GiuliaSpeed", points: 71, isMe: false },
+        { userId: "5", scuderiaName: "Pit Stop Kings", tpName: "@AndreaGP", points: 58, isMe: false },
+      ];
+    }
+
+    if (allFormazioni.length === 0 || wsData.positions.size === 0) return [];
+
+    const stLower = sessionType.toLowerCase();
+    const isQual = stLower === "qualifying";
+    const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
+    const isSprintRace = stLower === "sprint" || (stLower.includes("race") && stLower.includes("sprint"));
+    const isMainRace = stLower.includes("race") && !stLower.includes("sprint");
+
+    const events = (() => {
+      const dnfDrivers = new Set<number>();
+      for (const rc of wsData.raceControl) {
+        const msg = (rc.message || "").toUpperCase();
+        if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
+          if (rc.driver_number) dnfDrivers.add(rc.driver_number);
+        }
+      }
+      return { dnfDrivers };
+    })();
+
+    const entries: ClassificaEntry[] = allFormazioni.map((f) => {
+      let total = 0;
+
+      for (const driverNum of f.driver_numbers) {
+        const pos = wsData.positions.get(driverNum);
+        const position = pos?.position ?? 22;
+        const isDnf = events.dnfDrivers.has(driverNum);
+        const isFastestLap = wsData.fastestLap?.driver_number === driverNum;
+
+        let puntiBase = 0;
+        if (isQual) puntiBase = calcolaQualifica(position, isDnf);
+        else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
+        else if (isSprintRace) {
+          const dr: DriverResult = { driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFastestLap };
+          puntiBase = calcolaSprint(dr);
+        } else if (isMainRace) {
+          const grid = gridPositions.get(driverNum);
+          const dr: DriverResult = { driver_number: driverNum, position, dnf: isDnf, grid_position: grid, fastest_lap: isFastestLap, driver_of_the_day: false, penalty: false };
+          puntiBase = calcolaGara(dr);
+        }
+
+        const isPrimo = driverNum === f.primo_pilota;
+        const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
+        const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
+
+        let puntiFinali: number;
+        if (isPrimo && f.chip_piloti === "scudo") {
+          puntiFinali = puntiBase > 0 ? puntiBase * 2 : puntiBase;
+        } else {
+          puntiFinali = puntiBase * molt;
+        }
+        if (f.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
+
+        total += puntiFinali;
+      }
+
+      return {
+        userId: f.user_id,
+        scuderiaName: f.scuderia_name || "—",
+        tpName: f.tp_name || "—",
+        points: total,
+        isMe: f.user_id === userId,
+      };
+    });
+
+    entries.sort((a, b) => b.points - a.points);
+    return entries;
+  }, [allFormazioni, wsData.positions, wsData.raceControl, wsData.fastestLap, sessionType, gridPositions, userId, debug]);
+
   const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
   const live = debug ? mockLive : realLive;
 
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
+  const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
   return (
     <div>
@@ -307,6 +452,53 @@ export default function LiveTab({
           <div className="grid grid-cols-2 gap-1.5 mb-4">
             {live.previsioniStatus.map((p) => (
               <PrevisioneLiveCard key={p.key} p={p} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Classifica Weekend Live */}
+      {classifica.length > 0 && (
+        <>
+          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
+            Classifica Weekend
+          </div>
+          <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
+            {classifica.map((entry, i) => (
+              <div
+                key={entry.userId}
+                className={`flex items-center justify-between px-3.5 py-2.5 transition-all ${
+                  i < classifica.length - 1 ? "border-b border-white/[0.04]" : ""
+                } ${entry.isMe ? "bg-[#E8002D]/[0.05] border-l-[3px] border-l-[#E8002D]" : ""}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
+                    i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/30"
+                  }`}>
+                    {i + 1}
+                  </div>
+                  <div>
+                    <div className={`text-[13px] font-semibold ${entry.isMe ? "text-white" : ""}`}>
+                      {entry.scuderiaName}
+                    </div>
+                    <div className={`text-[10px] ${entry.isMe ? "text-[#E8002D]/50" : "text-white/25"}`}>
+                      @{entry.tpName}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
+                    entry.isMe ? "text-white" : "text-white/70"
+                  }`}>
+                    {entry.points}
+                  </span>
+                  {i < 10 && (
+                    <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">
+                      +{PUNTI_REALE[i]} CR
+                    </span>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </>

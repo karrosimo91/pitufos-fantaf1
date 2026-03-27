@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.0 — 27 Marzo 2026
+
+### Novità
+- **Classifica weekend live** — ranking provvisorio di tutti i giocatori aggiornato in tempo reale durante le sessioni
+
+---
+
 ## v1.0.0 — 27 Marzo 2026
 Prima release stabile.
 
