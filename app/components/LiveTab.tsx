@@ -132,6 +132,54 @@ function RaceControlMessage({ rc }: { rc: LiveRaceControl }) {
 
 // ─── Componente principale ───
 
+// ─── Dati mock per debug ───
+
+function useMockData(driverNumbers: number[], primoPilota: number | null, chipPiloti: ChipPilotiConfig | null) {
+  const mockPositions = [1, 3, 7, 11, 22]; // posizioni finte per i 5 piloti
+  const piloti: LivePilotaScore[] = driverNumbers.map((num, i) => {
+    const position = mockPositions[i] || 15;
+    const isPrimo = num === primoPilota;
+    const isBoosted = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === num && !isPrimo;
+    const isDnf = i === 4; // ultimo pilota = DNF mock
+    const moltiplicatore = isPrimo ? 2 : isBoosted ? 3 : 1;
+    const puntiBase = isDnf ? -10 : position === 1 ? 25 : position <= 3 ? 15 : position <= 10 ? 4 : 0;
+    const isScudo = isPrimo && chipPiloti?.chipPiloti === "scudo";
+    const puntiFinali = isScudo
+      ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
+      : puntiBase * moltiplicatore;
+    return { driver_number: num, position, puntiBase, moltiplicatore, puntiFinali: chipPiloti?.chipPiloti === "halo" && puntiFinali < 0 ? 0 : puntiFinali, isDnf, isFastestLap: i === 0 };
+  });
+
+  const previsioniStatus: LivePrevisioneStatus[] = [
+    { key: "safetyCar", label: "Safety Car", prediction: true, happened: true, correct: true, points: 4 },
+    { key: "virtualSafetyCar", label: "Virtual Safety Car", prediction: false, happened: true, correct: false, points: 0 },
+    { key: "redFlag", label: "Red Flag", prediction: false, happened: null, correct: null, points: 0 },
+    { key: "gommeWet", label: "Gomme Wet", prediction: false, happened: false, correct: null, points: 0 },
+    { key: "poleVince", label: "Pole vince", prediction: true, happened: null, correct: null, points: 0 },
+    { key: "numeroDnf", label: "Numero DNF", prediction: 2, happened: true as unknown as boolean, correct: true, points: 5 },
+  ];
+
+  const raceControlFeed: LiveRaceControl[] = [
+    { message: "GREEN FLAG — Track clear", date: new Date().toISOString() },
+    { message: "SAFETY CAR DEPLOYED", flag: "YELLOW", date: new Date(Date.now() - 120000).toISOString() },
+    { message: "PENALTY — Stroll: 5 sec time penalty", date: new Date(Date.now() - 240000).toISOString() },
+    { message: "RETIRED — Car 14 (Alonso) mechanical", driver_number: 14, date: new Date(Date.now() - 360000).toISOString() },
+    { message: "VIRTUAL SAFETY CAR DEPLOYED", date: new Date(Date.now() - 600000).toISOString() },
+    { message: "RETIRED — Car 77 (Bottas) collision damage", driver_number: 77, date: new Date(Date.now() - 900000).toISOString() },
+    { message: "LIGHTS OUT AND AWAY WE GO", date: new Date(Date.now() - 3600000).toISOString() },
+  ];
+
+  const totalPiloti = piloti.reduce((s, p) => s + p.puntiFinali, 0);
+  const totalPrevisioni = previsioniStatus.reduce((s, p) => s + p.points, 0);
+
+  return {
+    piloti, totalPiloti, previsioniStatus, totalPrevisioni,
+    totalPoints: totalPiloti + totalPrevisioni,
+    raceControlFeed, connected: true,
+    events: { safetyCar: true, virtualSafetyCar: true, redFlag: false, wetTyres: false, totalDnf: 2 },
+  };
+}
+
 export default function LiveTab({
   sessionKey,
   sessionType,
@@ -141,6 +189,7 @@ export default function LiveTab({
   chipPrevisioni,
   previsioni,
   qualifyingPole,
+  debug = false,
 }: {
   sessionKey: number;
   sessionType: string;
@@ -157,11 +206,14 @@ export default function LiveTab({
     numeroDnf: number | null;
   };
   qualifyingPole?: number | null;
+  debug?: boolean;
 }) {
-  const live = useLiveScoring(
-    sessionKey, sessionType, driverNumbers, primoPilota,
+  const realLive = useLiveScoring(
+    debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
     chipPiloti, chipPrevisioni, previsioni, qualifyingPole
   );
+  const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
+  const live = debug ? mockLive : realLive;
 
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
 

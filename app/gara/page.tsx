@@ -13,6 +13,7 @@ import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import { useCdaCompleted } from "../lib/use-cda";
 import { useLiveSession } from "../lib/use-live-session";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
 import {
@@ -186,7 +187,11 @@ export default function GaraPage() {
   const sq = useSquadra(viewRound);
   const prev = usePrevisioni(viewRound);
   const { canPlay: cdaCanPlay } = useCdaCompleted();
-  const { isLive, session: liveSession } = useLiveSession();
+  const { isLive: realIsLive, session: realLiveSession } = useLiveSession();
+  const searchParams = useSearchParams();
+  const debugLive = searchParams.get("debug_live") === "true";
+  const isLive = realIsLive || debugLive;
+  const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -512,6 +517,7 @@ export default function GaraPage() {
             chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}
             chipPrevisioni={prev.chipAttivo ? { chipAttivo: prev.chipAttivo, chipTarget: prev.chipTarget } : null}
             previsioni={prev.previsioni}
+            debug={debugLive}
           />
         )}
 
