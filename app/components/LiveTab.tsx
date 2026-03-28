@@ -201,6 +201,7 @@ export default function LiveTab({
   meetingKey,
   round,
   userId,
+  legaId,
   driverNumbers,
   primoPilota,
   chipPiloti,
