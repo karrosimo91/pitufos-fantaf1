@@ -196,6 +196,9 @@ export async function POST(request: NextRequest) {
 
   log.push(`Ricalcolati ${playerScores.length} giocatori`);
 
+  // Cancella punteggi provvisori
+  await supabase.from("provisional_weekend").delete().eq("round", round);
+
   return NextResponse.json({
     success: true,
     round,

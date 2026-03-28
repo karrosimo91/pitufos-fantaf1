@@ -340,6 +340,9 @@ export async function POST(request: NextRequest) {
       log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points}${isPostRace ? ` + Prev:${ps.previsioni_points}` : ""}${ps.penalita_cambi > 0 ? ` - Cambi:${ps.penalita_cambi}` : ""}${delta !== ps.weekend_points ? ` | delta: +${delta}` : ""})${isPostRace ? ` | Reale: +${realPoints}` : ""}`);
     }
 
+    // Cancella punteggi provvisori
+    await supabase.from("provisional_weekend").delete().eq("round", round);
+
     return NextResponse.json({
       success: true,
       round,

@@ -2,8 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 
-const STORAGE_KEY = "lp_provisional_scores";
-
 export interface ProvisionalPilotScore {
   driver_number: number;
   position: number;
@@ -28,31 +26,32 @@ export interface ProvisionalData {
   round: number;
   timestamp: string;
   currentSessionName: string;
-  // Punteggio totale weekend per giocatore (somma di tutte le sessioni)
   scores: ProvisionalScore[];
-  // Storico punti per sessione (per mostrare il breakdown)
   sessions: SessionScores[];
 }
 
 /**
- * Salva i punteggi provvisori accumulando le sessioni del weekend.
- * Se la sessione è già stata salvata, aggiorna. Se è nuova, aggiunge.
+ * Salva i punteggi provvisori su Supabase, accumulando sessioni del weekend.
  */
-export function saveProvisionalScores(
+export async function saveProvisionalScores(
   round: number,
   sessionName: string,
   currentScores: ProvisionalScore[],
 ) {
+  if (!isSupabaseConfigured) return;
+  const supabase = createClient();
+  if (!supabase) return;
+
   try {
-    const existing = loadProvisionalScores();
+    // Leggi dati esistenti per questo round
+    const { data: existing } = await supabase
+      .from("provisional_weekend")
+      .select("data")
+      .eq("round", round)
+      .maybeSingle();
 
-    // Se è un round diverso, resetta tutto
-    if (existing && existing.round !== round) {
-      clearProvisionalScores();
-    }
-
-    const prev = (existing && existing.round === round) ? existing : null;
-    const prevSessions = prev?.sessions || [];
+    const prev: ProvisionalData | null = existing?.data || null;
+    const prevSessions = (prev && prev.round === round) ? prev.sessions || [] : [];
 
     // Punti di questa sessione per userId
     const currentSessionScores: Record<string, number> = {};
@@ -77,22 +76,17 @@ export function saveProvisionalScores(
       }
     }
 
-    // Costruisci scores finali con i totali
+    // Costruisci scores finali
     const finalScores: ProvisionalScore[] = currentScores.map((s) => ({
       ...s,
       points: totalMap.get(s.userId) || s.points,
     }));
-    // Aggiungi giocatori che erano in sessioni precedenti ma non nella corrente
     for (const [userId, pts] of totalMap) {
       if (!finalScores.find((s) => s.userId === userId)) {
         const prevScore = prev?.scores.find((s) => s.userId === userId);
-        if (prevScore) {
-          finalScores.push({ ...prevScore, points: pts });
-        }
+        if (prevScore) finalScores.push({ ...prevScore, points: pts });
       }
     }
-
-    // Ordina per punti
     finalScores.sort((a, b) => b.points - a.points);
 
     const data: ProvisionalData = {
@@ -103,82 +97,79 @@ export function saveProvisionalScores(
       sessions: updatedSessions,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch { /* quota exceeded, skip */ }
-}
-
-/**
- * Legge i punteggi provvisori da localStorage.
- */
-export function loadProvisionalScores(): ProvisionalData | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    await supabase
+      .from("provisional_weekend")
+      .upsert({ round, session_name: sessionName, data, updated_at: new Date().toISOString() }, { onConflict: "round" });
   } catch {
-    return null;
+    // Non bloccante
   }
 }
 
 /**
- * Cancella i punteggi provvisori.
+ * Cancella i punteggi provvisori per un round.
  */
-export function clearProvisionalScores() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch { /* skip */ }
+export async function clearProvisionalScores(round: number) {
+  if (!isSupabaseConfigured) return;
+  const supabase = createClient();
+  if (!supabase) return;
+
+  await supabase.from("provisional_weekend").delete().eq("round", round);
 }
 
 /**
- * Hook: controlla se ci sono punteggi provvisori da mostrare.
- * Ritorna i dati provvisori SOLO se:
- * - Non c'è sessione live attiva (la sessione è finita)
- * - Non ci sono ancora risultati ufficiali per quel round
+ * Hook: legge punteggi provvisori da Supabase.
+ * Ritorna i dati SOLO se non c'è sessione live e non ci sono risultati ufficiali.
  */
 export function useProvisionalScores(isLive: boolean, currentRound: number) {
   const [provisional, setProvisional] = useState<ProvisionalData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const check = useCallback(async () => {
-    // Se live è attivo, non mostrare provvisori (si vedono quelli live)
     if (isLive) {
       setProvisional(null);
       setLoading(false);
       return;
     }
 
-    const data = loadProvisionalScores();
-    if (!data || data.round !== currentRound) {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    if (!supabase) { setLoading(false); return; }
+
+    // Controlla se esistono risultati ufficiali
+    const { data: wr } = await supabase
+      .from("weekend_scores")
+      .select("round")
+      .eq("round", currentRound)
+      .limit(1);
+
+    if (wr && wr.length > 0) {
+      // Risultati ufficiali esistono, cancella provvisori
+      await supabase.from("provisional_weekend").delete().eq("round", currentRound);
       setProvisional(null);
       setLoading(false);
       return;
     }
 
-    // Controlla se esistono già risultati ufficiali
-    if (isSupabaseConfigured) {
-      const supabase = createClient();
-      if (supabase) {
-        const { data: wr } = await supabase
-          .from("weekend_scores")
-          .select("round")
-          .eq("round", currentRound)
-          .limit(1);
+    // Leggi provvisori
+    const { data } = await supabase
+      .from("provisional_weekend")
+      .select("data")
+      .eq("round", currentRound)
+      .maybeSingle();
 
-        if (wr && wr.length > 0) {
-          clearProvisionalScores();
-          setProvisional(null);
-          setLoading(false);
-          return;
-        }
-      }
-    }
-
-    setProvisional(data);
+    setProvisional(data?.data || null);
     setLoading(false);
   }, [isLive, currentRound]);
 
   useEffect(() => {
     check();
+    // Refresh ogni 30 sec per vedere aggiornamenti da altri client
+    const interval = setInterval(check, 30_000);
+    return () => clearInterval(interval);
   }, [check]);
 
   return { provisional, loading, refresh: check };

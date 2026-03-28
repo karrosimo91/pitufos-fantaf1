@@ -403,7 +403,7 @@ export default function LiveTab({
   const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
-  // Salva punteggi provvisori in localStorage (accumula sessioni weekend)
+  // Salva punteggi provvisori su Supabase (accumula sessioni weekend)
   useEffect(() => {
     if (debug || classifica.length === 0) return;
     saveProvisionalScores(

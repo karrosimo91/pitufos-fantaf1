@@ -172,6 +172,9 @@ export async function POST(request: NextRequest) {
       }, { onConflict: "user_id,round" });
   }
 
+  // 8. Cancella punteggi provvisori per questo round
+  await supabase.from("provisional_weekend").delete().eq("round", round);
+
   return NextResponse.json({
     success: true,
     round,
