@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
@@ -7,12 +7,15 @@ import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { getDriverByNumber } from "../lib/drivers-data";
-import { ChevronDown, X, Eye, Zap, Shield, Users } from "lucide-react";
-import { RACES_2026, getRaceByRound, isAfterDeadline } from "../lib/races";
+import { ChevronDown, X, Eye, Zap, Shield, Users, Radio } from "lucide-react";
+import { RACES_2026, getRaceByRound, isAfterDeadline, getCurrentRound } from "../lib/races";
+import { useLiveSession } from "../lib/use-live-session";
 import {
+  calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
   calcolaPuntiWeekend,
   type RaceWeekendResults,
   type PilotaDettaglio,
+  type DriverResult,
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "../lib/scoring";
@@ -114,8 +117,142 @@ function ClassificaContent() {
     setInitialized(true);
   }, [legaParam, legaPreferita, legaPrefLoaded, initialized]);
 
-  const { classifica, loading } = useClassificaLega(selectedLega, selectedRound);
+  const { classifica: rawClassifica, loading } = useClassificaLega(selectedLega, selectedRound);
   const currentLega = leghe.find((l) => l.id === selectedLega);
+  const { isLive, session: liveSession } = useLiveSession();
+  const currentRound = getCurrentRound();
+
+  // ─── Polling live data ogni 15 sec per aggiornare la classifica ───
+  const [livePositions, setLivePositions] = useState<Map<number, number>>(new Map());
+  const [liveDnfDrivers, setLiveDnfDrivers] = useState<Set<number>>(new Set());
+  const [liveFastestLap, setLiveFastestLap] = useState<number | null>(null);
+  const [liveFormazioni, setLiveFormazioni] = useState<{
+    user_id: string; driver_numbers: number[]; primo_pilota: number | null;
+    chip_piloti: string | null; chip_piloti_target: number | null;
+  }[]>([]);
+
+  // Fetch formazioni confermate per il round corrente (1 volta)
+  useEffect(() => {
+    if (!isLive || !liveSession || selectedRound || !isSupabaseConfigured) return;
+    const supabase = createClient();
+    if (!supabase) return;
+
+    (async () => {
+      // Filtra per lega
+      let memberIds: string[] | null = null;
+      if (selectedLega && selectedLega !== LEGA_GENERALE_ID) {
+        const { data: members } = await supabase.from("lega_members").select("user_id").eq("lega_id", selectedLega);
+        if (members) memberIds = members.map((m) => m.user_id);
+      }
+
+      let query = supabase.from("formazioni")
+        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target")
+        .eq("round", currentRound).eq("confirmed", true);
+      if (memberIds) query = query.in("user_id", memberIds);
+
+      const { data } = await query;
+      if (data) setLiveFormazioni(data.map((f) => ({ ...f, driver_numbers: (f.driver_numbers || []).map(Number) })));
+    })();
+  }, [isLive, liveSession, selectedLega, selectedRound, currentRound]);
+
+  // Polling live data ogni 15 sec
+  useEffect(() => {
+    if (!isLive || !liveSession || selectedRound) return;
+
+    const fetchLive = async () => {
+      try {
+        const res = await fetch(`/api/live-data?session_key=${liveSession.sessionKey}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Posizioni
+        const posMap = new Map<number, number>();
+        for (const p of data.positions || []) {
+          if (p.driver_number && p.position) posMap.set(p.driver_number, p.position);
+        }
+        setLivePositions(posMap);
+
+        // DNF
+        const dnf = new Set<number>();
+        for (const rc of data.raceControl || []) {
+          const msg = (rc.message || "").toUpperCase();
+          if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
+            if (rc.driver_number) dnf.add(rc.driver_number);
+          }
+        }
+        setLiveDnfDrivers(dnf);
+
+        // Fastest lap
+        let fastest = Infinity;
+        let fastestDriver: number | null = null;
+        for (const l of data.laps || []) {
+          if (l.lap_duration && l.lap_duration > 0 && l.lap_duration < fastest) {
+            fastest = l.lap_duration;
+            fastestDriver = l.driver_number;
+          }
+        }
+        setLiveFastestLap(fastestDriver);
+      } catch { /* skip */ }
+    };
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 15_000);
+    return () => clearInterval(interval);
+  }, [isLive, liveSession, selectedRound]);
+
+  // Calcola punti live per giocatore
+  const livePointsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!isLive || !liveSession || selectedRound || livePositions.size === 0) return map;
+
+    const stLower = (liveSession.sessionName || "").toLowerCase();
+    const isQual = stLower === "qualifying";
+    const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
+    const isSprintRace = stLower === "sprint";
+    const isMainRace = stLower === "race";
+
+    for (const f of liveFormazioni) {
+      let total = 0;
+      for (const driverNum of f.driver_numbers) {
+        const position = livePositions.get(driverNum) ?? 22;
+        const isDnf = liveDnfDrivers.has(driverNum);
+        const isFl = liveFastestLap === driverNum;
+
+        let puntiBase = 0;
+        if (isQual) puntiBase = calcolaQualifica(position, isDnf);
+        else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
+        else if (isSprintRace) puntiBase = calcolaSprint({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl } as DriverResult);
+        else if (isMainRace) puntiBase = calcolaGara({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl, driver_of_the_day: false, penalty: false });
+
+        const isPrimo = driverNum === f.primo_pilota;
+        const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
+        const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
+
+        let puntiFinali = isPrimo && f.chip_piloti === "scudo"
+          ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
+          : puntiBase * molt;
+        if (f.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
+
+        total += puntiFinali;
+      }
+      map.set(f.user_id, total);
+    }
+    return map;
+  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni]);
+
+  // Classifica con punti live aggiunti
+  const classifica = useMemo(() => {
+    if (!isLive || selectedRound || livePointsMap.size === 0) return rawClassifica;
+
+    return rawClassifica.map((entry) => {
+      const liveBonus = livePointsMap.get(entry.user_id) || 0;
+      return {
+        ...entry,
+        total_points: entry.total_points + liveBonus,
+        last_weekend_points: liveBonus,
+      };
+    }).sort((a, b) => b.total_points - a.total_points);
+  }, [rawClassifica, livePointsMap, isLive, selectedRound]);
 
   // Può vedere le squadre? Solo lega non-generale, round selezionato, dopo deadline
   const canViewSquads = (() => {
@@ -249,9 +386,17 @@ function ClassificaContent() {
           <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
             Stagione 2026
           </div>
-          <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-            CLASSIFICA
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
+              CLASSIFICA
+            </h1>
+            {isLive && !selectedRound && livePointsMap.size > 0 && (
+              <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2.5 py-1 rounded text-[9px] font-bold tracking-wider">
+                <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
+                LIVE
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Selettore lega */}
@@ -390,8 +535,10 @@ function ClassificaContent() {
                     </>
                   ) : (
                     <div className="text-right">
-                      <span className="font-[family-name:var(--font-jetbrains)] text-xs text-white/40">
-                        +{entry.last_weekend_points}
+                      <span className={`font-[family-name:var(--font-jetbrains)] text-xs ${
+                        isLive && livePointsMap.has(entry.user_id) ? "text-[#E8002D]" : "text-white/40"
+                      }`}>
+                        {isLive && livePointsMap.has(entry.user_id) ? "" : "+"}{entry.last_weekend_points}
                       </span>
                     </div>
                   )}
