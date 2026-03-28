@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
-import { useSquadra, usePrevisioni } from "../lib/store";
+import { useSquadra, usePrevisioni, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { RACES_2026, getNextRace, getCurrentRound, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
@@ -197,6 +197,7 @@ function GaraPage() {
   const prev = usePrevisioni(viewRound);
   const { canPlay: cdaCanPlay } = useCdaCompleted();
   const { isLive: realIsLive, session: realLiveSession } = useLiveSession();
+  const { legaId } = useLegaPreferita();
   const searchParams = useSearchParams();
   const debugLive = searchParams.get("debug_live") === "true";
   const isLive = realIsLive || debugLive;
@@ -524,6 +525,7 @@ function GaraPage() {
             meetingKey={liveSession.meetingKey}
             round={viewRound}
             userId={user?.id}
+            legaId={legaId}
             driverNumbers={sq.driverNumbers}
             primoPilota={sq.primoPilota}
             chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}

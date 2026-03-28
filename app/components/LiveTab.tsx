@@ -214,6 +214,7 @@ export default function LiveTab({
   meetingKey?: number;
   round: number;
   userId?: string;
+  legaId?: string;
   driverNumbers: number[];
   primoPilota: number | null;
   chipPiloti: ChipPilotiConfig | null;
@@ -263,12 +264,25 @@ export default function LiveTab({
     if (!supabase) return;
 
     (async () => {
-      const { data } = await supabase
+      // Se c'è una lega, filtra per membri della lega
+      let memberIds: string[] | null = null;
+      if (legaId) {
+        const { data: members } = await supabase
+          .from("lega_members")
+          .select("user_id")
+          .eq("lega_id", legaId);
+        if (members) memberIds = members.map((m) => m.user_id);
+      }
+
+      let query = supabase
         .from("formazioni")
         .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
         .eq("round", round)
         .eq("confirmed", true);
 
+      if (memberIds) query = query.in("user_id", memberIds);
+
+      const { data } = await query;
       if (!data) return;
 
       // Fetch nomi profili
@@ -290,7 +304,7 @@ export default function LiveTab({
         tp_name: profileMap.get(f.user_id)?.tp,
       })));
     })();
-  }, [round, debug]);
+  }, [round, debug, legaId]);
 
   const realLive = useLiveScoring(
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
