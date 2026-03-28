@@ -204,7 +204,6 @@ function GaraPage() {
   const isLive = realIsLive || debugLive;
   const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
   const { provisional } = useProvisionalScores(isLive, viewRound);
-  const showProvisional = !isLive && !!provisional && isCurrentRound && !weekendResults;
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -221,6 +220,8 @@ function GaraPage() {
     pilotiDettaglio: (PilotaDettaglio & { name: string })[];
     previsioniDettaglio: Record<string, number>;
   } | null>(null);
+
+  const showProvisional = !isLive && !!provisional && isCurrentRound && !weekendResults;
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
