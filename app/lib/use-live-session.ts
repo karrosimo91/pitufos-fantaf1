@@ -21,8 +21,9 @@ export function useLiveSession() {
 
   const checkSession = useCallback(async () => {
     try {
-      // Fetch sessioni 2026
-      const res = await fetch(`${OPENF1}/sessions?year=2026`, { cache: "no-store" });
+      // Fetch sessioni anno corrente
+      const year = new Date().getFullYear();
+      const res = await fetch(`${OPENF1}/sessions?year=${year}`, { cache: "no-store" });
       if (!res.ok) { setLoading(false); return; }
 
       const sessions = await res.json();
