@@ -229,7 +229,7 @@ export default function LiveTab({
   qualifyingPole?: number | null;
   debug?: boolean;
 }) {
-  // Fetch grid positions dalla qualifica (per posizioni guadagnate/perse in gara)
+  // Fetch grid positions dalla qualifica via proxy (no CORS)
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
   useEffect(() => {
     if (debug || !meetingKey) return;
@@ -238,31 +238,14 @@ export default function LiveTab({
 
     (async () => {
       try {
-        // Trova la sessione qualifica di questo meeting
-        const sessRes = await fetch(`https://api.openf1.org/v1/sessions?meeting_key=${meetingKey}`, { cache: "no-store" });
-        if (!sessRes.ok) return;
-        const sessions = await sessRes.json();
-        const qualiSession = sessions.find((s: { session_name: string }) =>
-          s.session_name?.toLowerCase() === "qualifying"
-        );
-        if (!qualiSession) return;
-
-        // Fetch posizioni qualifica
-        const posRes = await fetch(`https://api.openf1.org/v1/position?session_key=${qualiSession.session_key}`, { cache: "no-store" });
-        if (!posRes.ok) return;
-        const posData = await posRes.json();
-
-        // Prendi l'ultima posizione per ogni pilota (risultato finale qualifica)
-        const grid = new Map<number, number>();
-        for (const p of posData) {
-          if (p.driver_number && p.position) {
-            const existing = grid.get(p.driver_number);
-            if (!existing || p.date > (posData.find((x: { driver_number: number; position: number }) => x.driver_number === p.driver_number && x.position === existing)?.date || "")) {
-              grid.set(p.driver_number, p.position);
-            }
-          }
+        const res = await fetch(`/api/live-grid?meeting_key=${meetingKey}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const { grid } = await res.json();
+        const gridMap = new Map<number, number>();
+        for (const [driverStr, pos] of Object.entries(grid)) {
+          gridMap.set(Number(driverStr), pos as number);
         }
-        setGridPositions(grid);
+        setGridPositions(gridMap);
       } catch { /* non bloccante */ }
     })();
   }, [meetingKey, sessionType, debug]);

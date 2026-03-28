@@ -32,19 +32,10 @@ export interface LiveStint {
   date: string;
 }
 
-export interface LiveData {
-  positions: Map<number, LivePosition>; // ultimo per driver_number
-  raceControl: LiveRaceControl[];       // tutti i messaggi, ordine cronologico
-  fastestLap: { driver_number: number; duration: number } | null;
-  stints: LiveStint[];
-  connected: boolean;
-}
-
 /**
  * Hook WebSocket MQTT per dati live OpenF1.
- * Si connette a wss://mqtt.openf1.org:8084/mqtt con token OAuth2.
- * Subscribe a: v1/position, v1/race_control, v1/laps, v1/stints
- * Filtra per session_key corrente.
+ * Fetch iniziale via proxy server-side (/api/live-data) per evitare CORS.
+ * WebSocket MQTT per aggiornamenti push in tempo reale.
  */
 export function useLiveWebSocket(sessionKey: number | null) {
   const [positions, setPositions] = useState<Map<number, LivePosition>>(new Map());
@@ -64,18 +55,19 @@ export function useLiveWebSocket(sessionKey: number | null) {
     fastestRef.current = Infinity;
   }, [sessionKey]);
 
-  // Fetch iniziale dati storici della sessione via REST
-  const fetchInitialData = useCallback(async (sk: number, token: string) => {
-    const headers = { Authorization: `Bearer ${token}` };
-    const opts = { headers, cache: "no-store" as RequestCache };
-
+  // Fetch iniziale via proxy server-side (no CORS)
+  const fetchInitialData = useCallback(async (sk: number) => {
     try {
+      const res = await fetch(`/api/live-data?session_key=${sk}`, { cache: "no-store" });
+      if (!res.ok) return;
+
+      const data = await res.json();
+
       // Posizioni
-      const posRes = await fetch(`https://api.openf1.org/v1/position?session_key=${sk}`, opts);
-      if (posRes.ok) {
-        const posData: LivePosition[] = await posRes.json();
+      if (data.positions?.length) {
         const posMap = new Map<number, LivePosition>();
-        for (const p of posData) {
+        for (const p of data.positions) {
+          if (!p.driver_number || !p.position) continue;
           const existing = posMap.get(p.driver_number);
           if (!existing || p.date > existing.date) {
             posMap.set(p.driver_number, p);
@@ -85,19 +77,15 @@ export function useLiveWebSocket(sessionKey: number | null) {
       }
 
       // Race control
-      const rcRes = await fetch(`https://api.openf1.org/v1/race_control?session_key=${sk}`, opts);
-      if (rcRes.ok) {
-        const rcData: LiveRaceControl[] = await rcRes.json();
-        setRaceControl(rcData);
+      if (data.raceControl?.length) {
+        setRaceControl(data.raceControl);
       }
 
-      // Laps (per fastest lap)
-      const lapRes = await fetch(`https://api.openf1.org/v1/laps?session_key=${sk}`, opts);
-      if (lapRes.ok) {
-        const lapData: LiveLap[] = await lapRes.json();
+      // Laps (fastest lap)
+      if (data.laps?.length) {
         let fastest = Infinity;
         let fastestDriver = 0;
-        for (const l of lapData) {
+        for (const l of data.laps) {
           if (l.lap_duration && l.lap_duration > 0 && l.lap_duration < fastest) {
             fastest = l.lap_duration;
             fastestDriver = l.driver_number;
@@ -110,13 +98,11 @@ export function useLiveWebSocket(sessionKey: number | null) {
       }
 
       // Stints
-      const stintRes = await fetch(`https://api.openf1.org/v1/stints?session_key=${sk}`, opts);
-      if (stintRes.ok) {
-        const stintData: LiveStint[] = await stintRes.json();
-        setStints(stintData);
+      if (data.stints?.length) {
+        setStints(data.stints);
       }
     } catch {
-      // Errori non bloccanti, i dati arriveranno via WS
+      // Non bloccante, i dati arriveranno via WS
     }
   }, []);
 
@@ -126,15 +112,15 @@ export function useLiveWebSocket(sessionKey: number | null) {
     let client: mqtt.MqttClient | null = null;
 
     async function connect() {
-      // Ottieni token
       try {
+        // Fetch dati iniziali via proxy
+        await fetchInitialData(sessionKey!);
+
+        // Ottieni token per WebSocket
         const tokenRes = await fetch("/api/openf1-token");
         if (!tokenRes.ok) return;
         const { access_token } = await tokenRes.json();
         if (!access_token) return;
-
-        // Fetch dati iniziali
-        await fetchInitialData(sessionKey!, access_token);
 
         // Connetti MQTT over WebSocket
         client = mqtt.connect("wss://mqtt.openf1.org:8084/mqtt", {
@@ -148,7 +134,6 @@ export function useLiveWebSocket(sessionKey: number | null) {
 
         client.on("connect", () => {
           setConnected(true);
-          // Subscribe ai topics
           client!.subscribe([
             "v1/position",
             "v1/race_control",
@@ -164,8 +149,6 @@ export function useLiveWebSocket(sessionKey: number | null) {
         client.on("message", (_topic: string, payload: Buffer) => {
           try {
             const msg = JSON.parse(payload.toString());
-
-            // Filtra per session_key se presente
             if (msg.session_key && msg.session_key !== sessionKey) return;
 
             const topic = _topic.replace(/^\//, "");
@@ -214,7 +197,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
               }]);
             }
           } catch {
-            // Messaggio non parsabile, skip
+            // Skip
           }
         });
       } catch {
