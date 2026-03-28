@@ -2,15 +2,37 @@ import { NextResponse } from "next/server";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
+async function getToken(): Promise<string | null> {
+  const username = process.env.OPENF1_USERNAME;
+  const password = process.env.OPENF1_PASSWORD;
+  if (!username || !password) return null;
+
+  try {
+    const res = await fetch("https://api.openf1.org/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "password", username, password }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * GET /api/live-session
- * Controlla se c'è una sessione F1 attiva in questo momento.
- * Chiamata server-side per evitare CORS.
+ * Controlla se c'è una sessione F1 attiva. Autenticato con token OpenF1.
  */
 export async function GET() {
   try {
+    const token = await getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const year = new Date().getFullYear();
+
     const res = await fetch(`${OPENF1}/sessions?year=${year}`, {
+      headers,
       cache: "no-store",
     });
 
@@ -21,7 +43,6 @@ export async function GET() {
     const sessions = await res.json();
     const now = new Date();
 
-    // Trova sessione in corso (finestra: 30 min prima → 30 min dopo)
     for (const s of sessions) {
       if (!s.date_start || !s.date_end) continue;
 
