@@ -13,6 +13,7 @@ import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import { useCdaCompleted } from "../lib/use-cda";
 import { useLiveSession } from "../lib/use-live-session";
+import { useProvisionalScores } from "../lib/provisional-scores";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -202,6 +203,8 @@ function GaraPage() {
   const debugLive = searchParams.get("debug_live") === "true";
   const isLive = realIsLive || debugLive;
   const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
+  const { provisional } = useProvisionalScores(isLive, viewRound);
+  const showProvisional = !isLive && !!provisional && isCurrentRound && !weekendResults;
 
   const [tab, setTab] = useState<Tab>("formazione");
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
@@ -426,6 +429,11 @@ function GaraPage() {
                   LIVE
                 </span>
               )}
+              {showProvisional && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
+                  PROVVISORIO
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -449,7 +457,7 @@ function GaraPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
-          {([...(isLive && isCurrentRound ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
+          {([...((isLive && isCurrentRound) || showProvisional ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
             const labels: Record<Tab, string> = { live: "Live", formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
@@ -513,6 +521,57 @@ function GaraPage() {
                   <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB PROVVISORIO (sessione finita, risultati non ancora calcolati) ═══ */}
+        {tab === "live" && showProvisional && provisional && (
+          <div>
+            <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/[0.03] border border-amber-500/15 rounded-2xl p-4 text-center mb-4">
+              <div className="text-[9px] tracking-[3px] text-amber-400/60 uppercase mb-1">Punteggio provvisorio — {provisional.sessionName}</div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-[32px] font-bold leading-none text-amber-400">
+                {provisional.scores.find((s) => s.userId === user?.id)?.points ?? "—"}
+              </div>
+              <div className="text-[10px] text-white/20 mt-2">In attesa dei risultati ufficiali</div>
+            </div>
+
+            <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+              Classifica Weekend Provvisoria
+            </div>
+            <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
+              {provisional.scores.map((entry, i) => {
+                const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+                const isMe = entry.userId === user?.id;
+                return (
+                  <div
+                    key={entry.userId}
+                    className={`flex items-center justify-between px-3.5 py-2.5 transition-all ${
+                      i < provisional.scores.length - 1 ? "border-b border-white/[0.04]" : ""
+                    } ${isMe ? "bg-amber-500/[0.05] border-l-[3px] border-l-amber-500" : ""}`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
+                        i === 0 ? "text-amber-400" : isMe ? "text-amber-400" : "text-white/30"
+                      }`}>
+                        {i + 1}
+                      </div>
+                      <div>
+                        <div className={`text-[13px] font-semibold ${isMe ? "text-white" : ""}`}>{entry.scuderiaName}</div>
+                        <div className={`text-[10px] ${isMe ? "text-amber-400/50" : "text-white/25"}`}>@{entry.tpName}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${isMe ? "text-white" : "text-white/70"}`}>
+                        {entry.points}
+                      </span>
+                      {i < 10 && (
+                        <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">+{PUNTI_REALE[i]} CR</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

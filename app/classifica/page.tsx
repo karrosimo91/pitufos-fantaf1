@@ -10,6 +10,7 @@ import { getDriverByNumber } from "../lib/drivers-data";
 import { ChevronDown, X, Eye, Zap, Shield, Users, Radio } from "lucide-react";
 import { RACES_2026, getRaceByRound, isAfterDeadline, getCurrentRound } from "../lib/races";
 import { useLiveSession } from "../lib/use-live-session";
+import { useProvisionalScores } from "../lib/provisional-scores";
 import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
   calcolaPuntiWeekend,
@@ -121,6 +122,7 @@ function ClassificaContent() {
   const currentLega = leghe.find((l) => l.id === selectedLega);
   const { isLive, session: liveSession } = useLiveSession();
   const currentRound = getCurrentRound();
+  const { provisional } = useProvisionalScores(isLive, currentRound);
 
   // ─── Polling live data ogni 15 sec per aggiornare la classifica ───
   const [livePositions, setLivePositions] = useState<Map<number, number>>(new Map());
@@ -240,19 +242,34 @@ function ClassificaContent() {
     return map;
   }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni]);
 
-  // Classifica con punti live aggiunti
-  const classifica = useMemo(() => {
-    if (!isLive || selectedRound || livePointsMap.size === 0) return rawClassifica;
+  // Classifica con punti live o provvisori aggiunti
+  const hasLiveData = isLive && livePointsMap.size > 0;
+  const hasProvisionalData = !isLive && !!provisional && !selectedRound;
 
-    return rawClassifica.map((entry) => {
-      const liveBonus = livePointsMap.get(entry.user_id) || 0;
-      return {
-        ...entry,
-        total_points: entry.total_points + liveBonus,
-        last_weekend_points: liveBonus,
-      };
-    }).sort((a, b) => b.total_points - a.total_points);
-  }, [rawClassifica, livePointsMap, isLive, selectedRound]);
+  const classifica = useMemo(() => {
+    if (selectedRound) return rawClassifica;
+
+    // Punti live in tempo reale
+    if (hasLiveData) {
+      return rawClassifica.map((entry) => {
+        const liveBonus = livePointsMap.get(entry.user_id) || 0;
+        return { ...entry, total_points: entry.total_points + liveBonus, last_weekend_points: liveBonus };
+      }).sort((a, b) => b.total_points - a.total_points);
+    }
+
+    // Punti provvisori (sessione finita, risultati non ancora calcolati)
+    if (hasProvisionalData && provisional) {
+      const provMap = new Map<string, number>();
+      for (const s of provisional.scores) provMap.set(s.userId, s.points);
+
+      return rawClassifica.map((entry) => {
+        const provBonus = provMap.get(entry.user_id) || 0;
+        return { ...entry, total_points: entry.total_points + provBonus, last_weekend_points: provBonus };
+      }).sort((a, b) => b.total_points - a.total_points);
+    }
+
+    return rawClassifica;
+  }, [rawClassifica, livePointsMap, hasLiveData, hasProvisionalData, provisional, selectedRound]);
 
   // Può vedere le squadre? Solo lega non-generale, round selezionato, dopo deadline
   const canViewSquads = (() => {
@@ -390,10 +407,15 @@ function ClassificaContent() {
             <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
               CLASSIFICA
             </h1>
-            {isLive && !selectedRound && livePointsMap.size > 0 && (
+            {hasLiveData && !selectedRound && (
               <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2.5 py-1 rounded text-[9px] font-bold tracking-wider">
                 <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
                 LIVE
+              </span>
+            )}
+            {hasProvisionalData && !selectedRound && (
+              <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded text-[9px] font-bold tracking-wider">
+                PROVVISORIO
               </span>
             )}
           </div>
@@ -536,9 +558,11 @@ function ClassificaContent() {
                   ) : (
                     <div className="text-right">
                       <span className={`font-[family-name:var(--font-jetbrains)] text-xs ${
-                        isLive && livePointsMap.has(entry.user_id) ? "text-[#E8002D]" : "text-white/40"
+                        hasLiveData && livePointsMap.has(entry.user_id) ? "text-[#E8002D]"
+                        : hasProvisionalData ? "text-amber-400"
+                        : "text-white/40"
                       }`}>
-                        {isLive && livePointsMap.has(entry.user_id) ? "" : "+"}{entry.last_weekend_points}
+                        +{entry.last_weekend_points}
                       </span>
                     </div>
                   )}

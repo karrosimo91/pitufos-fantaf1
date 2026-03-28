@@ -4,6 +4,8 @@
 
 ### Novità
 - **Dettaglio giocatore live** — clicca su un giocatore nella classifica weekend per vedere i punti live dei suoi piloti
+- **Punteggi provvisori persistenti** — dopo la sessione, i punteggi restano visibili con badge "PROVVISORIO" finché l'admin non calcola i risultati ufficiali
+- **Classifica stagione live** — la pagina Classifica si aggiorna con i punti provvisori del weekend (live o post-sessione)
 - **Mercato bloccato** durante sessioni live
 
 ### Fix

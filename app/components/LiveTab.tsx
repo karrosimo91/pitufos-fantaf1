@@ -9,6 +9,7 @@ import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
   type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig,
 } from "../lib/scoring";
+import { saveProvisionalScores } from "../lib/provisional-scores";
 
 // ─── Sub-components ───
 
@@ -401,6 +402,31 @@ export default function LiveTab({
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
   const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+
+  // Salva punteggi provvisori in localStorage
+  useEffect(() => {
+    if (debug || classifica.length === 0) return;
+    saveProvisionalScores({
+      round,
+      sessionName: sessionType,
+      timestamp: new Date().toISOString(),
+      scores: classifica.map((c) => {
+        const f = allFormazioni.find((f) => f.user_id === c.userId);
+        return {
+          userId: c.userId,
+          scuderiaName: c.scuderiaName,
+          tpName: c.tpName,
+          points: c.points,
+          piloti: f ? f.driver_numbers.map((dn) => ({
+            driver_number: dn,
+            position: (debug ? 0 : wsData.positions.get(dn)?.position) ?? 22,
+            puntiFinali: 0,
+            isDnf: false,
+          })) : [],
+        };
+      }),
+    });
+  }, [classifica, debug, round, sessionType]);
 
   return (
     <div>
