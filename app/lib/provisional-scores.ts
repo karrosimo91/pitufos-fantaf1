@@ -4,27 +4,105 @@ import { createClient, isSupabaseConfigured } from "./supabase";
 
 const STORAGE_KEY = "lp_provisional_scores";
 
+export interface ProvisionalPilotScore {
+  driver_number: number;
+  position: number;
+  puntiFinali: number;
+  isDnf: boolean;
+}
+
 export interface ProvisionalScore {
   userId: string;
   scuderiaName: string;
   tpName: string;
   points: number;
-  piloti: { driver_number: number; position: number; puntiFinali: number; isDnf: boolean }[];
+  piloti: ProvisionalPilotScore[];
+}
+
+export interface SessionScores {
+  sessionName: string;
+  scores: Record<string, number>; // userId → punti di quella sessione
 }
 
 export interface ProvisionalData {
   round: number;
-  sessionName: string;
   timestamp: string;
+  currentSessionName: string;
+  // Punteggio totale weekend per giocatore (somma di tutte le sessioni)
   scores: ProvisionalScore[];
+  // Storico punti per sessione (per mostrare il breakdown)
+  sessions: SessionScores[];
 }
 
 /**
- * Salva i punteggi provvisori in localStorage.
- * Chiamato dal LiveTab ogni volta che i dati si aggiornano.
+ * Salva i punteggi provvisori accumulando le sessioni del weekend.
+ * Se la sessione è già stata salvata, aggiorna. Se è nuova, aggiunge.
  */
-export function saveProvisionalScores(data: ProvisionalData) {
+export function saveProvisionalScores(
+  round: number,
+  sessionName: string,
+  currentScores: ProvisionalScore[],
+) {
   try {
+    const existing = loadProvisionalScores();
+
+    // Se è un round diverso, resetta tutto
+    if (existing && existing.round !== round) {
+      clearProvisionalScores();
+    }
+
+    const prev = (existing && existing.round === round) ? existing : null;
+    const prevSessions = prev?.sessions || [];
+
+    // Punti di questa sessione per userId
+    const currentSessionScores: Record<string, number> = {};
+    for (const s of currentScores) {
+      currentSessionScores[s.userId] = s.points;
+    }
+
+    // Aggiorna o aggiungi la sessione corrente
+    const sessionIdx = prevSessions.findIndex((s) => s.sessionName === sessionName);
+    const updatedSessions = [...prevSessions];
+    if (sessionIdx >= 0) {
+      updatedSessions[sessionIdx] = { sessionName, scores: currentSessionScores };
+    } else {
+      updatedSessions.push({ sessionName, scores: currentSessionScores });
+    }
+
+    // Calcola totale weekend per ogni giocatore (somma tutte le sessioni)
+    const totalMap = new Map<string, number>();
+    for (const sess of updatedSessions) {
+      for (const [userId, pts] of Object.entries(sess.scores)) {
+        totalMap.set(userId, (totalMap.get(userId) || 0) + pts);
+      }
+    }
+
+    // Costruisci scores finali con i totali
+    const finalScores: ProvisionalScore[] = currentScores.map((s) => ({
+      ...s,
+      points: totalMap.get(s.userId) || s.points,
+    }));
+    // Aggiungi giocatori che erano in sessioni precedenti ma non nella corrente
+    for (const [userId, pts] of totalMap) {
+      if (!finalScores.find((s) => s.userId === userId)) {
+        const prevScore = prev?.scores.find((s) => s.userId === userId);
+        if (prevScore) {
+          finalScores.push({ ...prevScore, points: pts });
+        }
+      }
+    }
+
+    // Ordina per punti
+    finalScores.sort((a, b) => b.points - a.points);
+
+    const data: ProvisionalData = {
+      round,
+      timestamp: new Date().toISOString(),
+      currentSessionName: sessionName,
+      scores: finalScores,
+      sessions: updatedSessions,
+    };
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch { /* quota exceeded, skip */ }
 }
@@ -55,7 +133,7 @@ export function clearProvisionalScores() {
  * Hook: controlla se ci sono punteggi provvisori da mostrare.
  * Ritorna i dati provvisori SOLO se:
  * - Non c'è sessione live attiva (la sessione è finita)
- * - Non ci sono ancora risultati ufficiali per quel round (weekend_results)
+ * - Non ci sono ancora risultati ufficiali per quel round
  */
 export function useProvisionalScores(isLive: boolean, currentRound: number) {
   const [provisional, setProvisional] = useState<ProvisionalData | null>(null);
@@ -87,7 +165,6 @@ export function useProvisionalScores(isLive: boolean, currentRound: number) {
           .limit(1);
 
         if (wr && wr.length > 0) {
-          // Risultati ufficiali esistono, cancella provvisori
           clearProvisionalScores();
           setProvisional(null);
           setLoading(false);

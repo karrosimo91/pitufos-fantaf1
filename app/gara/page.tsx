@@ -240,12 +240,12 @@ function GaraPage() {
     setTab("formazione");
   }, [viewRound]);
 
-  // Auto-switch al tab Live quando c'è sessione attiva
+  // Auto-switch al tab Live quando c'è sessione attiva o dati provvisori
   useEffect(() => {
-    if (isLive && isCurrentRound && tab === "formazione") {
+    if ((isLive || showProvisional) && isCurrentRound && tab === "formazione") {
       setTab("live");
     }
-  }, [isLive, isCurrentRound]);
+  }, [isLive, showProvisional, isCurrentRound]);
 
   // Carica risultati post-gara se disponibili
   useEffect(() => {
@@ -530,10 +530,22 @@ function GaraPage() {
         {tab === "live" && showProvisional && provisional && (
           <div>
             <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/[0.03] border border-amber-500/15 rounded-2xl p-4 text-center mb-4">
-              <div className="text-[9px] tracking-[3px] text-amber-400/60 uppercase mb-1">Punteggio provvisorio — {provisional.sessionName}</div>
+              <div className="text-[9px] tracking-[3px] text-amber-400/60 uppercase mb-1">Punteggio weekend provvisorio</div>
               <div className="font-[family-name:var(--font-jetbrains)] text-[32px] font-bold leading-none text-amber-400">
                 {provisional.scores.find((s) => s.userId === user?.id)?.points ?? "—"}
               </div>
+              {provisional.sessions.length > 0 && (
+                <div className="flex justify-center gap-3 mt-2 text-[10px] text-white/30">
+                  {provisional.sessions.map((sess) => {
+                    const myPts = sess.scores[user?.id || ""] ?? 0;
+                    return (
+                      <span key={sess.sessionName}>
+                        {sess.sessionName}: <span className="font-[family-name:var(--font-jetbrains)] text-amber-400/60">{myPts}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div className="text-[10px] text-white/20 mt-2">In attesa dei risultati ufficiali</div>
             </div>
 

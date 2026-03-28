@@ -403,14 +403,13 @@ export default function LiveTab({
   const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
-  // Salva punteggi provvisori in localStorage
+  // Salva punteggi provvisori in localStorage (accumula sessioni weekend)
   useEffect(() => {
     if (debug || classifica.length === 0) return;
-    saveProvisionalScores({
+    saveProvisionalScores(
       round,
-      sessionName: sessionType,
-      timestamp: new Date().toISOString(),
-      scores: classifica.map((c) => {
+      sessionType,
+      classifica.map((c) => {
         const f = allFormazioni.find((f) => f.user_id === c.userId);
         return {
           userId: c.userId,
@@ -425,7 +424,7 @@ export default function LiveTab({
           })) : [],
         };
       }),
-    });
+    );
   }, [classifica, debug, round, sessionType]);
 
   return (
