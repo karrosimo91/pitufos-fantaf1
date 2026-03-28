@@ -118,6 +118,7 @@ export default function AltroPage() {
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>
               <div className="space-y-2 text-[12px] text-white/50">
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.1.1</span> — Fix autenticazione live OpenF1, mercato bloccato durante sessioni</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.1.0</span> — Classifica weekend live: ranking provvisorio di tutti i giocatori aggiornato in tempo reale durante le sessioni</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.0.0</span> — Aggiornamento regolamento e punteggi secondo voti CDA v1 e v2, nuovo Aggiornamento Piloti Scudo Capitano, live scoring in tempo reale via WebSocket OpenF1</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99.42</span> — Pagina CDA Los Pitufos con votazione regolamento, PWA (installa da browser), blocco conferma per membri CDA senza questionario completato</div>

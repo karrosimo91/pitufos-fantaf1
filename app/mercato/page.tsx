@@ -8,7 +8,8 @@ import { DRIVERS_2026 } from "../lib/drivers-data";
 import { useSquadra } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getCurrentRound } from "../lib/races";
-import { ArrowRightLeft, AlertTriangle } from "lucide-react";
+import { useLiveSession } from "../lib/use-live-session";
+import { ArrowRightLeft, AlertTriangle, Radio } from "lucide-react";
 
 export default function MercatoPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function MercatoPage() {
 
   const round = getCurrentRound();
   const squadra = useSquadra(round);
+  const { isLive } = useLiveSession();
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -142,6 +144,17 @@ export default function MercatoPage() {
           </div>
         </div>
 
+        {/* Banner blocco durante sessione live */}
+        {isLive && (
+          <div className="mb-6 rounded-xl p-4 border border-[#E8002D]/20 bg-[#E8002D]/5 flex items-center gap-3">
+            <Radio size={16} className="text-[#E8002D] shrink-0 animate-pulse" />
+            <div>
+              <div className="text-sm font-bold text-[#E8002D]">Mercato bloccato</div>
+              <div className="text-[11px] text-white/40">Sessione in corso — il mercato riapre al termine della sessione</div>
+            </div>
+          </div>
+        )}
+
         {/* Info cambi */}
         <div className={`mb-6 rounded-xl p-4 border ${
           squadra.penalitaProssimoCambio > 0
@@ -220,8 +233,8 @@ export default function MercatoPage() {
                 price={driver.price}
                 number={driver.number}
                 actionLabel={owned ? "Vendi" : "Acquista"}
-                showActions={owned || !squadraPiena}
-                onSelect={owned ? () => handleVendi(driver.number) : () => handleAcquista(driver.number)}
+                showActions={!isLive && (owned || !squadraPiena)}
+                onSelect={isLive ? undefined : (owned ? () => handleVendi(driver.number) : () => handleAcquista(driver.number))}
               />
             );
           })}

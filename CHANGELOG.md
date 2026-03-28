@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.1 — 28 Marzo 2026
+
+### Fix
+- **Live scoring**: fix autenticazione OpenF1 e CORS (proxy server-side)
+- **Mercato bloccato** durante sessioni live
+
+---
+
 ## v1.1.0 — 27 Marzo 2026
 
 ### Novità
