@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useLiveScoring, type LivePilotaScore, type LivePrevisioneStatus } from "../lib/use-live-scoring";
 import { useLiveWebSocket, type LiveRaceControl } from "../lib/use-live-ws";
 import { getDriverByNumber } from "../lib/drivers-data";
-import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff } from "lucide-react";
+import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff, X } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
@@ -400,6 +400,7 @@ export default function LiveTab({
 
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
   const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   return (
     <div>
@@ -463,9 +464,10 @@ export default function LiveTab({
           </div>
           <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
             {classifica.map((entry, i) => (
-              <div
+              <button
                 key={entry.userId}
-                className={`flex items-center justify-between px-3.5 py-2.5 transition-all ${
+                onClick={() => setSelectedPlayer(entry.userId)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-all text-left hover:bg-white/[0.04] ${
                   i < classifica.length - 1 ? "border-b border-white/[0.04]" : ""
                 } ${entry.isMe ? "bg-[#E8002D]/[0.05] border-l-[3px] border-l-[#E8002D]" : ""}`}
               >
@@ -496,11 +498,102 @@ export default function LiveTab({
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </>
       )}
+
+      {/* Modal dettaglio giocatore */}
+      {selectedPlayer && (() => {
+        const player = allFormazioni.find((f) => f.user_id === selectedPlayer);
+        const entry = classifica.find((c) => c.userId === selectedPlayer);
+        if (!player || !entry) return null;
+
+        const stLower = sessionType.toLowerCase();
+        const isQual = stLower === "qualifying";
+        const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
+        const isSprintRace = stLower === "sprint" || (stLower.includes("race") && stLower.includes("sprint"));
+        const isMainRace = stLower.includes("race") && !stLower.includes("sprint");
+        const evts = (() => {
+          const dnf = new Set<number>();
+          for (const rc of (debug ? [] : wsData.raceControl)) {
+            const m = (rc.message || "").toUpperCase();
+            if (m.includes("RETIRED") || m.includes("OUT OF THE RACE")) { if (rc.driver_number) dnf.add(rc.driver_number); }
+          }
+          return dnf;
+        })();
+        const fl = debug ? null : wsData.fastestLap;
+        const pos = debug ? new Map() : wsData.positions;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70" onClick={() => setSelectedPlayer(null)}>
+            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between z-10">
+                <div>
+                  <div className="font-bold text-base">{entry.tpName}</div>
+                  <div className="text-[11px] text-white/30">{entry.scuderiaName}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{entry.points}</span>
+                  <button onClick={() => setSelectedPlayer(null)} className="text-white/30 hover:text-white/60 p-1">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="px-5 py-4 space-y-1.5">
+                {player.driver_numbers.map((driverNum) => {
+                  const d = getDriverByNumber(driverNum);
+                  const position = pos.get(driverNum)?.position ?? 22;
+                  const isDnf = evts.has(driverNum);
+                  const isFl = fl?.driver_number === driverNum;
+                  const isPrimo = driverNum === player.primo_pilota;
+                  const isBoosted = player.chip_piloti === "boost" && player.chip_piloti_target === driverNum && !isPrimo;
+                  const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
+
+                  let puntiBase = 0;
+                  if (isQual) puntiBase = calcolaQualifica(position, isDnf);
+                  else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
+                  else if (isSprintRace) puntiBase = calcolaSprint({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl } as DriverResult);
+                  else if (isMainRace) puntiBase = calcolaGara({ driver_number: driverNum, position, dnf: isDnf, grid_position: gridPositions.get(driverNum), fastest_lap: isFl, driver_of_the_day: false, penalty: false });
+
+                  let puntiFinali = isPrimo && player.chip_piloti === "scudo"
+                    ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
+                    : puntiBase * molt;
+                  if (player.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
+
+                  return (
+                    <div key={driverNum} className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${
+                      isPrimo ? "border-[#E8002D]/30 bg-[#E8002D]/[0.04]" : isBoosted ? "border-amber-500/30 bg-amber-500/[0.03]" : "border-white/[0.06] bg-white/[0.02]"
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold w-6 text-center ${isDnf ? "text-red-400" : position <= 3 ? "text-[#E8002D]" : "text-white/40"}`}>
+                          {isDnf ? "DNF" : `P${position}`}
+                        </div>
+                        {d && <div className="w-[3px] h-6 rounded-full" style={{ backgroundColor: `#${d.teamColour}` }} />}
+                        <div>
+                          <div className={`text-[13px] font-semibold ${isDnf ? "text-white/40 line-through" : ""}`}>
+                            {d?.name || `#${driverNum}`}
+                            {isPrimo && <span className="text-[8px] ml-1 text-[#E8002D] font-bold">CAP</span>}
+                            {isBoosted && <span className="text-[8px] ml-1 text-amber-400 font-bold">x3</span>}
+                          </div>
+                          <div className="text-[10px] text-white/25">{d?.team}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${puntiFinali > 0 ? "text-green-400" : puntiFinali < 0 ? "text-red-400" : "text-white/15"}`}>
+                          {puntiFinali > 0 ? "+" : ""}{puntiFinali}
+                        </span>
+                        {molt > 1 && <span className="text-[10px] text-white/30">x{molt}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Race Control Feed */}
       {live.raceControlFeed.length > 0 && (

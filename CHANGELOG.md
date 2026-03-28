@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.0 — 28 Marzo 2026
+
+### Novità
+- **Dettaglio giocatore live** — clicca su un giocatore nella classifica weekend per vedere i punti live dei suoi piloti
+- **Mercato bloccato** durante sessioni live
+
+### Fix
+- Fix autenticazione OpenF1 e CORS (proxy server-side)
+- Classifica weekend filtrata per lega preferita
+
+---
+
 ## v1.1.1 — 28 Marzo 2026
 
 ### Fix
