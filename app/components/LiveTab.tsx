@@ -79,9 +79,8 @@ function PilotaLiveRow({ p, primoPilota, chipPiloti }: {
 }
 
 function PrevisioneLiveCard({ p }: { p: LivePrevisioneStatus }) {
-  const isCorrect = p.happened === true && p.prediction === true;
-  const isWrong = p.happened === true && p.prediction === false;
-  const waiting = p.happened === null || p.happened === false;
+  const isCorrect = p.correct === true;
+  const isWrong = p.correct === false;
 
   const borderClass = isCorrect
     ? "border-green-500/30 bg-green-500/[0.06]"
@@ -96,14 +95,14 @@ function PrevisioneLiveCard({ p }: { p: LivePrevisioneStatus }) {
         isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/20"
       }`}>
         {p.key === "numeroDnf"
-          ? `${p.prediction ?? "—"} ${isCorrect ? "✓" : waiting ? "(provvisorio)" : "✗"}`
-          : `${p.prediction === true ? "SI" : p.prediction === false ? "NO" : "—"} ${isCorrect ? "✓" : isWrong ? "✗" : "— in attesa"}`
+          ? `${p.prediction ?? "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
+          : `${p.prediction === true ? "SI" : p.prediction === false ? "NO" : "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
         }
       </div>
       <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-0.5 ${
         isCorrect ? "text-green-400/60" : isWrong ? "text-red-400/40" : "text-white/10"
       }`}>
-        {isCorrect ? `+${p.points} pts` : isWrong ? "0 pts" : waiting ? "in attesa" : ""}
+        {isCorrect ? `+${p.points} pts` : isWrong ? "0 pts" : ""}
       </div>
     </div>
   );
