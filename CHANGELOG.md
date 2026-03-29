@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.1 — 29 Marzo 2026
+
+### Fix
+- Previsioni live colorate correttamente (verde se corretta, rosso se sbagliata)
+- Classifica weekend live include punti previsioni per tutti i giocatori
+- Previsioni visibili nel modal dettaglio giocatore
+- Modal dettaglio giocatore scrollabile su mobile
+
+---
+
 ## v1.2.0 — 28 Marzo 2026
 
 ### Novità
