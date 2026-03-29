@@ -178,27 +178,27 @@ export function useLiveScoring(
     let totalPrevisioni = 0;
 
     if (isRace) {
-      const prevItems: { key: string; label: string; prediction: boolean | null; happened: boolean | null; puntiSi: number; puntiNo: number }[] = [
-        { key: "safetyCar", label: "Safety Car", prediction: myPrevisioni.safetyCar, happened: events.safetyCar || null, puntiSi: PREVISIONI_PUNTI.safetyCar.si, puntiNo: PREVISIONI_PUNTI.safetyCar.no },
-        { key: "virtualSafetyCar", label: "Virtual Safety Car", prediction: myPrevisioni.virtualSafetyCar, happened: events.virtualSafetyCar || null, puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si, puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no },
-        { key: "redFlag", label: "Red Flag", prediction: myPrevisioni.redFlag, happened: events.redFlag || null, puntiSi: PREVISIONI_PUNTI.redFlag.si, puntiNo: PREVISIONI_PUNTI.redFlag.no },
-        { key: "gommeWet", label: "Gomme Wet", prediction: myPrevisioni.gommeWet, happened: wetTyres || null, puntiSi: PREVISIONI_PUNTI.gommeWet.si, puntiNo: PREVISIONI_PUNTI.gommeWet.no },
-        { key: "poleVince", label: "Pole vince", prediction: myPrevisioni.poleVince, happened: poleWon, puntiSi: PREVISIONI_PUNTI.poleVince.si, puntiNo: PREVISIONI_PUNTI.poleVince.no },
+      const prevItems: { key: string; label: string; prediction: boolean | null; happened: boolean; puntiSi: number; puntiNo: number }[] = [
+        { key: "safetyCar", label: "Safety Car", prediction: myPrevisioni.safetyCar, happened: events.safetyCar, puntiSi: PREVISIONI_PUNTI.safetyCar.si, puntiNo: PREVISIONI_PUNTI.safetyCar.no },
+        { key: "virtualSafetyCar", label: "Virtual Safety Car", prediction: myPrevisioni.virtualSafetyCar, happened: events.virtualSafetyCar, puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si, puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no },
+        { key: "redFlag", label: "Red Flag", prediction: myPrevisioni.redFlag, happened: events.redFlag, puntiSi: PREVISIONI_PUNTI.redFlag.si, puntiNo: PREVISIONI_PUNTI.redFlag.no },
+        { key: "gommeWet", label: "Gomme Wet", prediction: myPrevisioni.gommeWet, happened: wetTyres, puntiSi: PREVISIONI_PUNTI.gommeWet.si, puntiNo: PREVISIONI_PUNTI.gommeWet.no },
+        { key: "poleVince", label: "Pole vince", prediction: myPrevisioni.poleVince, happened: poleWon ?? false, puntiSi: PREVISIONI_PUNTI.poleVince.si, puntiNo: PREVISIONI_PUNTI.poleVince.no },
       ];
 
       for (const p of prevItems) {
         let correct: boolean | null = null;
         let points = 0;
 
-        if (p.prediction !== null && p.happened !== null) {
-          // Evento accaduto: se ha previsto SI ed è accaduto, o NO e non è accaduto
+        if (p.prediction !== null) {
           if (p.happened) {
-            // Evento è accaduto
+            // Evento accaduto → chi ha detto SI ha ragione
             correct = p.prediction === true;
             points = correct ? p.puntiSi : 0;
           } else {
-            // Evento non ancora accaduto (potrebbe ancora accadere) — mostriamo provvisorio
-            correct = null; // in attesa
+            // Evento NON accaduto (per ora) → chi ha detto NO ha ragione provvisoriamente
+            correct = p.prediction === false; // provvisorio, può cambiare
+            points = correct ? p.puntiNo : 0;
           }
         }
 
