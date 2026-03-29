@@ -7,8 +7,10 @@ import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff, X } from "lucide-react"
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
+  calcolaPuntiPrevisioni,
   type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig,
 } from "../lib/scoring";
+import { PREVISIONI_PUNTI } from "../lib/types";
 import { saveProvisionalScores } from "../lib/provisional-scores";
 
 // ─── Sub-components ───
@@ -354,14 +356,23 @@ export default function LiveTab({
     const isMainRace = stLower.includes("race") && !stLower.includes("sprint");
 
     const events = (() => {
+      let safetyCar = false, virtualSafetyCar = false, redFlag = false;
       const dnfDrivers = new Set<number>();
       for (const rc of wsData.raceControl) {
         const msg = (rc.message || "").toUpperCase();
+        const flag = (rc.flag || "").toUpperCase();
+        if (msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL")) safetyCar = true;
+        if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtualSafetyCar = true;
+        if (flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) redFlag = true;
         if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
           if (rc.driver_number) dnfDrivers.add(rc.driver_number);
         }
       }
-      return { dnfDrivers };
+      const wetTyres = wsData.stints.some((s) => {
+        const c = (s.compound || "").toUpperCase();
+        return c === "WET" || c === "INTERMEDIATE";
+      });
+      return { safetyCar, virtualSafetyCar, redFlag, wetTyres, dnfDrivers, totalDnf: dnfDrivers.size };
     })();
 
     const entries: ClassificaEntry[] = allFormazioni.map((f) => {
@@ -400,6 +411,34 @@ export default function LiveTab({
         total += puntiFinali;
       }
 
+      // Aggiungi punti previsioni (solo gara)
+      if (isMainRace) {
+        const playerPrev = allPrevisioni.get(f.user_id);
+        if (playerPrev) {
+          const prevObj = {
+            safetyCar: playerPrev.safety_car,
+            virtualSafetyCar: playerPrev.virtual_safety_car,
+            redFlag: playerPrev.red_flag,
+            gommeWet: playerPrev.gomme_wet,
+            poleVince: playerPrev.pole_vince,
+            numeroDnf: playerPrev.numero_dnf,
+          };
+          const eventsObj = {
+            safety_car: events.safetyCar,
+            virtual_safety_car: events.virtualSafetyCar,
+            red_flag: events.redFlag,
+            wet_tyres: events.wetTyres,
+            pole_won: false, // determinabile solo a fine gara
+            total_dnf: events.totalDnf,
+          };
+          const chipPrev = playerPrev.chip_attivo
+            ? { chipAttivo: playerPrev.chip_attivo, chipTarget: playerPrev.chip_target }
+            : undefined;
+          const prevResult = calcolaPuntiPrevisioni(prevObj, eventsObj, chipPrev);
+          total += prevResult.total;
+        }
+      }
+
       return {
         userId: f.user_id,
         scuderiaName: f.scuderia_name || "—",
@@ -411,7 +450,7 @@ export default function LiveTab({
 
     entries.sort((a, b) => b.points - a.points);
     return entries;
-  }, [allFormazioni, wsData.positions, wsData.raceControl, wsData.fastestLap, sessionType, gridPositions, userId, debug]);
+  }, [allFormazioni, allPrevisioni, wsData.positions, wsData.raceControl, wsData.fastestLap, wsData.stints, sessionType, gridPositions, userId, debug]);
 
   const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
   const live = debug ? mockLive : realLive;
