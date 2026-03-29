@@ -552,9 +552,9 @@ export default function LiveTab({
         const pos = debug ? new Map() : wsData.positions;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70" onClick={() => setSelectedPlayer(null)}>
-            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between z-10">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4" onClick={() => setSelectedPlayer(null)}>
+            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="shrink-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
                 <div>
                   <div className="font-bold text-base">{entry.tpName}</div>
                   <div className="text-[11px] text-white/30">{entry.scuderiaName}</div>
@@ -566,7 +566,11 @@ export default function LiveTab({
                   </button>
                 </div>
               </div>
-              <div className="px-5 py-4 space-y-1.5">
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                {/* Piloti */}
+                <div>
+                  <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
+                  <div className="space-y-1.5">
                 {player.driver_numbers.map((driverNum) => {
                   const d = getDriverByNumber(driverNum);
                   const position = pos.get(driverNum)?.position ?? 22;
@@ -614,6 +618,28 @@ export default function LiveTab({
                     </div>
                   );
                 })}
+                  </div>
+                </div>
+
+                {/* Previsioni (solo gara) */}
+                {isMainRace && live.previsioniStatus.length > 0 && (
+                  <div>
+                    <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
+                    <div className="text-[11px] text-white/20 text-center py-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                      Visibili dopo i risultati ufficiali
+                    </div>
+                  </div>
+                )}
+
+                {/* Chip attivi */}
+                {player.chip_piloti && (
+                  <div>
+                    <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento</div>
+                    <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                      <span className="text-xs font-bold text-amber-400">{player.chip_piloti}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
