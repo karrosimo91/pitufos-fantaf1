@@ -695,8 +695,8 @@ export default function LiveTab({
                       <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
                       <div className="grid grid-cols-2 gap-1.5">
                         {prevItems.map((p) => {
-                          const isCorrect = p.happened !== null && p.happened !== false && p.value === true;
-                          const isWrong = p.happened === true && p.value === false;
+                          const isCorrect = (p.happened === true && p.value === true) || (p.happened === false && p.value === false);
+                          const isWrong = (p.happened === true && p.value === false) || (p.happened === false && p.value === true);
                           return (
                             <div key={p.label} className={`rounded-lg px-3 py-2 border text-[12px] ${
                               isCorrect ? "border-green-500/30 bg-green-500/[0.06]"
