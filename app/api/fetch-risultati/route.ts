@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 1. Trova il meeting per questo round (anno 2026)
-    const allMeetings = await fetchJson(`${OPENF1}/meetings?year=2026`);
+    // 1. Trova il meeting per questo round
+    const year = new Date().getFullYear();
+    const allMeetings = await fetchJson(`${OPENF1}/meetings?year=${year}`);
     if (!allMeetings || allMeetings.length === 0) {
       return NextResponse.json({ error: "Nessun meeting trovato per il 2026" }, { status: 404 });
     }
@@ -154,8 +155,26 @@ export async function POST(request: NextRequest) {
 
 // ─── Helper: fetch JSON ───
 
+async function getOpenF1Token(): Promise<string | null> {
+  const username = process.env.OPENF1_USERNAME;
+  const password = process.env.OPENF1_PASSWORD;
+  if (!username || !password) return null;
+  try {
+    const res = await fetch("https://api.openf1.org/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "password", username, password }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.access_token || null;
+  } catch { return null; }
+}
+
 async function fetchJson(url: string): Promise<any[]> {
-  const res = await fetch(url, { cache: "no-store" });
+  const token = await getOpenF1Token();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(url, { headers, cache: "no-store" });
   if (!res.ok) return [];
   return res.json();
 }
