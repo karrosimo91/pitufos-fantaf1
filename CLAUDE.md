@@ -199,3 +199,23 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - Font: Oswald per titoli, JetBrains Mono per numeri, Inter per testo
 - Mobile-first
 - Stile ispirato al prototipo "PITWALL" già creato
+- Mockup redesign v2 disponibile in `/public/mockup-v2.html` (Space Grotesk, stile moderno)
+
+## TODO — Da fare nelle prossime sessioni
+
+### Refactor / Snellimento
+- **LiveTab.tsx troppo grande** — spezzare in componenti: ClassificaWeekend, PlayerModal, BreakdownAccordion, PrevisioniLive
+- **Logica duplicata** — il calcolo punti per altri giocatori (useMemo classifica) ripete la logica di scoring.ts. Centralizzare
+- **Troppi fetch nel LiveTab** — creare hook `useLiveWeekendData(round, legaId)` che centralizza fetch formazioni, previsioni, grid, risultati precedenti
+- **Tab provvisorio** — riusare gli stessi componenti del live invece di copia-incolla semplificato
+- **Breakdown nel tab provvisorio** — aggiungere dettaglio pilota cliccabile anche nel tab provvisorio (attualmente mostra solo classifica)
+
+### Feature da implementare
+- **Algoritmo quotazioni a fasce** — approvato CDA, non implementato (fasce: ≥40: +3, 25-39: +2, 10-24: +1, 0-9: 0, -1/-10: -1, ≤-11: -2, min 5, max 45)
+- **Fallback polling REST** — se WebSocket non si connette, polling `/api/live-data` ogni 15 sec come backup
+- **Redesign grafica** — mockup v2 pronto, da implementare (Space Grotesk, layout moderno)
+
+### Bug noti / Miglioramenti
+- Alcuni utenti vedono live a 0 (WebSocket non si connette) — serve fallback polling
+- Mercato bloccato durante sessioni — verificare che funzioni correttamente
+- Aggiornamento punteggi richiede cambio tab — potrebbe essere latenza WebSocket
