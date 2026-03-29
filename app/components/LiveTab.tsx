@@ -253,12 +253,17 @@ export default function LiveTab({
     })();
   }, [meetingKey, sessionType, debug]);
 
-  // Fetch formazioni confermate di tutti i giocatori per la classifica
+  // Fetch formazioni e previsioni confermate di tutti i giocatori per la classifica
   const [allFormazioni, setAllFormazioni] = useState<{
     user_id: string; driver_numbers: number[]; primo_pilota: number | null;
     chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
     scuderia_name?: string; tp_name?: string;
   }[]>([]);
+  const [allPrevisioni, setAllPrevisioni] = useState<Map<string, {
+    safety_car: boolean | null; virtual_safety_car: boolean | null; red_flag: boolean | null;
+    gomme_wet: boolean | null; pole_vince: boolean | null; numero_dnf: number | null;
+    chip_attivo: string | null; chip_target: string | null;
+  }>>(new Map());
 
   useEffect(() => {
     if (debug || !round || !isSupabaseConfigured) return;
@@ -305,6 +310,19 @@ export default function LiveTab({
         scuderia_name: profileMap.get(f.user_id)?.scuderia,
         tp_name: profileMap.get(f.user_id)?.tp,
       })));
+
+      // Fetch previsioni confermate
+      const { data: prevData } = await supabase
+        .from("previsioni")
+        .select("user_id, safety_car, virtual_safety_car, red_flag, gomme_wet, pole_vince, numero_dnf, chip_attivo, chip_target")
+        .eq("round", round)
+        .eq("confirmed", true);
+
+      if (prevData) {
+        const prevMap = new Map<string, typeof prevData[0]>();
+        for (const p of prevData) prevMap.set(p.user_id, p);
+        setAllPrevisioni(prevMap);
+      }
     })();
   }, [round, debug, legaId]);
 
@@ -622,14 +640,56 @@ export default function LiveTab({
                 </div>
 
                 {/* Previsioni (solo gara) */}
-                {isMainRace && live.previsioniStatus.length > 0 && (
-                  <div>
-                    <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
-                    <div className="text-[11px] text-white/20 text-center py-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                      Visibili dopo i risultati ufficiali
+                {isMainRace && (() => {
+                  const playerPrev = allPrevisioni.get(selectedPlayer);
+                  if (!playerPrev) return null;
+
+                  const prevItems = [
+                    { label: "Safety Car", value: playerPrev.safety_car, happened: live.events.safetyCar },
+                    { label: "Virtual SC", value: playerPrev.virtual_safety_car, happened: live.events.virtualSafetyCar },
+                    { label: "Red Flag", value: playerPrev.red_flag, happened: live.events.redFlag },
+                    { label: "Gomme Wet", value: playerPrev.gomme_wet, happened: live.events.wetTyres },
+                    { label: "Pole vince", value: playerPrev.pole_vince, happened: null },
+                  ];
+
+                  return (
+                    <div>
+                      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {prevItems.map((p) => {
+                          const isCorrect = p.happened !== null && p.happened !== false && p.value === true;
+                          const isWrong = p.happened === true && p.value === false;
+                          return (
+                            <div key={p.label} className={`rounded-lg px-3 py-2 border text-[12px] ${
+                              isCorrect ? "border-green-500/30 bg-green-500/[0.06]"
+                              : isWrong ? "border-red-500/15 bg-red-500/[0.04]"
+                              : "border-white/[0.06] bg-white/[0.02]"
+                            }`}>
+                              <div className="text-[10px] text-white/40">{p.label}</div>
+                              <div className={`font-bold ${isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/30"}`}>
+                                {p.value === true ? "SI" : p.value === false ? "NO" : "—"}
+                                {isCorrect ? " ✓" : isWrong ? " ✗" : ""}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className={`rounded-lg px-3 py-2 border col-span-2 text-[12px] ${
+                          playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf
+                            ? "border-green-500/30 bg-green-500/[0.06]" : "border-white/[0.06] bg-white/[0.02]"
+                        }`}>
+                          <div className="text-[10px] text-white/40">N. DNF</div>
+                          <div className={`font-bold ${
+                            playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf
+                              ? "text-green-400" : "text-white/30"
+                          }`}>
+                            {playerPrev.numero_dnf ?? "—"}
+                            {playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf ? " ✓" : ""}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Chip attivi */}
                 {player.chip_piloti && (
