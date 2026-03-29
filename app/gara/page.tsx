@@ -242,7 +242,7 @@ function GaraPage() {
 
   // Auto-switch al tab Live quando c'è sessione attiva o dati provvisori
   useEffect(() => {
-    if ((isLive || showProvisional) && isCurrentRound && tab === "formazione") {
+    if ((isLive || showProvisional) && isCurrentRound && tab !== "live") {
       setTab("live");
     }
   }, [isLive, showProvisional, isCurrentRound]);
