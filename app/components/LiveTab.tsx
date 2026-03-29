@@ -15,11 +15,11 @@ import { saveProvisionalScores } from "../lib/provisional-scores";
 
 // ─── Sub-components ───
 
-function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdown, expanded, onToggle }: {
+function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, expanded, onToggle }: {
   p: LivePilotaScore;
   primoPilota: number | null;
   chipPiloti: string | null;
-  breakdown?: ScoreBreakdown | null;
+  breakdownSections?: { label: string; breakdown: ScoreBreakdown }[];
   expanded?: boolean;
   onToggle?: () => void;
 }) {
@@ -82,45 +82,47 @@ function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdown, expanded, onTogg
         </div>
       </div>
 
-      {expanded && breakdown && (
+      {expanded && breakdownSections && breakdownSections.length > 0 && (
         <div className="px-3 pb-3 pt-0">
-          <div className="bg-black/30 rounded-lg p-3 space-y-1">
-            {breakdown.items.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-[12px]">
-                <span className="text-white/40">{item.label}</span>
-                <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                  item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
-                }`}>
-                  {item.value > 0 ? "+" : ""}{item.value}
-                </span>
+          <div className="bg-black/30 rounded-lg p-3 space-y-2">
+            {breakdownSections.map((section, si) => (
+              <div key={si}>
+                {breakdownSections.length > 1 && (
+                  <div className="text-[9px] tracking-[1.5px] text-white/25 uppercase font-bold mb-1">{section.label}</div>
+                )}
+                {section.breakdown.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-[12px]">
+                    <span className="text-white/40">{item.label}</span>
+                    <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
+                    }`}>
+                      {item.value > 0 ? "+" : ""}{item.value}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-white/30">Subtotale</span>
+                  <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-white/40`}>
+                    {section.breakdown.finalTotal > 0 ? "+" : ""}{section.breakdown.finalTotal}
+                  </span>
+                </div>
+                {si < breakdownSections.length - 1 && <div className="border-t border-white/[0.06] my-1.5"></div>}
               </div>
             ))}
-            {breakdown.moltiplicatore > 1 && (
-              <>
-                <div className="border-t border-white/[0.06] my-1.5"></div>
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/40">Base</span>
-                  <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/50">{breakdown.baseTotal}</span>
-                </div>
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/40">
-                    {isPrimo && chipPiloti === "scudo" ? "Scudo Cap." : isPrimo ? "Capitano" : "Boost"}
-                  </span>
-                  <span className="font-[family-name:var(--font-jetbrains)] font-bold text-amber-400">
-                    {isPrimo && chipPiloti === "scudo" ? (breakdown.baseTotal > 0 ? "x2 bonus" : "x1 malus") : `x${breakdown.moltiplicatore}`}
+            <div className="border-t border-white/[0.08] my-1.5"></div>
+            {(() => {
+              const grandTotal = breakdownSections.reduce((s, sec) => s + sec.breakdown.finalTotal, 0);
+              return (
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="text-white/70 font-bold">Totale Weekend</span>
+                  <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                    grandTotal > 0 ? "text-green-400" : grandTotal < 0 ? "text-red-400" : "text-white/15"
+                  }`}>
+                    {grandTotal > 0 ? "+" : ""}{grandTotal}
                   </span>
                 </div>
-              </>
-            )}
-            <div className="border-t border-white/[0.06] my-1.5"></div>
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="text-white/60 font-semibold">Totale</span>
-              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                breakdown.finalTotal > 0 ? "text-green-400" : breakdown.finalTotal < 0 ? "text-red-400" : "text-white/15"
-              }`}>
-                {breakdown.finalTotal > 0 ? "+" : ""}{breakdown.finalTotal}
-              </span>
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -281,6 +283,23 @@ export default function LiveTab({
   qualifyingPole?: number | null;
   debug?: boolean;
 }) {
+  // Fetch risultati sessioni precedenti del weekend (da Supabase)
+  const [previousResults, setPreviousResults] = useState<import("../lib/scoring").RaceWeekendResults | null>(null);
+  useEffect(() => {
+    if (debug || !round || !isSupabaseConfigured) return;
+    const supabase = createClient();
+    if (!supabase) return;
+
+    (async () => {
+      const { data } = await supabase
+        .from("weekend_results")
+        .select("data")
+        .eq("round", round)
+        .maybeSingle();
+      if (data?.data) setPreviousResults(data.data);
+    })();
+  }, [round, debug]);
+
   // Fetch grid positions dalla qualifica via proxy (no CORS)
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
   useEffect(() => {
@@ -516,6 +535,62 @@ export default function LiveTab({
     return "race" as const;
   })();
 
+  // Helper: genera breakdown completo weekend (sessioni precedenti + corrente)
+  function getFullBreakdown(driverNum: number, isPrimo: boolean, chipPilotiStr: string | null, chipTarget: number | null) {
+    const isBoosted = chipPilotiStr === "boost" && chipTarget === driverNum && !isPrimo;
+    const chipForBreakdown = isBoosted ? "boost" : (isPrimo && chipPilotiStr === "scudo") ? "scudo" : chipPilotiStr === "halo" ? "halo" : null;
+
+    const sections: { label: string; breakdown: ScoreBreakdown }[] = [];
+
+    // Sessioni precedenti dal DB
+    if (previousResults) {
+      if (previousResults.qualifying?.length) {
+        const qr = previousResults.qualifying.find((r) => r.driver_number === driverNum);
+        if (qr) sections.push({ label: "Qualifica", breakdown: getScoreBreakdown(qr, "qualifying", isPrimo, chipForBreakdown) });
+      }
+      if (previousResults.sprint_shootout?.length) {
+        const ssr = previousResults.sprint_shootout.find((r) => r.driver_number === driverNum);
+        if (ssr) sections.push({ label: "Sprint Shootout", breakdown: getScoreBreakdown(ssr, "sprint_shootout", isPrimo, chipForBreakdown) });
+      }
+      if (previousResults.sprint?.length) {
+        const sr = previousResults.sprint.find((r) => r.driver_number === driverNum);
+        if (sr) sections.push({ label: "Sprint", breakdown: getScoreBreakdown(sr, "sprint", isPrimo, chipForBreakdown) });
+      }
+      // Se la gara è già stata calcolata (post-gara), mostra anche quella
+      if (previousResults.race?.length && sessionTypeForBreakdown !== "race") {
+        const rr = previousResults.race.find((r) => r.driver_number === driverNum);
+        if (rr) sections.push({ label: "Gara", breakdown: getScoreBreakdown(rr, "race", isPrimo, chipForBreakdown) });
+      }
+    }
+
+    // Sessione corrente (live)
+    const pos = debug ? 0 : (wsData.positions.get(driverNum)?.position ?? 22);
+    const isDnf = debug ? false : ((() => {
+      for (const rc of wsData.raceControl) {
+        const m = (rc.message || "").toUpperCase();
+        if ((m.includes("RETIRED") || m.includes("OUT OF THE RACE")) && rc.driver_number === driverNum) return true;
+      }
+      return false;
+    })());
+    const isFl = debug ? false : wsData.fastestLap?.driver_number === driverNum;
+
+    const currentResult: DriverResult = {
+      driver_number: driverNum, position: pos, dnf: isDnf,
+      fastest_lap: isFl, driver_of_the_day: false, penalty: false,
+      grid_position: gridPositions.get(driverNum),
+    };
+
+    const sessionLabels: Record<string, string> = {
+      qualifying: "Qualifica", sprint_shootout: "Sprint Shootout", sprint: "Sprint", race: "Gara"
+    };
+    sections.push({
+      label: sessionLabels[sessionTypeForBreakdown] + " (live)",
+      breakdown: getScoreBreakdown(currentResult, sessionTypeForBreakdown, isPrimo, chipForBreakdown),
+    });
+
+    return sections;
+  }
+
   // Salva punteggi provvisori su Supabase (accumula sessioni weekend)
   useEffect(() => {
     if (debug || classifica.length === 0) return;
@@ -573,20 +648,14 @@ export default function LiveTab({
       </div>
       {live.piloti.map((p) => {
         const isPrimo = p.driver_number === primoPilota;
-        const isBoostedDriver = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === p.driver_number && !isPrimo;
-        const driverResult: DriverResult = {
-          driver_number: p.driver_number, position: p.position, dnf: p.isDnf,
-          fastest_lap: p.isFastestLap, driver_of_the_day: false, penalty: false,
-          grid_position: gridPositions.get(p.driver_number),
-        };
-        const bd = getScoreBreakdown(driverResult, sessionTypeForBreakdown, isPrimo, isBoostedDriver ? "boost" : isPrimo && chipPiloti?.chipPiloti === "scudo" ? "scudo" : chipPiloti?.chipPiloti === "halo" ? "halo" : null);
+        const sections = getFullBreakdown(p.driver_number, isPrimo, chipPiloti?.chipPiloti || null, chipPiloti?.chipPilotiTarget || null);
         return (
           <PilotaLiveRow
             key={p.driver_number}
             p={p}
             primoPilota={primoPilota}
             chipPiloti={chipPiloti?.chipPiloti || null}
-            breakdown={bd}
+            breakdownSections={sections}
             expanded={expandedDriver === p.driver_number}
             onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
           />
@@ -698,7 +767,6 @@ export default function LiveTab({
                   <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
                   <div className="space-y-1.5">
                 {player.driver_numbers.map((driverNum) => {
-                  const d = getDriverByNumber(driverNum);
                   const position = pos.get(driverNum)?.position ?? 22;
                   const isDnf = evts.has(driverNum);
                   const isFl = fl?.driver_number === driverNum;
@@ -717,31 +785,23 @@ export default function LiveTab({
                     : puntiBase * molt;
                   if (player.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
 
+                  const sections = getFullBreakdown(driverNum, isPrimo, player.chip_piloti, player.chip_piloti_target);
+
+                  const pScore: LivePilotaScore = {
+                    driver_number: driverNum, position, puntiBase, moltiplicatore: molt,
+                    puntiFinali, isDnf, isFastestLap: isFl,
+                  };
+
                   return (
-                    <div key={driverNum} className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${
-                      isPrimo ? "border-[#E8002D]/30 bg-[#E8002D]/[0.04]" : isBoosted ? "border-amber-500/30 bg-amber-500/[0.03]" : "border-white/[0.06] bg-white/[0.02]"
-                    }`}>
-                      <div className="flex items-center gap-2.5">
-                        <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold w-6 text-center ${isDnf ? "text-red-400" : position <= 3 ? "text-[#E8002D]" : "text-white/40"}`}>
-                          {isDnf ? "DNF" : `P${position}`}
-                        </div>
-                        {d && <div className="w-[3px] h-6 rounded-full" style={{ backgroundColor: `#${d.teamColour}` }} />}
-                        <div>
-                          <div className={`text-[13px] font-semibold ${isDnf ? "text-white/40 line-through" : ""}`}>
-                            {d?.name || `#${driverNum}`}
-                            {isPrimo && <span className="text-[8px] ml-1 text-[#E8002D] font-bold">CAP</span>}
-                            {isBoosted && <span className="text-[8px] ml-1 text-amber-400 font-bold">x3</span>}
-                          </div>
-                          <div className="text-[10px] text-white/25">{d?.team}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${puntiFinali > 0 ? "text-green-400" : puntiFinali < 0 ? "text-red-400" : "text-white/15"}`}>
-                          {puntiFinali > 0 ? "+" : ""}{puntiFinali}
-                        </span>
-                        {molt > 1 && <span className="text-[10px] text-white/30">x{molt}</span>}
-                      </div>
-                    </div>
+                    <PilotaLiveRow
+                      key={driverNum}
+                      p={pScore}
+                      primoPilota={player.primo_pilota}
+                      chipPiloti={player.chip_piloti}
+                      breakdownSections={sections}
+                      expanded={expandedDriver === driverNum}
+                      onToggle={() => setExpandedDriver(expandedDriver === driverNum ? null : driverNum)}
+                    />
                   );
                 })}
                   </div>
