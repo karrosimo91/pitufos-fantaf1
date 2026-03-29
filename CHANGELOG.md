@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.0 — 29 Marzo 2026
+
+### Novità
+- **Breakdown punteggio pilota** — clicca su un pilota per vedere il dettaglio di come è composto il punteggio (posizione, giro veloce, pos. guadagnate/perse, moltiplicatore)
+
+---
+
 ## v1.2.1 — 29 Marzo 2026
 
 ### Fix

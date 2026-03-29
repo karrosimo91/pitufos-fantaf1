@@ -100,6 +100,106 @@ export function calcolaGara(result: DriverResult): number {
   return punti;
 }
 
+// ─── Breakdown punteggio pilota ───
+
+export interface ScoreBreakdown {
+  items: { label: string; value: number }[];
+  baseTotal: number;
+  moltiplicatore: number;
+  finalTotal: number;
+}
+
+export function getScoreBreakdown(
+  result: DriverResult,
+  sessionType: "qualifying" | "sprint_shootout" | "sprint" | "race",
+  isPrimoPilota: boolean,
+  chipPiloti: string | null,
+): ScoreBreakdown {
+  const items: { label: string; value: number }[] = [];
+  let baseTotal = 0;
+
+  if (sessionType === "qualifying") {
+    if (result.dnf) {
+      items.push({ label: "NC/DSQ", value: -5 });
+      baseTotal = -5;
+    } else {
+      const pts = PUNTI_QUALIFICA[result.position] ?? -1;
+      items.push({ label: `Posizione (P${result.position})`, value: pts });
+      baseTotal = pts;
+    }
+  } else if (sessionType === "sprint_shootout") {
+    if (result.dnf) {
+      items.push({ label: "NC", value: -3 });
+      baseTotal = -3;
+    } else {
+      const pts = PUNTI_SPRINT_SHOOTOUT[result.position] ?? -1;
+      items.push({ label: `Posizione (P${result.position})`, value: pts });
+      baseTotal = pts;
+    }
+  } else if (sessionType === "sprint") {
+    if (result.dnf) {
+      items.push({ label: "DNF Sprint", value: -5 });
+      baseTotal = -5;
+    } else {
+      const pts = PUNTI_SPRINT[result.position] ?? 0;
+      items.push({ label: `Posizione (P${result.position})`, value: pts });
+      baseTotal = pts;
+    }
+    if (result.fastest_lap) {
+      items.push({ label: "Giro veloce", value: 2 });
+      baseTotal += 2;
+    }
+  } else if (sessionType === "race") {
+    if (result.dnf) {
+      items.push({ label: "DNF/Ritiro", value: -10 });
+      baseTotal = -10;
+    } else {
+      const pts = PUNTI_GARA[result.position] ?? 0;
+      items.push({ label: `Posizione (P${result.position})`, value: pts });
+      baseTotal = pts;
+
+      if (result.grid_position) {
+        const diff = result.grid_position - result.position;
+        if (diff > 0) {
+          items.push({ label: `Pos. guadagnate (+${diff})`, value: diff });
+          baseTotal += diff;
+        } else if (diff < 0) {
+          items.push({ label: `Pos. perse (${diff})`, value: diff });
+          baseTotal += diff;
+        }
+      }
+    }
+    if (result.fastest_lap) {
+      items.push({ label: "Giro veloce", value: 3 });
+      baseTotal += 3;
+    }
+    if (result.driver_of_the_day) {
+      items.push({ label: "Driver of the Day", value: 5 });
+      baseTotal += 5;
+    }
+    if (result.penalty) {
+      items.push({ label: "Penalità", value: -5 });
+      baseTotal -= 5;
+    }
+  }
+
+  // Moltiplicatore
+  const isBoosted = chipPiloti === "boost";
+  let moltiplicatore = 1;
+  if (isPrimoPilota) moltiplicatore = 2;
+  if (isBoosted) moltiplicatore = 3;
+
+  let finalTotal: number;
+  if (isPrimoPilota && chipPiloti === "scudo") {
+    finalTotal = baseTotal > 0 ? baseTotal * 2 : baseTotal;
+  } else {
+    finalTotal = baseTotal * moltiplicatore;
+  }
+  if (chipPiloti === "halo" && finalTotal < 0) finalTotal = 0;
+
+  return { items, baseTotal, moltiplicatore, finalTotal };
+}
+
 // ─── Calcolo punteggio totale pilota nel weekend ───
 
 function calcolaPuntiPilotaBase(

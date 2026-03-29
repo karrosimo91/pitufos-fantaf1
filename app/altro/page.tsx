@@ -118,6 +118,7 @@ export default function AltroPage() {
             <div>
               <div className="text-xs text-white/30 mb-1.5">Changelog</div>
               <div className="space-y-2 text-[12px] text-white/50">
+                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.3.0</span> — Breakdown punteggio pilota: clicca su un pilota per vedere il dettaglio</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.2.1</span> — Fix previsioni live, classifica con punti previsioni, modal dettaglio scrollabile</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.2.0</span> — Dettaglio punteggi live giocatori, punteggi provvisori persistenti post-sessione, classifica stagione live, mercato bloccato durante sessioni</div>
                 <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.1.0</span> — Classifica weekend live: ranking provvisorio di tutti i giocatori aggiornato in tempo reale durante le sessioni</div>

@@ -7,18 +7,21 @@ import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff, X } from "lucide-react"
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
-  calcolaPuntiPrevisioni,
-  type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig,
+  calcolaPuntiPrevisioni, getScoreBreakdown,
+  type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig, type ScoreBreakdown,
 } from "../lib/scoring";
 import { PREVISIONI_PUNTI } from "../lib/types";
 import { saveProvisionalScores } from "../lib/provisional-scores";
 
 // ─── Sub-components ───
 
-function PilotaLiveRow({ p, primoPilota, chipPiloti }: {
+function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdown, expanded, onToggle }: {
   p: LivePilotaScore;
   primoPilota: number | null;
   chipPiloti: string | null;
+  breakdown?: ScoreBreakdown | null;
+  expanded?: boolean;
+  onToggle?: () => void;
 }) {
   const driver = getDriverByNumber(p.driver_number);
   const isPrimo = p.driver_number === primoPilota;
@@ -34,48 +37,93 @@ function PilotaLiveRow({ p, primoPilota, chipPiloti }: {
         : "border-white/[0.06] bg-white/[0.02]";
 
   return (
-    <div className={`relative flex items-center justify-between rounded-xl p-3 mb-1.5 border transition-all ${borderClass}`}>
-      {isPrimo && (
-        <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-          <Crown size={8} /> CAP {isScudo ? "SCUDO" : "x2"}
-        </div>
-      )}
-      {isBoosted && (
-        <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-          <Zap size={8} /> BOOST x3
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold w-6 text-center ${
-          p.isDnf ? "text-red-400" : p.position <= 3 ? "text-[#E8002D]" : "text-white/50"
-        }`}>
-          {p.isDnf ? "DNF" : `P${p.position}`}
-        </div>
-        {driver && (
-          <div className="w-[3px] h-7 rounded-full" style={{ backgroundColor: `#${driver.teamColour || "555"}` }} />
-        )}
-        <div>
-          <div className={`text-[13px] font-semibold ${p.isDnf ? "text-white/40 line-through" : ""}`}>
-            {driver?.name || `#${p.driver_number}`}
+    <div className={`relative rounded-xl mb-1.5 border transition-all ${borderClass}`}>
+      <div className="flex items-center justify-between p-3 cursor-pointer" onClick={onToggle}>
+        {isPrimo && (
+          <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
+            <Crown size={8} /> CAP {isScudo ? "SCUDO" : "x2"}
           </div>
-          <div className="text-[10px] text-white/30">{driver?.team || ""}</div>
-        </div>
-        {p.isFastestLap && (
-          <span className="text-[8px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">FL</span>
         )}
+        {isBoosted && (
+          <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
+            <Zap size={8} /> BOOST x3
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold w-6 text-center ${
+            p.isDnf ? "text-red-400" : p.position <= 3 ? "text-[#E8002D]" : "text-white/50"
+          }`}>
+            {p.isDnf ? "DNF" : `P${p.position}`}
+          </div>
+          {driver && (
+            <div className="w-[3px] h-7 rounded-full" style={{ backgroundColor: `#${driver.teamColour || "555"}` }} />
+          )}
+          <div>
+            <div className={`text-[13px] font-semibold ${p.isDnf ? "text-white/40 line-through" : ""}`}>
+              {driver?.name || `#${p.driver_number}`}
+            </div>
+            <div className="text-[10px] text-white/30">{driver?.team || ""}</div>
+          </div>
+          {p.isFastestLap && (
+            <span className="text-[8px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">FL</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
+            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+          }`}>
+            {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
+          </span>
+          {p.moltiplicatore > 1 && (
+            <span className="text-[10px] text-white/30">x{p.moltiplicatore}</span>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
-          p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
-        }`}>
-          {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
-        </span>
-        {p.moltiplicatore > 1 && (
-          <span className="text-[10px] text-white/30">×{p.moltiplicatore}</span>
-        )}
-      </div>
+      {expanded && breakdown && (
+        <div className="px-3 pb-3 pt-0">
+          <div className="bg-black/30 rounded-lg p-3 space-y-1">
+            {breakdown.items.map((item, i) => (
+              <div key={i} className="flex items-center justify-between text-[12px]">
+                <span className="text-white/40">{item.label}</span>
+                <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                  item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
+                }`}>
+                  {item.value > 0 ? "+" : ""}{item.value}
+                </span>
+              </div>
+            ))}
+            {breakdown.moltiplicatore > 1 && (
+              <>
+                <div className="border-t border-white/[0.06] my-1.5"></div>
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-white/40">Base</span>
+                  <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/50">{breakdown.baseTotal}</span>
+                </div>
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-white/40">
+                    {isPrimo && chipPiloti === "scudo" ? "Scudo Cap." : isPrimo ? "Capitano" : "Boost"}
+                  </span>
+                  <span className="font-[family-name:var(--font-jetbrains)] font-bold text-amber-400">
+                    {isPrimo && chipPiloti === "scudo" ? (breakdown.baseTotal > 0 ? "x2 bonus" : "x1 malus") : `x${breakdown.moltiplicatore}`}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="border-t border-white/[0.06] my-1.5"></div>
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-white/60 font-semibold">Totale</span>
+              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                breakdown.finalTotal > 0 ? "text-green-400" : breakdown.finalTotal < 0 ? "text-red-400" : "text-white/15"
+              }`}>
+                {breakdown.finalTotal > 0 ? "+" : ""}{breakdown.finalTotal}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -458,6 +506,15 @@ export default function LiveTab({
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
   const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
+
+  const sessionTypeForBreakdown = (() => {
+    const st = sessionType.toLowerCase();
+    if (st === "qualifying") return "qualifying" as const;
+    if (st.includes("sprint") && st.includes("qualifying")) return "sprint_shootout" as const;
+    if (st === "sprint") return "sprint" as const;
+    return "race" as const;
+  })();
 
   // Salva punteggi provvisori su Supabase (accumula sessioni weekend)
   useEffect(() => {
@@ -514,14 +571,27 @@ export default function LiveTab({
       <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
         I tuoi piloti
       </div>
-      {live.piloti.map((p) => (
-        <PilotaLiveRow
-          key={p.driver_number}
-          p={p}
-          primoPilota={primoPilota}
-          chipPiloti={chipPiloti?.chipPiloti || null}
-        />
-      ))}
+      {live.piloti.map((p) => {
+        const isPrimo = p.driver_number === primoPilota;
+        const isBoostedDriver = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === p.driver_number && !isPrimo;
+        const driverResult: DriverResult = {
+          driver_number: p.driver_number, position: p.position, dnf: p.isDnf,
+          fastest_lap: p.isFastestLap, driver_of_the_day: false, penalty: false,
+          grid_position: gridPositions.get(p.driver_number),
+        };
+        const bd = getScoreBreakdown(driverResult, sessionTypeForBreakdown, isPrimo, isBoostedDriver ? "boost" : isPrimo && chipPiloti?.chipPiloti === "scudo" ? "scudo" : chipPiloti?.chipPiloti === "halo" ? "halo" : null);
+        return (
+          <PilotaLiveRow
+            key={p.driver_number}
+            p={p}
+            primoPilota={primoPilota}
+            chipPiloti={chipPiloti?.chipPiloti || null}
+            breakdown={bd}
+            expanded={expandedDriver === p.driver_number}
+            onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
+          />
+        );
+      })}
 
       {/* Previsioni live (solo gara) */}
       {isRace && live.previsioniStatus.length > 0 && (
