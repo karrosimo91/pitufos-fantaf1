@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Los Pitufos — Redesign v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0c0c0e;
+    --card: #141416;
+    --card-hover: #1a1a1e;
+    --border: #222226;
+    --accent: #ff2d55;
+    --accent-soft: rgba(255,45,85,0.08);
+    --green: #30d158;
+    --amber: #ff9f0a;
+    --text: #f5f5f7;
+    --text-2: rgba(245,245,247,0.6);
+    --text-3: rgba(245,245,247,0.3);
+    --text-4: rgba(245,245,247,0.12);
+    --mono: 'Space Mono', monospace;
+    --sans: 'Space Grotesk', -apple-system, sans-serif;
+    --radius: 14px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ NAVIGATION ═══ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(12,12,14,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar-logo .mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .topbar-logo .name {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+  .topbar-right {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(12,12,14,0.92);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 6px 0 22px;
+    z-index: 50;
+  }
+  .nav-item {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+    color: var(--text-4);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; margin-bottom: 2px; }
+
+  /* ═══ PAGE CONTENT ═══ */
+  .page { padding: 20px; padding-bottom: 90px; }
+
+  /* ═══ TABS ═══ */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* ═══ CARDS ═══ */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-flat {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  /* ═══ SECTION HEADERS ═══ */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+
+  /* ═══ SCORE HERO ═══ */
+  .score-hero {
+    text-align: center;
+    padding: 28px 20px;
+    background: linear-gradient(135deg, var(--card) 0%, rgba(255,45,85,0.04) 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-hero::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -20%;
+    width: 200px;
+    height: 200px;
+    background: var(--accent);
+    opacity: 0.03;
+    border-radius: 50%;
+    filter: blur(60px);
+  }
+  .score-hero .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .score-hero .number {
+    font-family: var(--mono);
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -3px;
+  }
+  .score-hero .sub {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .score-hero .sub span {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--text-2);
+  }
+
+  /* ═══ LIVE BADGE ═══ */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,45,85,0.1);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ═══ DRIVER ROW ═══ */
+  .driver-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+  .driver-row:last-child { border-bottom: none; }
+  .driver-row:active { background: var(--card-hover); }
+  .driver-row.highlight {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+  }
+  .driver-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .driver-pos {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    width: 28px;
+    text-align: right;
+    color: var(--text-3);
+  }
+  .driver-pos.top { color: var(--accent); }
+  .team-bar {
+    width: 3px;
+    height: 32px;
+    border-radius: 2px;
+  }
+  .driver-name {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+  .driver-team {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+  .driver-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-left: 6px;
+  }
+  .badge-cap { background: var(--accent-soft); color: var(--accent); }
+  .badge-boost { background: rgba(255,159,10,0.12); color: var(--amber); }
+  .badge-fl { background: rgba(191,90,242,0.12); color: #bf5af2; }
+  .driver-pts {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .pts-plus { color: var(--green); }
+  .pts-minus { color: var(--accent); }
+  .pts-zero { color: var(--text-4); }
+
+  /* ═══ PREDICTION GRID ═══ */
+  .pred-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pred-card {
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    transition: all 0.3s;
+  }
+  .pred-card.correct {
+    border-color: rgba(48,209,88,0.3);
+    background: rgba(48,209,88,0.06);
+  }
+  .pred-card.wrong {
+    border-color: rgba(255,45,85,0.2);
+    background: rgba(255,45,85,0.04);
+  }
+  .pred-label {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+  .pred-value {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .pred-card.correct .pred-value { color: var(--green); }
+  .pred-card.wrong .pred-value { color: var(--accent); }
+  .pred-pts {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 2px;
+    color: var(--text-4);
+  }
+  .pred-card.correct .pred-pts { color: rgba(48,209,88,0.5); }
+
+  /* ═══ RACE CONTROL ═══ */
+  .rc-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 12px;
+  }
+  .rc-item:last-child { border-bottom: none; }
+  .rc-time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-4);
+    min-width: 42px;
+  }
+  .rc-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .rc-dot.sc { background: var(--amber); }
+  .rc-dot.rf { background: var(--accent); }
+  .rc-dot.vsc { background: var(--amber); }
+  .rc-dot.ret { background: #ff453a; }
+  .rc-dot.green { background: var(--green); }
+  .rc-dot.pen { background: #bf5af2; }
+  .rc-text { color: var(--text-2); line-height: 1.4; }
+  .rc-text b { color: var(--text); font-weight: 600; }
+
+  /* ═══ CLASSIFICA ═══ */
+  .rank-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-row:active { background: var(--card-hover); }
+  .rank-row.me {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+  }
+  .rank-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .rank-pos {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-3);
+    width: 22px;
+    text-align: center;
+  }
+  .rank-pos.first { color: var(--accent); }
+  .rank-row.me .rank-pos { color: var(--accent); }
+  .rank-name { font-size: 14px; font-weight: 600; }
+  .rank-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .rank-right { text-align: right; }
+  .rank-pts {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .rank-row.me .rank-pts { color: var(--text); }
+  .rank-delta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-4);
+    margin-top: 2px;
+  }
+
+  /* ═══ RACE HEADER ═══ */
+  .race-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .race-flag {
+    font-size: 32px;
+    line-height: 1;
+  }
+  .race-info { flex: 1; }
+  .race-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .race-circuit {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .race-round {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-4);
+  }
+
+  /* ═══ CONNECTED INDICATOR ═══ */
+  .connected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--green);
+    opacity: 0.5;
+    margin-top: 8px;
+  }
+  .connected-dot {
+    width: 4px;
+    height: 4px;
+    background: var(--green);
+    border-radius: 50%;
+  }
+
+  /* ═══ TAB SWITCHING ═══ */
+  .page-content { display: none; }
+  .page-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="mark">LP</div>
+    <div class="name">Los Pitufos</div>
+  </div>
+  <div class="topbar-right">R3 / 24</div>
+</div>
+
+<!-- ═══ PAGE: GARA LIVE ═══ -->
+<div class="page">
+
+  <!-- Race Header -->
+  <div class="race-header">
+    <div class="race-flag">🇯🇵</div>
+    <div class="race-info">
+      <div class="race-name">Japanese Grand Prix</div>
+      <div class="race-circuit">Suzuka</div>
+    </div>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      LIVE
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="main-tabs">
+    <div class="tab active" onclick="switchPage('live')">Live</div>
+    <div class="tab" onclick="switchPage('formazione')">Formazione</div>
+    <div class="tab" onclick="switchPage('previsioni')">Previsioni</div>
+  </div>
+
+  <!-- ═══ TAB: LIVE ═══ -->
+  <div class="page-content active" id="page-live">
+
+    <!-- Score Hero -->
+    <div class="score-hero">
+      <div class="label">Punteggio provvisorio</div>
+      <div class="number">94</div>
+      <div class="sub">
+        <div>Piloti <span>69</span></div>
+        <div>Previsioni <span>25</span></div>
+      </div>
+      <div class="connected">
+        <span class="connected-dot"></span>
+        Connesso
+      </div>
+    </div>
+
+    <!-- Piloti -->
+    <div class="section-label">I tuoi piloti</div>
+    <div class="card-flat" style="margin-bottom: 20px;">
+      <div class="driver-row highlight">
+        <div class="driver-left">
+          <div class="driver-pos top">1</div>
+          <div class="team-bar" style="background: #ff8000"></div>
+          <div>
+            <div class="driver-name">
+              Norris
+              <span class="driver-badge badge-cap">CAP x2</span>
+            </div>
+            <div class="driver-team">McLaren</div>
+          </div>
+        </div>
+        <div class="driver-pts pts-plus">+50</div>
+      </div>
+
+      <div class="driver-row">
+        <div class="driver-left">
+          <div class="driver-pos top">3</div>
+          <div class="team-bar" style="background: #e80020"></div>
+          <div>
+            <div class="driver-name">Leclerc</div>
+            <div class="driver-team">Ferrari</div>
+          </div>
+        </div>
+        <div class="driver-pts pts-plus">+19</div>
+      </div>
+
+      <div class="driver-row">
+        <div class="driver-left">
+          <div class="driver-pos">7</div>
+          <div class="team-bar" style="background: #27f4d2"></div>
+          <div>
+            <div class="driver-name">Russell</div>
+            <div class="driver-team">Mercedes</div>
+          </div>
+        </div>
+        <div class="driver-pts pts-plus">+8</div>
+      </div>
+
+      <div class="driver-row">
+        <div class="driver-left">
+          <div class="driver-pos">12</div>
+          <div class="team-bar" style="background: #3671c6"></div>
+          <div>
+            <div class="driver-name">
+              Hadjar
+              <span class="driver-badge badge-boost">BOOST x3</span>
+            </div>
+            <div class="driver-team">Red Bull</div>
+          </div>
+        </div>
+        <div class="driver-pts pts-zero">0</div>
+      </div>
+
+      <div class="driver-row" style="opacity: 0.5;">
+        <div class="driver-left">
+          <div class="driver-pos" style="color: #ff453a;">DNF</div>
+          <div class="team-bar" style="background: #229971"></div>
+          <div>
+            <div class="driver-name" style="text-decoration: line-through; color: var(--text-3);">Alonso</div>
+            <div class="driver-team">Aston Martin</div>
+          </div>
+        </div>
+        <div class="driver-pts pts-minus">-10</div>
+      </div>
+    </div>
+
+    <!-- Previsioni -->
+    <div class="section-label">Previsioni</div>
+    <div class="pred-grid" style="margin-bottom: 20px;">
+      <div class="pred-card correct">
+        <div class="pred-label">Safety Car</div>
+        <div class="pred-value">SI ✓</div>
+        <div class="pred-pts">+4 pts</div>
+      </div>
+      <div class="pred-card wrong">
+        <div class="pred-label">Virtual SC</div>
+        <div class="pred-value">NO ✗</div>
+        <div class="pred-pts">0 pts</div>
+      </div>
+      <div class="pred-card correct">
+        <div class="pred-label">Red Flag</div>
+        <div class="pred-value">NO ✓</div>
+        <div class="pred-pts">+3 pts</div>
+      </div>
+      <div class="pred-card correct">
+        <div class="pred-label">Gomme Wet</div>
+        <div class="pred-value">NO ✓</div>
+        <div class="pred-pts">+2 pts</div>
+      </div>
+      <div class="pred-card">
+        <div class="pred-label">Pole vince</div>
+        <div class="pred-value">SI</div>
+        <div class="pred-pts"></div>
+      </div>
+      <div class="pred-card correct">
+        <div class="pred-label">N. DNF</div>
+        <div class="pred-value">2 ✓</div>
+        <div class="pred-pts">+5 pts</div>
+      </div>
+    </div>
+
+    <!-- Classifica Weekend -->
+    <div class="section-label">Classifica Weekend</div>
+    <div class="card-flat" style="margin-bottom: 20px;">
+      <div class="rank-row">
+        <div class="rank-left">
+          <div class="rank-pos first">1</div>
+          <div>
+            <div class="rank-name">McLaren Supremacy</div>
+            <div class="rank-sub">@PapaRossi</div>
+          </div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-pts">118</div>
+          <div class="rank-delta">+25 CR</div>
+        </div>
+      </div>
+
+      <div class="rank-row me">
+        <div class="rank-left">
+          <div class="rank-pos">2</div>
+          <div>
+            <div class="rank-name">KS Racing</div>
+            <div class="rank-sub">@karrosimo91</div>
+          </div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-pts">94</div>
+          <div class="rank-delta">+18 CR</div>
+        </div>
+      </div>
+
+      <div class="rank-row">
+        <div class="rank-left">
+          <div class="rank-pos">3</div>
+          <div>
+            <div class="rank-name">Red Bull Destroyers</div>
+            <div class="rank-sub">@MarcoF1</div>
+          </div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-pts">87</div>
+          <div class="rank-delta">+15 CR</div>
+        </div>
+      </div>
+
+      <div class="rank-row">
+        <div class="rank-left">
+          <div class="rank-pos">4</div>
+          <div>
+            <div class="rank-name">Ferrari Forever</div>
+            <div class="rank-sub">@GiuliaSpeed</div>
+          </div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-pts">71</div>
+          <div class="rank-delta">+12 CR</div>
+        </div>
+      </div>
+
+      <div class="rank-row">
+        <div class="rank-left">
+          <div class="rank-pos">5</div>
+          <div>
+            <div class="rank-name">Pit Stop Kings</div>
+            <div class="rank-sub">@AndreaGP</div>
+          </div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-pts">58</div>
+          <div class="rank-delta">+10 CR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Race Control -->
+    <div class="section-label">Race Control</div>
+    <div class="card" style="padding: 12px 16px;">
+      <div class="rc-item">
+        <div class="rc-dot green"></div>
+        <div class="rc-time">L48</div>
+        <div class="rc-text"><b>GREEN FLAG</b> Track clear</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot sc"></div>
+        <div class="rc-time">L43</div>
+        <div class="rc-text"><b>SAFETY CAR</b> Deployed</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot pen"></div>
+        <div class="rc-time">L40</div>
+        <div class="rc-text"><b>PENALTY</b> Stroll +5s track limits</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot ret"></div>
+        <div class="rc-time">L38</div>
+        <div class="rc-text"><b>RETIRED</b> Alonso — mechanical</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot vsc"></div>
+        <div class="rc-time">L28</div>
+        <div class="rc-text"><b>VSC</b> Debris on track</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot ret"></div>
+        <div class="rc-time">L15</div>
+        <div class="rc-text"><b>RETIRED</b> Bottas — collision</div>
+      </div>
+      <div class="rc-item">
+        <div class="rc-dot green"></div>
+        <div class="rc-time">L01</div>
+        <div class="rc-text"><b>LIGHTS OUT</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: FORMAZIONE (placeholder) ═══ -->
+  <div class="page-content" id="page-formazione">
+    <div style="text-align: center; padding: 60px 0; color: var(--text-3); font-size: 13px;">
+      Tab Formazione
+    </div>
+  </div>
+
+  <!-- ═══ TAB: PREVISIONI (placeholder) ═══ -->
+  <div class="page-content" id="page-previsioni">
+    <div style="text-align: center; padding: 60px 0; color: var(--text-3); font-size: 13px;">
+      Tab Previsioni
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<div class="bottom-nav">
+  <div class="nav-item"><div class="nav-icon">⊞</div>Home</div>
+  <div class="nav-item active"><div class="nav-icon">⊕</div>Gara</div>
+  <div class="nav-item"><div class="nav-icon">⇄</div>Mercato</div>
+  <div class="nav-item"><div class="nav-icon">△</div>Classifica</div>
+  <div class="nav-item"><div class="nav-icon">≡</div>Altro</div>
+</div>
+
+<script>
+function switchPage(id) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>
