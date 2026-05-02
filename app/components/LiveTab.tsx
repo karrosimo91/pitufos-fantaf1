@@ -445,7 +445,12 @@ export default function LiveTab({
     const entries: ClassificaEntry[] = allFormazioni.map((f) => {
       let total = 0;
 
-      for (const driverNum of f.driver_numbers) {
+      const fDrivers = [...f.driver_numbers];
+      if (f.chip_piloti === "sesto" && f.sesto_uomo && !fDrivers.includes(f.sesto_uomo)) {
+        fDrivers.push(f.sesto_uomo);
+      }
+
+      for (const driverNum of fDrivers) {
         const pos = wsData.positions.get(driverNum);
         const position = pos?.position ?? 22;
         const isDnf = events.dnfDrivers.has(driverNum);
@@ -604,12 +609,16 @@ export default function LiveTab({
           scuderiaName: c.scuderiaName,
           tpName: c.tpName,
           points: c.points,
-          piloti: f ? f.driver_numbers.map((dn) => ({
-            driver_number: dn,
-            position: (debug ? 0 : wsData.positions.get(dn)?.position) ?? 22,
-            puntiFinali: 0,
-            isDnf: false,
-          })) : [],
+          piloti: f ? (() => {
+            const dns = [...f.driver_numbers];
+            if (f.chip_piloti === "sesto" && f.sesto_uomo && !dns.includes(f.sesto_uomo)) dns.push(f.sesto_uomo);
+            return dns.map((dn) => ({
+              driver_number: dn,
+              position: (debug ? 0 : wsData.positions.get(dn)?.position) ?? 22,
+              puntiFinali: 0,
+              isDnf: false,
+            }));
+          })() : [],
         };
       }),
     );
@@ -766,7 +775,11 @@ export default function LiveTab({
                 <div>
                   <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
                   <div className="space-y-1.5">
-                {player.driver_numbers.map((driverNum) => {
+                {(() => {
+                  const pDrivers = [...player.driver_numbers];
+                  if (player.chip_piloti === "sesto" && player.sesto_uomo && !pDrivers.includes(player.sesto_uomo)) pDrivers.push(player.sesto_uomo);
+                  return pDrivers;
+                })().map((driverNum) => {
                   const position = pos.get(driverNum)?.position ?? 22;
                   const isDnf = evts.has(driverNum);
                   const isFl = fl?.driver_number === driverNum;
