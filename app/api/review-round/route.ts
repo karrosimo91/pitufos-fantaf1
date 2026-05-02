@@ -137,7 +137,8 @@ export async function POST(request: NextRequest) {
       sestoUomo: formazione.sesto_uomo,
     };
 
-    const previsioni: Previsioni = prev
+    const hasRaceResults = results.race.length > 0;
+    const previsioni: Previsioni = prev && hasRaceResults
       ? {
           safetyCar: prev.safety_car,
           virtualSafetyCar: prev.virtual_safety_car,
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
         primo_pilota: formazione.primo_pilota ? { number: formazione.primo_pilota, name: driverName(formazione.primo_pilota) } : null,
         chip_piloti: formazione.chip_piloti || null,
         chip_piloti_target: formazione.chip_piloti_target || null,
-        sesto_uomo: formazione.sesto_uomo ? { number: formazione.sesto_uomo, name: driverName(formazione.sesto_uomo) } : null,
+        sesto_uomo: formazione.chip_piloti === "sesto" && formazione.sesto_uomo ? { number: formazione.sesto_uomo, name: driverName(formazione.sesto_uomo) } : null,
       },
       previsioni_raw: prev ? {
         safety_car: prev.safety_car,
@@ -251,6 +252,12 @@ export async function POST(request: NextRequest) {
       totale_calcolato: calc.total - penalitaCambi,
       totale_salvato: saved?.total_points ?? null,
       differenza: saved ? (calc.total - penalitaCambi) - saved.total_points : null,
+      avvisi: [
+        ...(formazione.sesto_uomo && formazione.chip_piloti !== "sesto"
+          ? [`sesto_uomo=${driverName(formazione.sesto_uomo)} nel DB ma chip_piloti="${formazione.chip_piloti}" (non "sesto") — Norris NON conteggiato`]
+          : []),
+        ...(!hasRaceResults ? ["Gara non ancora calcolata — previsioni non conteggiate"] : []),
+      ],
     });
   }
 

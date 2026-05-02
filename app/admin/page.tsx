@@ -675,6 +675,15 @@ export default function AdminPage() {
                     </div>
                   )}
 
+                  {/* Avvisi */}
+                  {player.avvisi?.length > 0 && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                      {player.avvisi.map((a: string, i: number) => (
+                        <div key={i} className="text-yellow-400 text-xs font-bold">{a}</div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Totale */}
                   <div className="bg-white/[0.02] rounded-xl p-4 flex justify-between items-center">
                     <span className="text-xs text-white/40">Totale</span>
