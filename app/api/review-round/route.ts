@@ -232,6 +232,7 @@ export async function POST(request: NextRequest) {
         chip_piloti: formazione.chip_piloti || null,
         chip_piloti_target: formazione.chip_piloti_target || null,
         sesto_uomo: formazione.chip_piloti === "sesto" && formazione.sesto_uomo ? { number: formazione.sesto_uomo, name: driverName(formazione.sesto_uomo) } : null,
+        sesto_uomo_raw: formazione.sesto_uomo || null,
       },
       previsioni_raw: prev ? {
         safety_car: prev.safety_car,

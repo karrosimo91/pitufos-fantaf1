@@ -677,10 +677,37 @@ export default function AdminPage() {
 
                   {/* Avvisi */}
                   {player.avvisi?.length > 0 && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 space-y-2">
                       {player.avvisi.map((a: string, i: number) => (
                         <div key={i} className="text-yellow-400 text-xs font-bold">{a}</div>
                       ))}
+                      {player.formazione?.chip_piloti !== "sesto" && player.formazione?.sesto_uomo_raw && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Impostare chip_piloti="sesto" per ${player.nome} R${round}?`)) return;
+                            try {
+                              const res = await fetch("/api/fix-formazione", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  round, admin_key: ADMIN_API_KEY,
+                                  user_id: player.user_id,
+                                  fields: { chip_piloti: "sesto" },
+                                }),
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                alert(`Fix applicato: chip_piloti ora = "sesto". Rilancia REVIEW per verificare.`);
+                              } else {
+                                alert(`Errore: ${data.error}`);
+                              }
+                            } catch (err: any) { alert(err.message); }
+                          }}
+                          className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-yellow-500/30 transition-all"
+                        >
+                          FIX: imposta chip_piloti = &quot;sesto&quot;
+                        </button>
+                      )}
                     </div>
                   )}
 
