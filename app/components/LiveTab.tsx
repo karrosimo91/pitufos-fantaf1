@@ -396,7 +396,8 @@ export default function LiveTab({
 
   const realLive = useLiveScoring(
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
-    chipPiloti, chipPrevisioni, previsioni, qualifyingPole, gridPositions
+    chipPiloti, chipPrevisioni, previsioni, qualifyingPole, gridPositions,
+    previousResults
   );
 
   // Accedi ai dati WS raw per calcolare punti degli altri (solo se non debug)
@@ -442,6 +443,31 @@ export default function LiveTab({
       return { safetyCar, virtualSafetyCar, redFlag, wetTyres, dnfDrivers, totalDnf: dnfDrivers.size };
     })();
 
+    // Helper: punti sessioni precedenti per un pilota (da weekend_results)
+    function prevSessionPoints(driverNum: number): number {
+      if (!previousResults) return 0;
+      let pts = 0;
+      const stLower2 = sessionType.toLowerCase();
+      // Non sommare la sessione attuale (quella live)
+      if (stLower2 !== "qualifying") {
+        const qr = previousResults.qualifying?.find((r) => r.driver_number === driverNum);
+        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
+      }
+      if (!stLower2.includes("sprint") || !stLower2.includes("qualifying")) {
+        const ssr = previousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
+        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
+      }
+      if (stLower2 !== "sprint") {
+        const sr = previousResults.sprint?.find((r) => r.driver_number === driverNum);
+        if (sr) pts += calcolaSprint(sr);
+      }
+      if (!stLower2.includes("race") || stLower2.includes("sprint")) {
+        const rr = previousResults.race?.find((r) => r.driver_number === driverNum);
+        if (rr) pts += calcolaGara(rr);
+      }
+      return pts;
+    }
+
     const entries: ClassificaEntry[] = allFormazioni.map((f) => {
       let total = 0;
 
@@ -456,6 +482,7 @@ export default function LiveTab({
         const isDnf = events.dnfDrivers.has(driverNum);
         const isFastestLap = wsData.fastestLap?.driver_number === driverNum;
 
+        // Punti sessione corrente (live)
         let puntiBase = 0;
         if (isQual) puntiBase = calcolaQualifica(position, isDnf);
         else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
@@ -467,6 +494,9 @@ export default function LiveTab({
           const dr: DriverResult = { driver_number: driverNum, position, dnf: isDnf, grid_position: grid, fastest_lap: isFastestLap, driver_of_the_day: false, penalty: false };
           puntiBase = calcolaGara(dr);
         }
+
+        // Punti sessioni precedenti
+        puntiBase += prevSessionPoints(driverNum);
 
         const isPrimo = driverNum === f.primo_pilota;
         const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
@@ -522,7 +552,7 @@ export default function LiveTab({
 
     entries.sort((a, b) => b.points - a.points);
     return entries;
-  }, [allFormazioni, allPrevisioni, wsData.positions, wsData.raceControl, wsData.fastestLap, wsData.stints, sessionType, gridPositions, userId, debug]);
+  }, [allFormazioni, allPrevisioni, wsData.positions, wsData.raceControl, wsData.fastestLap, wsData.stints, sessionType, gridPositions, userId, debug, previousResults]);
 
   const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
   const live = debug ? mockLive : realLive;

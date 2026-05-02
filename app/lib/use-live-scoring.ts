@@ -8,6 +8,7 @@ import {
   calcolaGara,
   calcolaPuntiPrevisioni,
   type DriverResult,
+  type RaceWeekendResults,
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "./scoring";
@@ -89,6 +90,7 @@ export function useLiveScoring(
   },
   qualifyingPole?: number | null, // driver_number del pole sitter (per "pole vince")
   gridPositions?: Map<number, number>, // driver_number → grid position (dalla qualifica)
+  previousResults?: RaceWeekendResults | null, // risultati sessioni precedenti del weekend
 ) {
   const { positions, raceControl, fastestLap, stints, connected } = useLiveWebSocket(sessionKey);
 
@@ -113,6 +115,29 @@ export function useLiveScoring(
     const isSprintQualifying = sessionType.toLowerCase().includes("sprint") && sessionType.toLowerCase().includes("qualifying");
     const isQualifying = sessionType.toLowerCase() === "qualifying";
 
+    // Helper: punti sessioni precedenti per un pilota
+    function prevPts(driverNum: number): number {
+      if (!previousResults) return 0;
+      let pts = 0;
+      if (!isQualifying) {
+        const qr = previousResults.qualifying?.find((r) => r.driver_number === driverNum);
+        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
+      }
+      if (!isSprintQualifying) {
+        const ssr = previousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
+        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
+      }
+      if (!isSprint) {
+        const sr = previousResults.sprint?.find((r) => r.driver_number === driverNum);
+        if (sr) pts += calcolaSprint(sr);
+      }
+      if (!isRace) {
+        const rr = previousResults.race?.find((r) => r.driver_number === driverNum);
+        if (rr) pts += calcolaGara(rr);
+      }
+      return pts;
+    }
+
     // Calcola punti per i miei piloti (incluso sesto uomo)
     const allDrivers = [...myDriverNumbers];
     if (chipPiloti?.chipPiloti === "sesto" && chipPiloti.sestoUomo && !allDrivers.includes(chipPiloti.sestoUomo)) {
@@ -125,7 +150,7 @@ export function useLiveScoring(
       const isDnf = events.dnfDrivers.has(driverNum);
       const isFastestLap = fastestLap?.driver_number === driverNum;
 
-      // Calcola punti base a seconda del tipo di sessione
+      // Punti sessione corrente (live)
       let puntiBase = 0;
 
       if (isQualifying) {
@@ -146,6 +171,9 @@ export function useLiveScoring(
         };
         puntiBase = calcolaGara(driverResult);
       }
+
+      // Somma punti sessioni precedenti
+      puntiBase += prevPts(driverNum);
 
       // Moltiplicatori
       const isPrimo = driverNum === primoPilota;
@@ -248,7 +276,7 @@ export function useLiveScoring(
       connected,
     };
   }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected,
-    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni, qualifyingPole, gridPositions]);
+    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni, qualifyingPole, gridPositions, previousResults]);
 
   return result;
 }
