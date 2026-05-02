@@ -113,8 +113,13 @@ export function useLiveScoring(
     const isSprintQualifying = sessionType.toLowerCase().includes("sprint") && sessionType.toLowerCase().includes("qualifying");
     const isQualifying = sessionType.toLowerCase() === "qualifying";
 
-    // Calcola punti per i miei piloti
-    const piloti: LivePilotaScore[] = myDriverNumbers.map((driverNum) => {
+    // Calcola punti per i miei piloti (incluso sesto uomo)
+    const allDrivers = [...myDriverNumbers];
+    if (chipPiloti?.chipPiloti === "sesto" && chipPiloti.sestoUomo && !allDrivers.includes(chipPiloti.sestoUomo)) {
+      allDrivers.push(chipPiloti.sestoUomo);
+    }
+
+    const piloti: LivePilotaScore[] = allDrivers.map((driverNum) => {
       const pos = positions.get(driverNum);
       const position = pos?.position ?? 22;
       const isDnf = events.dnfDrivers.has(driverNum);
