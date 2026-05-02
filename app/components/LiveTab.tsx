@@ -756,8 +756,8 @@ export default function LiveTab({
         const pos = debug ? new Map() : wsData.positions;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4" onClick={() => setSelectedPlayer(null)}>
-            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4" onMouseDown={() => setSelectedPlayer(null)} onTouchEnd={(e) => { if (e.target === e.currentTarget) setSelectedPlayer(null); }}>
+            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col" onMouseDown={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
               <div className="shrink-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
                 <div>
                   <div className="font-bold text-base">{entry.tpName}</div>
@@ -770,7 +770,7 @@ export default function LiveTab({
                   </button>
                 </div>
               </div>
-              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              <div className="overflow-y-auto flex-1 min-h-0 px-5 py-4 space-y-4 overscroll-contain" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
                 {/* Piloti */}
                 <div>
                   <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
