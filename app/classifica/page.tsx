@@ -13,7 +13,7 @@ import { useLiveSession } from "../lib/use-live-session";
 import { useProvisionalScores } from "../lib/provisional-scores";
 import {
   calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
-  calcolaPuntiWeekend,
+  calcolaPuntiWeekend, calcolaPuntiPrevisioni,
   type RaceWeekendResults,
   type PilotaDettaglio,
   type DriverResult,
@@ -133,15 +133,16 @@ function ClassificaContent() {
     chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
   }[]>([]);
   const [livePreviousResults, setLivePreviousResults] = useState<RaceWeekendResults | null>(null);
+  const [liveEvents, setLiveEvents] = useState<{ safetyCar: boolean; virtualSafetyCar: boolean; redFlag: boolean; wetTyres: boolean; totalDnf: number }>({ safetyCar: false, virtualSafetyCar: false, redFlag: false, wetTyres: false, totalDnf: 0 });
+  const [livePrevisioni, setLivePrevisioni] = useState<Map<string, { safety_car: boolean | null; virtual_safety_car: boolean | null; red_flag: boolean | null; gomme_wet: boolean | null; pole_vince: boolean | null; numero_dnf: number | null; chip_attivo: string | null; chip_target: string | null }>>(new Map());
 
-  // Fetch formazioni confermate per il round corrente (1 volta)
+  // Fetch formazioni e previsioni confermate per il round corrente (1 volta)
   useEffect(() => {
     if (!isLive || !liveSession || selectedRound || !isSupabaseConfigured) return;
     const supabase = createClient();
     if (!supabase) return;
 
     (async () => {
-      // Filtra per lega
       let memberIds: string[] | null = null;
       if (selectedLega && selectedLega !== LEGA_GENERALE_ID) {
         const { data: members } = await supabase.from("lega_members").select("user_id").eq("lega_id", selectedLega);
@@ -155,6 +156,19 @@ function ClassificaContent() {
 
       const { data } = await query;
       if (data) setLiveFormazioni(data.map((f) => ({ ...f, driver_numbers: (f.driver_numbers || []).map(Number) })));
+
+      // Fetch previsioni confermate
+      let prevQuery = supabase.from("previsioni")
+        .select("user_id, safety_car, virtual_safety_car, red_flag, gomme_wet, pole_vince, numero_dnf, chip_attivo, chip_target")
+        .eq("round", currentRound).eq("confirmed", true);
+      if (memberIds) prevQuery = prevQuery.in("user_id", memberIds);
+
+      const { data: prevData } = await prevQuery;
+      if (prevData) {
+        const prevMap = new Map<string, typeof prevData[0]>();
+        for (const p of prevData) prevMap.set(p.user_id, p);
+        setLivePrevisioni(prevMap);
+      }
 
       // Fetch risultati sessioni precedenti del weekend
       const { data: wrData } = await supabase.from("weekend_results").select("data").eq("round", currentRound).maybeSingle();
@@ -179,15 +193,31 @@ function ClassificaContent() {
         }
         setLivePositions(posMap);
 
-        // DNF
+        // DNF + eventi (SC, VSC, red flag)
         const dnf = new Set<number>();
+        let safetyCar = false;
+        let virtualSafetyCar = false;
+        let redFlag = false;
         for (const rc of data.raceControl || []) {
           const msg = (rc.message || "").toUpperCase();
+          const flag = (rc.flag || "").toUpperCase();
           if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
             if (rc.driver_number) dnf.add(rc.driver_number);
           }
+          if (msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL")) safetyCar = true;
+          if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtualSafetyCar = true;
+          if (flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) redFlag = true;
         }
         setLiveDnfDrivers(dnf);
+
+        // Wet tyres
+        let wetTyres = false;
+        for (const s of data.stints || []) {
+          const c = (s.compound || "").toUpperCase();
+          if (c === "WET" || c === "INTERMEDIATE") { wetTyres = true; break; }
+        }
+
+        setLiveEvents({ safetyCar, virtualSafetyCar, redFlag, wetTyres, totalDnf: dnf.size });
 
         // Fastest lap
         let fastest = Infinity;
@@ -274,10 +304,38 @@ function ClassificaContent() {
 
         total += puntiFinali;
       }
+
+      // Previsioni (solo durante gara principale)
+      if (isMainRace) {
+        const playerPrev = livePrevisioni.get(f.user_id);
+        if (playerPrev) {
+          const prevResult = calcolaPuntiPrevisioni(
+            {
+              safetyCar: playerPrev.safety_car,
+              virtualSafetyCar: playerPrev.virtual_safety_car,
+              redFlag: playerPrev.red_flag,
+              gommeWet: playerPrev.gomme_wet,
+              poleVince: playerPrev.pole_vince,
+              numeroDnf: playerPrev.numero_dnf,
+            },
+            {
+              safety_car: liveEvents.safetyCar,
+              virtual_safety_car: liveEvents.virtualSafetyCar,
+              red_flag: liveEvents.redFlag,
+              wet_tyres: liveEvents.wetTyres,
+              pole_won: false,
+              total_dnf: liveEvents.totalDnf,
+            },
+            playerPrev.chip_attivo ? { chipAttivo: playerPrev.chip_attivo, chipTarget: playerPrev.chip_target } : undefined
+          );
+          total += prevResult.total;
+        }
+      }
+
       map.set(f.user_id, total);
     }
     return map;
-  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni, livePreviousResults]);
+  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni, livePreviousResults, livePrevisioni, liveEvents]);
 
   // Classifica con punti live o provvisori aggiunti
   const hasLiveData = isLive && livePointsMap.size > 0;

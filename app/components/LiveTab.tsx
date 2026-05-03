@@ -448,20 +448,24 @@ export default function LiveTab({
       if (!previousResults) return 0;
       let pts = 0;
       const stLower2 = sessionType.toLowerCase();
-      // Non sommare la sessione attuale (quella live)
-      if (stLower2 !== "qualifying") {
+      const isQual2 = stLower2 === "qualifying";
+      const isSprintQual2 = stLower2.includes("sprint") && stLower2.includes("qualifying");
+      const isSprintRace2 = stLower2 === "sprint";
+      const isMainRace2 = stLower2.includes("race") && !stLower2.includes("sprint");
+
+      if (!isQual2) {
         const qr = previousResults.qualifying?.find((r) => r.driver_number === driverNum);
         if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
       }
-      if (!stLower2.includes("sprint") || !stLower2.includes("qualifying")) {
+      if (!isSprintQual2) {
         const ssr = previousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
         if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
       }
-      if (stLower2 !== "sprint") {
+      if (!isSprintRace2) {
         const sr = previousResults.sprint?.find((r) => r.driver_number === driverNum);
         if (sr) pts += calcolaSprint(sr);
       }
-      if (!stLower2.includes("race") || stLower2.includes("sprint")) {
+      if (!isMainRace2) {
         const rr = previousResults.race?.find((r) => r.driver_number === driverNum);
         if (rr) pts += calcolaGara(rr);
       }
