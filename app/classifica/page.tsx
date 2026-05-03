@@ -130,8 +130,9 @@ function ClassificaContent() {
   const [liveFastestLap, setLiveFastestLap] = useState<number | null>(null);
   const [liveFormazioni, setLiveFormazioni] = useState<{
     user_id: string; driver_numbers: number[]; primo_pilota: number | null;
-    chip_piloti: string | null; chip_piloti_target: number | null;
+    chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
   }[]>([]);
+  const [livePreviousResults, setLivePreviousResults] = useState<RaceWeekendResults | null>(null);
 
   // Fetch formazioni confermate per il round corrente (1 volta)
   useEffect(() => {
@@ -148,12 +149,16 @@ function ClassificaContent() {
       }
 
       let query = supabase.from("formazioni")
-        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target")
+        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
         .eq("round", currentRound).eq("confirmed", true);
       if (memberIds) query = query.in("user_id", memberIds);
 
       const { data } = await query;
       if (data) setLiveFormazioni(data.map((f) => ({ ...f, driver_numbers: (f.driver_numbers || []).map(Number) })));
+
+      // Fetch risultati sessioni precedenti del weekend
+      const { data: wrData } = await supabase.from("weekend_results").select("data").eq("round", currentRound).maybeSingle();
+      if (wrData?.data) setLivePreviousResults(wrData.data);
     })();
   }, [isLive, liveSession, selectedLega, selectedRound, currentRound]);
 
@@ -213,9 +218,38 @@ function ClassificaContent() {
     const isSprintRace = stLower === "sprint";
     const isMainRace = stLower === "race";
 
+    // Helper: punti sessioni precedenti per un pilota
+    function prevPts(driverNum: number): number {
+      if (!livePreviousResults) return 0;
+      let pts = 0;
+      if (!isQual) {
+        const qr = livePreviousResults.qualifying?.find((r) => r.driver_number === driverNum);
+        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
+      }
+      if (!isSprintQual) {
+        const ssr = livePreviousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
+        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
+      }
+      if (!isSprintRace) {
+        const sr = livePreviousResults.sprint?.find((r) => r.driver_number === driverNum);
+        if (sr) pts += calcolaSprint(sr);
+      }
+      if (!isMainRace) {
+        const rr = livePreviousResults.race?.find((r) => r.driver_number === driverNum);
+        if (rr) pts += calcolaGara(rr);
+      }
+      return pts;
+    }
+
     for (const f of liveFormazioni) {
       let total = 0;
-      for (const driverNum of f.driver_numbers) {
+
+      const fDrivers = [...f.driver_numbers];
+      if (f.chip_piloti === "sesto" && f.sesto_uomo && !fDrivers.includes(f.sesto_uomo)) {
+        fDrivers.push(f.sesto_uomo);
+      }
+
+      for (const driverNum of fDrivers) {
         const position = livePositions.get(driverNum) ?? 22;
         const isDnf = liveDnfDrivers.has(driverNum);
         const isFl = liveFastestLap === driverNum;
@@ -225,6 +259,9 @@ function ClassificaContent() {
         else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
         else if (isSprintRace) puntiBase = calcolaSprint({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl } as DriverResult);
         else if (isMainRace) puntiBase = calcolaGara({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl, driver_of_the_day: false, penalty: false });
+
+        // Somma sessioni precedenti
+        puntiBase += prevPts(driverNum);
 
         const isPrimo = driverNum === f.primo_pilota;
         const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
@@ -240,7 +277,7 @@ function ClassificaContent() {
       map.set(f.user_id, total);
     }
     return map;
-  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni]);
+  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni, livePreviousResults]);
 
   // Classifica con punti live o provvisori aggiunti
   const hasLiveData = isLive && livePointsMap.size > 0;
