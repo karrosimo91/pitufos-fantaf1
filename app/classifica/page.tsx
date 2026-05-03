@@ -287,10 +287,15 @@ function ClassificaContent() {
     if (selectedRound) return rawClassifica;
 
     // Punti live in tempo reale
+    // livePointsMap contiene il totale weekend cumulativo (sessioni precedenti + live)
+    // entry.last_weekend_points contiene i punti gia salvati da post-gara per questo round
+    // Il delta e: cumulativo live - gia salvato
     if (hasLiveData) {
       return rawClassifica.map((entry) => {
-        const liveBonus = livePointsMap.get(entry.user_id) || 0;
-        return { ...entry, total_points: entry.total_points + liveBonus, last_weekend_points: liveBonus };
+        const liveCumulativo = livePointsMap.get(entry.user_id) || 0;
+        const giaSalvato = entry.last_weekend_points || 0;
+        const delta = liveCumulativo - giaSalvato;
+        return { ...entry, total_points: entry.total_points + delta, last_weekend_points: liveCumulativo };
       }).sort((a, b) => b.total_points - a.total_points);
     }
 
