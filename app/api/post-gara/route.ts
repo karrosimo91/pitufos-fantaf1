@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
         .select("total_points")
         .eq("user_id", ps.user_id)
         .eq("round", round)
-        .single();
+        .maybeSingle();
 
       const prevRoundPoints = prevScore?.total_points ?? 0;
       const delta = ps.weekend_points - prevRoundPoints;

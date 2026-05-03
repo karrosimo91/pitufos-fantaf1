@@ -64,9 +64,17 @@ export async function POST(request: NextRequest) {
   for (const os of oldScores || []) {
     oldScoresMap.set(os.user_id, os.total_points ?? 0);
   }
+
+  // Deriva vecchi real_points dalla classifica del vecchio ranking
+  const oldScoresSorted = [...(oldScores || [])].sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0));
+  const oldRealPointsMap = new Map<string, number>();
+  oldScoresSorted.forEach((os, i) => {
+    oldRealPointsMap.set(os.user_id, PUNTI_REALE[i] ?? 0);
+  });
+
   log.push(`Vecchi scores trovati: ${oldScoresMap.size}`);
 
-  // 3. Sottrai vecchi punti dalla classifica_totale
+  // 3. Sottrai vecchi punti (total + real) dalla classifica_totale
   for (const [userId, oldPts] of oldScoresMap) {
     const { data: existing } = await supabase
       .from("classifica_totale")
@@ -79,7 +87,7 @@ export async function POST(request: NextRequest) {
         .from("classifica_totale")
         .update({
           total_points: (existing.total_points ?? 0) - oldPts,
-          // Sottraiamo anche i punti reale del vecchio ranking
+          real_points: (existing.real_points ?? 0) - (oldRealPointsMap.get(userId) ?? 0),
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
