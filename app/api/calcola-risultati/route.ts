@@ -69,6 +69,11 @@ export async function POST(request: NextRequest) {
     .eq("round", round)
     .eq("confirmed", true);
 
+  const { data: cambiData } = await supabase
+    .from("mercato_cambi")
+    .select("user_id, id")
+    .eq("round", round);
+
   // 4. Calcola punteggi per ogni giocatore
   const playerScores: { user_id: string; weekend_points: number; piloti_points: number; previsioni_points: number }[] = [];
 
@@ -108,9 +113,12 @@ export async function POST(request: NextRequest) {
       chipPrevisioni
     );
 
+    const numCambi = (cambiData || []).filter((c) => c.user_id === formazione.user_id).length;
+    const penalitaCambi = formazione.chip_piloti === "wildcard" ? 0 : Math.max(0, numCambi - 2) * 10;
+
     playerScores.push({
       user_id: formazione.user_id,
-      weekend_points: calc.total,
+      weekend_points: calc.total - penalitaCambi,
       piloti_points: calc.pilotiPoints,
       previsioni_points: calc.previsioniPoints,
     });

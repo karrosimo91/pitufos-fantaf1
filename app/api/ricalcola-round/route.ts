@@ -66,7 +66,14 @@ export async function POST(request: NextRequest) {
   }
   log.push(`Vecchi scores trovati: ${oldScoresMap.size}`);
 
-  // 3. Sottrai vecchi punti dalla classifica_totale
+  // Ricostruisci il vecchio ranking per sottrarre i real_points già applicati
+  const oldRanking = [...(oldScores || [])].sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0));
+  const oldRealByUser = new Map<string, number>();
+  oldRanking.forEach((os, idx) => {
+    oldRealByUser.set(os.user_id, PUNTI_REALE[idx] ?? 0);
+  });
+
+  // 3. Sottrai vecchi punti dalla classifica_totale (sia weekend che reale)
   for (const [userId, oldPts] of oldScoresMap) {
     const { data: existing } = await supabase
       .from("classifica_totale")
@@ -75,11 +82,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
+      const oldReal = oldRealByUser.get(userId) ?? 0;
       await supabase
         .from("classifica_totale")
         .update({
           total_points: (existing.total_points ?? 0) - oldPts,
-          // Sottraiamo anche i punti reale del vecchio ranking
+          real_points: (existing.real_points ?? 0) - oldReal,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
@@ -99,6 +107,11 @@ export async function POST(request: NextRequest) {
     .select("*")
     .eq("round", round)
     .eq("confirmed", true);
+
+  const { data: cambiData } = await supabase
+    .from("mercato_cambi")
+    .select("user_id, id")
+    .eq("round", round);
 
   // 5. Ricalcola punteggi con il nuovo scoring
   const playerScores: { user_id: string; weekend_points: number; piloti_points: number; previsioni_points: number }[] = [];
@@ -139,9 +152,12 @@ export async function POST(request: NextRequest) {
       chipPrevisioni
     );
 
+    const numCambi = (cambiData || []).filter((c) => c.user_id === formazione.user_id).length;
+    const penalitaCambi = formazione.chip_piloti === "wildcard" ? 0 : Math.max(0, numCambi - 2) * 10;
+
     playerScores.push({
       user_id: formazione.user_id,
-      weekend_points: calc.total,
+      weekend_points: calc.total - penalitaCambi,
       piloti_points: calc.pilotiPoints,
       previsioni_points: calc.previsioniPoints,
     });
