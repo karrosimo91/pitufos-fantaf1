@@ -108,6 +108,8 @@ export async function POST(request: NextRequest) {
       wet_tyres: false, pole_won: false, total_dnf: 0,
     };
 
+    const wasRaceAlreadyCalculated = (prevData.race?.length ?? 0) > 0;
+
     // OpenF1 session matching: usare session_name perché session_type è ambiguo
     // Sprint Qualifying → type="Qualifying", name="Sprint Qualifying"
     // Sprint            → type="Race",       name="Sprint"
@@ -206,9 +208,12 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("id, team_principal_name, scuderia_name");
 
-    // Previsioni: solo se mode === "race"
+    // Previsioni e penalità si applicano se la gara è già stata calcolata
+    // (anche se questa call è per un'altra sessione, es. re-fetch di quali dopo race)
+    const isPostRace = weekendResults.race.length > 0;
+
     let previsioniData: any[] | null = null;
-    if (mode === "race") {
+    if (isPostRace) {
       const { data } = await supabase
         .from("previsioni")
         .select("*")
@@ -216,8 +221,6 @@ export async function POST(request: NextRequest) {
         .eq("confirmed", true);
       previsioniData = data;
     }
-
-    const isPostRace = mode === "race";
 
     const playerScores: {
       user_id: string; name: string; scuderia: string;
@@ -298,8 +301,9 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < playerScores.length; i++) {
       const ps = playerScores[i];
 
-      // Punti "reale" solo post-race (classifica definitiva del weekend)
-      const realPoints = isPostRace ? (PUNTI_REALE[i] ?? 0) : 0;
+      // Punti "reale" solo post-race E solo alla prima volta che la gara viene
+      // calcolata, altrimenti rilanciare post-gara/race li raddoppierebbe.
+      const realPoints = isPostRace && !wasRaceAlreadyCalculated ? (PUNTI_REALE[i] ?? 0) : 0;
 
       // Leggi punteggio precedente di questo round (da sessioni già calcolate)
       const { data: prevScore } = await supabase

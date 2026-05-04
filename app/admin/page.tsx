@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [recalcing, setRecalcing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [reviewData, setReviewData] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
@@ -69,6 +70,26 @@ export default function AdminPage() {
       setReviewData({ error: err.message });
     }
     setReviewing(false);
+  };
+
+  const handleRicalcola = async () => {
+    if (!confirm(`Ricalcolare tutti i punteggi del Round ${round} dai weekend_results attuali?`)) return;
+    setRecalcing(true);
+    setResult(null);
+    setLogs([]);
+    try {
+      const res = await fetch("/api/ricalcola-round", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ round, admin_key: ADMIN_API_KEY }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (data.log) setLogs(data.log);
+    } catch (err: any) {
+      setResult({ error: err.message });
+    }
+    setRecalcing(false);
   };
 
   // Login screen
@@ -220,9 +241,9 @@ export default function AdminPage() {
         <div className="flex gap-3">
           <button
             onClick={handlePostGara}
-            disabled={loading || resetting}
+            disabled={loading || resetting || recalcing}
             className={`flex-1 py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting
+              loading || resetting || recalcing
                 ? "bg-white/10 text-white/30 cursor-wait"
                 : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
@@ -238,9 +259,9 @@ export default function AdminPage() {
           </button>
           <button
             onClick={handleReview}
-            disabled={loading || resetting || reviewing}
+            disabled={loading || resetting || reviewing || recalcing}
             className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting || reviewing
+              loading || resetting || reviewing || recalcing
                 ? "bg-white/10 text-white/30 cursor-wait"
                 : "bg-blue-600 hover:bg-blue-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
@@ -252,6 +273,24 @@ export default function AdminPage() {
               </span>
             ) : (
               "REVIEW"
+            )}
+          </button>
+          <button
+            onClick={handleRicalcola}
+            disabled={loading || resetting || reviewing || recalcing}
+            className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
+              loading || resetting || reviewing || recalcing
+                ? "bg-white/10 text-white/30 cursor-wait"
+                : "bg-purple-600 hover:bg-purple-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
+            }`}
+          >
+            {recalcing ? (
+              <span className="flex items-center justify-center gap-3">
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Ricalcolo...
+              </span>
+            ) : (
+              "RICALCOLA"
             )}
           </button>
           <button
@@ -274,9 +313,9 @@ export default function AdminPage() {
               }
               setResetting(false);
             }}
-            disabled={loading || resetting}
+            disabled={loading || resetting || recalcing}
             className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting
+              loading || resetting || recalcing
                 ? "bg-white/10 text-white/30 cursor-wait"
                 : "bg-orange-600 hover:bg-orange-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
