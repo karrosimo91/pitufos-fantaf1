@@ -1,4 +1,5 @@
 "use client";
+import { SectionHead } from "../ui/SectionHead";
 import type { WeekendClassificaEntry } from "../../lib/use-weekend-classifica";
 
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -14,9 +15,7 @@ export function ClassificaWeekendList({
 
   return (
     <>
-      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-        Classifica Weekend
-      </div>
+      <SectionHead title="Classifica Weekend" right={`${classifica.length} TEAM`} />
       <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
         {classifica.map((entry, i) => (
           <button

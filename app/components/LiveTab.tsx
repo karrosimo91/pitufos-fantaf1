@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Wifi, WifiOff } from "lucide-react";
 import { useLiveScoring } from "../lib/use-live-scoring";
 import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import type { ChipPilotiConfig, ChipPrevisioniConfig } from "../lib/scoring";
@@ -14,6 +13,9 @@ import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
 import { PlayerDetailModal } from "./live/PlayerDetailModal";
 import { buildMockLiveData, MOCK_CLASSIFICA } from "./live/mock-data";
 import { buildLiveWeekendResults, detectLiveEvents } from "../lib/build-live-results";
+import { HudCard } from "./ui/HudCard";
+import { SectionHead } from "./ui/SectionHead";
+import { ConnectedPill } from "./ui/LivePill";
 
 export default function LiveTab({
   sessionKey,
@@ -108,35 +110,26 @@ export default function LiveTab({
 
   return (
     <div>
-      {/* Punteggio provvisorio */}
-      <div className="bg-gradient-to-br from-[#E8002D]/10 to-[#E8002D]/[0.03] border border-[#E8002D]/15 rounded-2xl p-4 text-center mb-4">
-        <div className="text-[9px] tracking-[3px] text-white/30 uppercase mb-1">Punteggio provvisorio</div>
-        <div className="font-[family-name:var(--font-jetbrains)] text-[42px] font-bold leading-none">
-          {live.totalPoints}
+      <HudCard
+        label="PUNTEGGIO PROVVISORIO"
+        meta={<ConnectedPill connected={live.connected} />}
+        className="mb-4"
+      >
+        <div className="big-num">{live.totalPoints}</div>
+        <div className="flex items-baseline justify-between mt-3">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[1.5px] uppercase">
+            PILOTI <span className="text-white/60 ml-1">{live.totalPiloti}</span>
+            {isRace && (
+              <>
+                <span className="mx-2 text-white/15">·</span>
+                PREVISIONI <span className="text-white/60 ml-1">{live.totalPrevisioni}</span>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex justify-center gap-4 mt-2 text-[11px] text-white/40">
-          <span>Piloti: <span className="font-[family-name:var(--font-jetbrains)]">{live.totalPiloti}</span></span>
-          {isRace && <span>Previsioni: <span className="font-[family-name:var(--font-jetbrains)]">{live.totalPrevisioni}</span></span>}
-        </div>
-        <div className="flex items-center justify-center gap-1.5 mt-2">
-          {live.connected ? (
-            <>
-              <Wifi size={10} className="text-green-400" />
-              <span className="text-[9px] text-green-400/60">Connesso</span>
-            </>
-          ) : (
-            <>
-              <WifiOff size={10} className="text-white/20" />
-              <span className="text-[9px] text-white/20">Connessione...</span>
-            </>
-          )}
-        </div>
-      </div>
+      </HudCard>
 
-      {/* I tuoi piloti */}
-      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
-        I tuoi piloti
-      </div>
+      <SectionHead title="I tuoi piloti" right={`${live.piloti.length} / 5`} className="mt-2" />
       {live.piloti.map((p) => {
         const isPrimo = p.driver_number === primoPilota;
         const sections = buildPilotaBreakdown(
@@ -163,9 +156,7 @@ export default function LiveTab({
 
       {isRace && live.previsioniStatus.length > 0 && (
         <>
-          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-            Previsioni live
-          </div>
+          <SectionHead title="Previsioni live" right={`${live.previsioniStatus.filter(p => p.correct !== null).length} / 6`} />
           <div className="grid grid-cols-2 gap-1.5 mb-4">
             {live.previsioniStatus.map((p) => (
               <PrevisioneLiveCard key={p.key} p={p} />
@@ -191,10 +182,8 @@ export default function LiveTab({
 
       {live.raceControlFeed.length > 0 && (
         <>
-          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-            Race Control
-          </div>
-          <div className="max-h-[300px] overflow-y-auto">
+          <SectionHead title="Race Control" right="FEED" />
+          <div className="hud-card max-h-[300px] overflow-y-auto p-1">
             {live.raceControlFeed.slice(0, 30).map((rc, i) => (
               <RaceControlMessage key={i} rc={rc} />
             ))}
