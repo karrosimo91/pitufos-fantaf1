@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pitufos — Pitwall</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #050507;
+    --bg-2: #0a0a10;
+    --panel: #0e0e14;
+    --panel-2: #14141c;
+    --grid-line: rgba(255,255,255,0.04);
+    --border: #1c1c26;
+    --border-hi: #2a2a38;
+    --accent: #e8002d;
+    --accent-glow: rgba(232,0,45,0.4);
+    --green: #00ff88;
+    --amber: #ffb000;
+    --purple: #b026ff;
+    --text: #f0f0f5;
+    --text-2: rgba(240,240,245,0.55);
+    --text-3: rgba(240,240,245,0.28);
+    --text-4: rgba(240,240,245,0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+  html, body { background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: var(--sans);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 32px 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: var(--mono); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* TOP BAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(5,5,7,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+  .brand-name { font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+  .brand-name span { color: var(--accent); }
+  .live-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,255,136,0.06);
+    border: 1px solid rgba(0,255,136,0.3);
+    padding: 4px 8px; border-radius: 4px;
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    color: var(--green);
+    letter-spacing: 1.2px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* PAGE TITLE */
+  .page-head { padding: 20px 16px 8px; }
+  .breadcrumb { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 2px; margin-bottom: 6px; }
+  .page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; }
+  .page-title em { font-style: normal; color: var(--accent); }
+
+  /* HUD CARD */
+  .hud {
+    margin: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .hud::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .hud-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .hud-label { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 2px; }
+  .hud-meta { font-family: var(--mono); font-size: 10px; color: var(--text-2); }
+  .hud-body { padding: 18px 14px; }
+  .big-number {
+    font-family: var(--mono); font-weight: 800;
+    font-size: 64px; line-height: 1;
+    letter-spacing: -2px;
+    background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hud-row { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; }
+  .delta { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--green); }
+  .delta::before { content: '▲ '; }
+  .delta.dn { color: var(--accent); }
+  .delta.dn::before { content: '▼ '; }
+  .hud-split { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: stretch; }
+  .hud-split-cell { padding: 14px; }
+  .hud-split-divider { background: var(--border); }
+  .stat-mini-label { font-family: var(--mono); font-size: 8px; color: var(--text-3); letter-spacing: 1.5px; margin-bottom: 4px; }
+  .stat-mini-val { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+
+  /* NEXT RACE BANNER */
+  .next-race {
+    margin: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(232,0,45,0.04) 0%, transparent 100%),
+      var(--panel);
+    position: relative;
+  }
+  .next-race::after {
+    content: ''; position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 8px, transparent 8px 16px);
+    pointer-events: none;
+  }
+  .nr-head { padding: 12px 14px 0; display: flex; justify-content: space-between; align-items: center; }
+  .nr-round { font-family: var(--mono); font-size: 9px; color: var(--accent); letter-spacing: 2px; font-weight: 700; }
+  .nr-circuit { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 1.5px; }
+  .nr-flag { font-size: 28px; }
+  .nr-body { padding: 8px 14px 14px; }
+  .nr-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .nr-timer { display: flex; gap: 8px; margin-top: 10px; }
+  .timer-block {
+    flex: 1; background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    padding: 8px 4px; text-align: center; border-radius: 4px;
+  }
+  .timer-num { font-family: var(--mono); font-size: 22px; font-weight: 800; line-height: 1; }
+  .timer-lbl { font-family: var(--mono); font-size: 8px; color: var(--text-3); letter-spacing: 1.5px; margin-top: 3px; }
+
+  /* SECTION HEAD */
+  .section-head {
+    padding: 24px 16px 8px;
+    display: flex; justify-content: space-between; align-items: end;
+  }
+  .section-head h3 { font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--text-2); }
+  .section-head h3::before { content: '▌ '; color: var(--accent); }
+  .section-head a { font-family: var(--mono); font-size: 10px; color: var(--text-3); text-decoration: none; letter-spacing: 1.5px; }
+
+  /* DRIVER ROW */
+  .driver-list { margin: 0 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .driver-row {
+    display: grid;
+    grid-template-columns: 38px 4px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .driver-row:last-child { border-bottom: none; }
+  .driver-row.captain { background: linear-gradient(90deg, rgba(232,0,45,0.06), transparent 60%); }
+  .driver-pos { font-family: var(--mono); font-size: 14px; font-weight: 800; text-align: center; }
+  .driver-pos.p1 { color: var(--accent); }
+  .driver-pos.dnf { color: #ff4444; font-size: 11px; }
+  .team-bar { width: 4px; height: 28px; border-radius: 2px; }
+  .driver-info .name { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+  .driver-info .team { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 1px; }
+  .driver-pts { text-align: right; }
+  .driver-pts .val { font-family: var(--mono); font-size: 18px; font-weight: 800; line-height: 1; }
+  .driver-pts .val.pos { color: var(--green); }
+  .driver-pts .val.neg { color: var(--accent); }
+  .driver-pts .mul { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 2px; }
+  .captain-tag {
+    position: absolute; top: -1px; left: 12px;
+    background: var(--accent); color: white;
+    font-family: var(--mono); font-size: 7px; font-weight: 800;
+    padding: 1px 5px; letter-spacing: 1.5px;
+    border-radius: 0 0 3px 3px;
+  }
+  .fl-badge {
+    background: rgba(176,38,255,0.15); color: var(--purple);
+    font-family: var(--mono); font-size: 8px; font-weight: 800;
+    padding: 2px 4px; border-radius: 3px; margin-left: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  /* PREVISIONI GRID */
+  .prev-grid { margin: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .prev-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    position: relative;
+  }
+  .prev-card.ok { border-color: rgba(0,255,136,0.3); background: rgba(0,255,136,0.04); }
+  .prev-card.ko { border-color: rgba(232,0,45,0.2); background: rgba(232,0,45,0.03); }
+  .prev-label { font-family: var(--mono); font-size: 8px; color: var(--text-3); letter-spacing: 1.5px; text-transform: uppercase; }
+  .prev-val { font-family: var(--mono); font-size: 16px; font-weight: 800; margin-top: 4px; }
+  .prev-val.ok { color: var(--green); }
+  .prev-val.ko { color: var(--accent); }
+  .prev-pts { font-family: var(--mono); font-size: 10px; margin-top: 2px; color: var(--text-2); }
+  .prev-pts.ok { color: var(--green); }
+
+  /* RACE CONTROL TICKER */
+  .ticker { margin: 0 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; max-height: 220px; overflow-y: auto; }
+  .tick-row {
+    display: grid; grid-template-columns: 56px 1fr;
+    padding: 8px 12px;
+    border-left: 2px solid transparent;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .tick-row.sc { border-left-color: var(--amber); background: rgba(255,176,0,0.03); }
+  .tick-row.rf { border-left-color: var(--accent); background: rgba(232,0,45,0.04); }
+  .tick-row.gr { border-left-color: var(--green); }
+  .tick-row.pn { border-left-color: var(--purple); }
+  .tick-row:last-child { border-bottom: none; }
+  .tick-time { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+  .tick-msg { color: var(--text-2); }
+  .tick-tag {
+    display: inline-block;
+    font-family: var(--mono); font-size: 8px; font-weight: 800;
+    padding: 1px 5px; border-radius: 3px; margin-right: 6px;
+    letter-spacing: 1px;
+  }
+  .tick-tag.sc { background: rgba(255,176,0,0.15); color: var(--amber); }
+  .tick-tag.rf { background: rgba(232,0,45,0.15); color: var(--accent); }
+  .tick-tag.gr { background: rgba(0,255,136,0.12); color: var(--green); }
+  .tick-tag.pn { background: rgba(176,38,255,0.15); color: var(--purple); }
+
+  /* CLASSIFICA */
+  .ranking { margin: 0 16px; }
+  .rank-row {
+    display: grid; grid-template-columns: 32px 4px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .rank-row.me {
+    background: linear-gradient(90deg, rgba(232,0,45,0.08), var(--panel));
+    border-color: rgba(232,0,45,0.3);
+  }
+  .rank-pos { font-family: var(--mono); font-size: 18px; font-weight: 800; text-align: center; color: var(--text-3); }
+  .rank-row.gold .rank-pos { color: #ffd700; }
+  .rank-row.silver .rank-pos { color: #c0c0c0; }
+  .rank-row.bronze .rank-pos { color: #cd7f32; }
+  .rank-row.me .rank-pos { color: var(--accent); }
+  .rank-bar { width: 4px; height: 28px; border-radius: 2px; background: var(--accent); }
+  .rank-info .name { font-size: 14px; font-weight: 700; }
+  .rank-info .tp { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+  .rank-pts { text-align: right; }
+  .rank-pts .val { font-family: var(--mono); font-size: 18px; font-weight: 800; }
+  .rank-pts .cr { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+
+  /* MARKET */
+  .market-toolbar { padding: 0 16px; display: flex; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    padding: 6px 10px; border-radius: 4px;
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text-2); letter-spacing: 1px;
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .budget-meter {
+    margin: 0 16px 12px;
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .budget-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .budget-l { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 1.5px; }
+  .budget-v { font-family: var(--mono); font-weight: 800; font-size: 16px; }
+  .budget-v .acc { color: var(--accent); }
+  .budget-bar { margin-top: 10px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+  .budget-fill { height: 100%; width: 78%; background: linear-gradient(90deg, var(--green), var(--amber)); }
+
+  .market-row {
+    display: grid; grid-template-columns: 4px 1fr auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 0 16px 4px;
+  }
+  .market-row .name { font-size: 13px; font-weight: 700; }
+  .market-row .team { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+  .sparkline { width: 60px; height: 18px; }
+  .quote { text-align: right; }
+  .quote-val { font-family: var(--mono); font-size: 15px; font-weight: 800; }
+  .quote-delta { font-family: var(--mono); font-size: 9px; color: var(--green); }
+  .quote-delta.dn { color: var(--accent); }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: sticky; bottom: 0;
+    background: rgba(5,5,7,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 8px 0 12px;
+    margin-top: 24px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--text-3); text-decoration: none;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-ico {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  /* PAGE SWITCHER */
+  .pages { padding: 14px 16px 0; display: flex; gap: 6px; overflow-x: auto; }
+  .page-tab {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    padding: 6px 12px; border-radius: 4px;
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text-2); text-decoration: none;
+    letter-spacing: 1px; white-space: nowrap;
+  }
+  .page-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* SEPARATOR */
+  .sep {
+    margin: 40px 16px 24px;
+    border-top: 1px dashed var(--border);
+    position: relative;
+  }
+  .sep::before {
+    content: attr(data-label);
+    position: absolute; top: -8px; left: 16px;
+    background: var(--bg); padding: 0 10px;
+    font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 2px;
+  }
+
+  /* CHIPS BAR */
+  .chips-row { display: flex; gap: 6px; padding: 0 16px; flex-wrap: wrap; }
+  .chip-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 4px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
+  }
+  .chip-item.active { border-color: var(--amber); background: rgba(255,176,0,0.06); color: var(--amber); }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-4); }
+  .chip-item.active .chip-dot { background: var(--amber); }
+
+  /* DEMO LABEL */
+  .demo-label {
+    position: fixed; top: 12px; right: 12px;
+    background: var(--accent); color: white;
+    font-family: var(--mono); font-size: 9px; font-weight: 800;
+    padding: 4px 8px; border-radius: 4px; letter-spacing: 1.5px;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="demo-label">← MOCKUPS</a>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-name">PITUFOS<span>.</span></div>
+  </div>
+  <div class="live-pill">
+    <span class="live-dot"></span>
+    LIVE · GP IMOLA
+  </div>
+</div>
+
+<!-- ═══════════ PAGE SWITCHER (demo) ═══════════ -->
+<div class="pages">
+  <a href="#home" class="page-tab active">HOME</a>
+  <a href="#live" class="page-tab">LIVE</a>
+  <a href="#classifica" class="page-tab">CLASSIFICA</a>
+  <a href="#mercato" class="page-tab">MERCATO</a>
+</div>
+
+<!-- ═══════════ HOME ═══════════ -->
+<section id="home">
+  <div class="page-head">
+    <div class="breadcrumb">DASHBOARD · ROUND 09 / 24</div>
+    <div class="page-title">Buongiorno<br><em>Team Principal</em></div>
+  </div>
+
+  <!-- HUD: Punteggio totale stagione -->
+  <div class="hud">
+    <div class="hud-head">
+      <div class="hud-label">CLASSIFICA SOMMA · LP</div>
+      <div class="hud-meta">POS 02 / 11</div>
+    </div>
+    <div class="hud-body">
+      <div class="big-number num">487</div>
+      <div class="hud-row">
+        <div class="mono" style="font-size:10px;color:var(--text-3);letter-spacing:1.5px;">PUNTI TOTALI</div>
+        <div class="delta">+24 vs ultimo GP</div>
+      </div>
+    </div>
+    <div class="hud-split">
+      <div class="hud-split-cell">
+        <div class="stat-mini-label">CR REALE</div>
+        <div class="stat-mini-val">186</div>
+      </div>
+      <div class="hud-split-divider"></div>
+      <div class="hud-split-cell">
+        <div class="stat-mini-label">GAP LEADER</div>
+        <div class="stat-mini-val" style="color:var(--accent);">−42</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT RACE -->
+  <div class="next-race">
+    <div class="nr-head">
+      <div>
+        <div class="nr-round">ROUND 09 · IN CORSO</div>
+        <div class="nr-circuit">AUTODROMO ENZO E DINO FERRARI</div>
+      </div>
+      <div class="nr-flag">🇮🇹</div>
+    </div>
+    <div class="nr-body">
+      <div class="nr-name">GP Emilia Romagna</div>
+      <div class="nr-timer">
+        <div class="timer-block">
+          <div class="timer-num num">00</div>
+          <div class="timer-lbl">G</div>
+        </div>
+        <div class="timer-block">
+          <div class="timer-num num">02</div>
+          <div class="timer-lbl">H</div>
+        </div>
+        <div class="timer-block">
+          <div class="timer-num num">14</div>
+          <div class="timer-lbl">M</div>
+        </div>
+        <div class="timer-block">
+          <div class="timer-num num">38</div>
+          <div class="timer-lbl">S</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHIP STATUS -->
+  <div class="section-head"><h3>AGGIORNAMENTI · 4 / 5 RESIDUI</h3></div>
+  <div class="chips-row">
+    <div class="chip-item active"><span class="chip-dot"></span>BOOST x3</div>
+    <div class="chip-item"><span class="chip-dot"></span>HALO</div>
+    <div class="chip-item"><span class="chip-dot"></span>SCUDO</div>
+    <div class="chip-item"><span class="chip-dot"></span>SESTO</div>
+    <div class="chip-item"><span class="chip-dot"></span>WILDCARD</div>
+  </div>
+</section>
+
+<!-- ═══════════ SEPARATOR ═══════════ -->
+<div class="sep" data-label="LIVE / GARA"></div>
+
+<section id="live">
+  <div class="page-head">
+    <div class="breadcrumb">SESSION · RACE · LAP 34 / 63</div>
+    <div class="page-title">Live <em>Telemetria</em></div>
+  </div>
+
+  <!-- HUD provvisorio -->
+  <div class="hud">
+    <div class="hud-head">
+      <div class="hud-label">PUNTEGGIO PROVVISORIO</div>
+      <div class="hud-meta">↻ 2s</div>
+    </div>
+    <div class="hud-body">
+      <div class="big-number num">87</div>
+      <div class="hud-row">
+        <div class="mono" style="font-size:10px;color:var(--text-3);letter-spacing:1.5px;">PILOTI 62 · PREVISIONI 25</div>
+        <div class="delta">+12 ultimo aggiornamento</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- I tuoi piloti -->
+  <div class="section-head"><h3>I TUOI PILOTI</h3><a href="#">5 / 5</a></div>
+  <div class="driver-list">
+    <div class="driver-row captain">
+      <div class="captain-tag">CAP x2</div>
+      <div class="driver-pos p1">P1</div>
+      <div class="team-bar" style="background:#FF8000;"></div>
+      <div class="driver-info">
+        <div class="name">Lando Norris <span class="fl-badge">FL</span></div>
+        <div class="team">MCLAREN · #4</div>
+      </div>
+      <div class="driver-pts">
+        <div class="val num pos">+56</div>
+        <div class="mul num">28 · x2</div>
+      </div>
+    </div>
+    <div class="driver-row">
+      <div class="driver-pos">P3</div>
+      <div class="team-bar" style="background:#27F4D2;"></div>
+      <div class="driver-info">
+        <div class="name">George Russell</div>
+        <div class="team">MERCEDES · #63</div>
+      </div>
+      <div class="driver-pts">
+        <div class="val num pos">+15</div>
+      </div>
+    </div>
+    <div class="driver-row">
+      <div class="driver-pos">P7</div>
+      <div class="team-bar" style="background:#E80020;"></div>
+      <div class="driver-info">
+        <div class="name">Charles Leclerc</div>
+        <div class="team">FERRARI · #16</div>
+      </div>
+      <div class="driver-pts">
+        <div class="val num pos">+6</div>
+      </div>
+    </div>
+    <div class="driver-row">
+      <div class="driver-pos">P11</div>
+      <div class="team-bar" style="background:#229971;"></div>
+      <div class="driver-info">
+        <div class="name">Pierre Gasly</div>
+        <div class="team">ALPINE · #10</div>
+      </div>
+      <div class="driver-pts">
+        <div class="val num">0</div>
+      </div>
+    </div>
+    <div class="driver-row">
+      <div class="driver-pos dnf">DNF</div>
+      <div class="team-bar" style="background:#52E252;"></div>
+      <div class="driver-info">
+        <div class="name" style="opacity:0.4;text-decoration:line-through;">Valtteri Bottas</div>
+        <div class="team">CADILLAC · #77</div>
+      </div>
+      <div class="driver-pts">
+        <div class="val num neg">−10</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previsioni live -->
+  <div class="section-head"><h3>PREVISIONI · 4 / 6</h3><a href="#">VEDI TUTTE</a></div>
+  <div class="prev-grid">
+    <div class="prev-card ok">
+      <div class="prev-label">SAFETY CAR</div>
+      <div class="prev-val ok">SI ✓</div>
+      <div class="prev-pts ok">+4 PTS</div>
+    </div>
+    <div class="prev-card ko">
+      <div class="prev-label">VSC</div>
+      <div class="prev-val ko">NO ✗</div>
+      <div class="prev-pts">0 PTS</div>
+    </div>
+    <div class="prev-card">
+      <div class="prev-label">RED FLAG</div>
+      <div class="prev-val">NO ·</div>
+      <div class="prev-pts">in attesa</div>
+    </div>
+    <div class="prev-card ok">
+      <div class="prev-label">N. DNF</div>
+      <div class="prev-val ok">2 ✓</div>
+      <div class="prev-pts ok">+5 PTS</div>
+    </div>
+  </div>
+
+  <!-- Race Control -->
+  <div class="section-head"><h3>RACE CONTROL</h3><a href="#">FEED</a></div>
+  <div class="ticker">
+    <div class="tick-row sc">
+      <div class="tick-time">14:32</div>
+      <div class="tick-msg"><span class="tick-tag sc">SC</span>Safety Car deployed</div>
+    </div>
+    <div class="tick-row pn">
+      <div class="tick-time">14:28</div>
+      <div class="tick-msg"><span class="tick-tag pn">PEN</span>Stroll · 5 sec time penalty</div>
+    </div>
+    <div class="tick-row rf">
+      <div class="tick-time">14:21</div>
+      <div class="tick-msg"><span class="tick-tag rf">DNF</span>Bottas (#77) · mechanical</div>
+    </div>
+    <div class="tick-row gr">
+      <div class="tick-time">14:05</div>
+      <div class="tick-msg"><span class="tick-tag gr">GO</span>Lights out and away we go</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CLASSIFICA ═══════════ -->
+<div class="sep" data-label="CLASSIFICA WEEKEND"></div>
+
+<section id="classifica">
+  <div class="page-head">
+    <div class="breadcrumb">RANKING · ROUND 09 · LIVE</div>
+    <div class="page-title">Classifica<br><em>Weekend</em></div>
+  </div>
+
+  <div class="ranking">
+    <div class="rank-row gold">
+      <div class="rank-pos">01</div>
+      <div class="rank-bar" style="background:#FF8000;"></div>
+      <div class="rank-info">
+        <div class="name">McLaren Supremacy</div>
+        <div class="tp">@PapaRossi</div>
+      </div>
+      <div class="rank-pts">
+        <div class="val num">112</div>
+        <div class="cr">+25 CR</div>
+      </div>
+    </div>
+    <div class="rank-row me">
+      <div class="rank-pos">02</div>
+      <div class="rank-bar"></div>
+      <div class="rank-info">
+        <div class="name">Scuderia Pitufa</div>
+        <div class="tp">@TUO_NOME</div>
+      </div>
+      <div class="rank-pts">
+        <div class="val num">87</div>
+        <div class="cr">+18 CR</div>
+      </div>
+    </div>
+    <div class="rank-row bronze">
+      <div class="rank-pos">03</div>
+      <div class="rank-bar" style="background:#3671C6;"></div>
+      <div class="rank-info">
+        <div class="name">Red Bull Destroyers</div>
+        <div class="tp">@MarcoF1</div>
+      </div>
+      <div class="rank-pts">
+        <div class="val num">83</div>
+        <div class="cr">+15 CR</div>
+      </div>
+    </div>
+    <div class="rank-row">
+      <div class="rank-pos">04</div>
+      <div class="rank-bar" style="background:#E80020;"></div>
+      <div class="rank-info">
+        <div class="name">Ferrari Forever</div>
+        <div class="tp">@GiuliaSpeed</div>
+      </div>
+      <div class="rank-pts">
+        <div class="val num">71</div>
+        <div class="cr">+12 CR</div>
+      </div>
+    </div>
+    <div class="rank-row">
+      <div class="rank-pos">05</div>
+      <div class="rank-bar" style="background:#27F4D2;"></div>
+      <div class="rank-info">
+        <div class="name">Pit Stop Kings</div>
+        <div class="tp">@AndreaGP</div>
+      </div>
+      <div class="rank-pts">
+        <div class="val num">58</div>
+        <div class="cr">+10 CR</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ MERCATO ═══════════ -->
+<div class="sep" data-label="MERCATO PILOTI"></div>
+
+<section id="mercato">
+  <div class="page-head">
+    <div class="breadcrumb">MARKET · ROUND 10 · APERTO</div>
+    <div class="page-title">Mercato<br><em>Soldini</em></div>
+  </div>
+
+  <div class="budget-meter">
+    <div class="budget-row">
+      <div>
+        <div class="budget-l">BUDGET RESIDUO</div>
+        <div class="budget-v">78<span style="color:var(--text-3);font-size:11px;"> / 100</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="budget-l">CAMBI WEEKEND</div>
+        <div class="budget-v"><span class="acc">1</span><span style="color:var(--text-3);font-size:11px;"> / 2 free</span></div>
+      </div>
+    </div>
+    <div class="budget-bar"><div class="budget-fill"></div></div>
+  </div>
+
+  <div class="market-toolbar">
+    <div class="chip active">TUTTI</div>
+    <div class="chip">TOP</div>
+    <div class="chip">MID</div>
+    <div class="chip">BUDGET</div>
+  </div>
+
+  <div class="market-row">
+    <div class="team-bar" style="background:#FF8000;"></div>
+    <div>
+      <div class="name">Lando Norris</div>
+      <div class="team">MCLAREN</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 18"><polyline fill="none" stroke="#00ff88" stroke-width="1.5" points="0,12 10,10 20,8 30,9 40,6 50,4 60,2"/></svg>
+    <div class="quote">
+      <div class="quote-val">38</div>
+      <div class="quote-delta">+2</div>
+    </div>
+  </div>
+
+  <div class="market-row">
+    <div class="team-bar" style="background:#3671C6;"></div>
+    <div>
+      <div class="name">Max Verstappen</div>
+      <div class="team">RED BULL</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 18"><polyline fill="none" stroke="#e8002d" stroke-width="1.5" points="0,4 10,5 20,7 30,8 40,8 50,10 60,12"/></svg>
+    <div class="quote">
+      <div class="quote-val">34</div>
+      <div class="quote-delta dn">−2</div>
+    </div>
+  </div>
+
+  <div class="market-row">
+    <div class="team-bar" style="background:#E80020;"></div>
+    <div>
+      <div class="name">Charles Leclerc</div>
+      <div class="team">FERRARI</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 18"><polyline fill="none" stroke="#00ff88" stroke-width="1.5" points="0,12 10,11 20,9 30,8 40,7 50,7 60,6"/></svg>
+    <div class="quote">
+      <div class="quote-val">31</div>
+      <div class="quote-delta">+1</div>
+    </div>
+  </div>
+
+  <div class="market-row">
+    <div class="team-bar" style="background:#52E252;"></div>
+    <div>
+      <div class="name">Carlos Sainz</div>
+      <div class="team">WILLIAMS</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 18"><polyline fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" points="0,10 10,10 20,9 30,11 40,10 50,9 60,10"/></svg>
+    <div class="quote">
+      <div class="quote-val">14</div>
+      <div class="quote-delta" style="color:var(--text-3);">±0</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ BOTTOM NAV ═══════════ -->
+<nav class="bottom-nav">
+  <a href="#home" class="nav-item active">
+    <div class="nav-ico">▣</div>HOME
+  </a>
+  <a href="#live" class="nav-item">
+    <div class="nav-ico">◉</div>LIVE
+  </a>
+  <a href="#classifica" class="nav-item">
+    <div class="nav-ico">≡</div>RANK
+  </a>
+  <a href="#mercato" class="nav-item">
+    <div class="nav-ico">$</div>MERCATO
+  </a>
+  <a href="#" class="nav-item">
+    <div class="nav-ico">⚙</div>TEAM
+  </a>
+</nav>
+
+</body>
+</html>

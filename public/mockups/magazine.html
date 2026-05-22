@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pitufos — Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f5f1ea;
+    --bg-2: #ebe5da;
+    --ink: #0e0e10;
+    --ink-2: rgba(14,14,16,0.62);
+    --ink-3: rgba(14,14,16,0.36);
+    --ink-4: rgba(14,14,16,0.12);
+    --paper: #ffffff;
+    --line: rgba(14,14,16,0.1);
+    --coral: #ff5a47;
+    --coral-soft: #fff0ec;
+    --green: #1f7a4f;
+    --gold: #c89b2b;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  html, body { background: var(--bg); }
+  body {
+    color: var(--ink);
+    font-family: var(--sans);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: var(--serif); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(245,241,234,0.96);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 22px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 22px; letter-spacing: -0.5px; line-height: 1;
+  }
+  .brand-issue {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--ink-3); letter-spacing: 2px; margin-top: 3px;
+  }
+  .live-pill {
+    background: var(--ink); color: var(--bg);
+    padding: 5px 10px; border-radius: 100px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+
+  /* PAGE NAV */
+  .pages {
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex; gap: 18px;
+    overflow-x: auto;
+  }
+  .page-tab {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--ink-3); text-decoration: none;
+    letter-spacing: 2px; padding: 4px 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .page-tab.active { color: var(--ink); border-bottom-color: var(--coral); }
+
+  /* MASTHEAD */
+  .masthead { padding: 30px 22px 18px; }
+  .kicker {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--coral); letter-spacing: 2.5px; font-weight: 700;
+    margin-bottom: 14px; text-transform: uppercase;
+  }
+  .display {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 56px; line-height: 0.95;
+    letter-spacing: -2px;
+    margin-bottom: 12px;
+  }
+  .display em { font-style: italic; font-weight: 400; color: var(--coral); }
+  .deck {
+    font-family: var(--serif); font-weight: 400;
+    font-size: 17px; line-height: 1.45;
+    color: var(--ink-2);
+  }
+  .byline {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 1.5px;
+    margin-top: 18px; padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+  }
+
+  /* HERO STAT */
+  .hero-stat {
+    margin: 24px 22px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 26px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-stat::before {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
+    background: var(--coral);
+  }
+  .hero-stat .label {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+  .hero-stat .figure {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 84px; line-height: 0.9;
+    letter-spacing: -3px;
+  }
+  .hero-stat .meta {
+    margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: end;
+  }
+  .hero-stat .caption {
+    font-family: var(--serif); font-style: italic;
+    font-size: 14px; color: var(--ink-2);
+  }
+  .hero-stat .delta {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--green);
+  }
+
+  /* SECTION HEADER */
+  .section-head {
+    padding: 32px 22px 14px;
+    display: flex; justify-content: space-between; align-items: end;
+  }
+  .section-num {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 2px;
+  }
+  .section-title {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 24px; letter-spacing: -0.5px;
+    margin-top: 2px;
+  }
+  .section-link {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink); text-decoration: underline;
+    text-underline-offset: 4px; letter-spacing: 1.5px;
+  }
+
+  /* NEXT RACE */
+  .race-card {
+    margin: 0 22px;
+    background: var(--ink); color: var(--bg);
+    border-radius: 4px;
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .race-card .round {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--coral); letter-spacing: 2px; font-weight: 700;
+  }
+  .race-card .race-name {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 38px; line-height: 1;
+    letter-spacing: -1px; margin-top: 8px;
+  }
+  .race-card .circuit {
+    font-family: var(--serif); font-style: italic;
+    font-size: 14px; color: rgba(245,241,234,0.6);
+    margin-top: 4px;
+  }
+  .race-card .countdown {
+    display: flex; gap: 4px; margin-top: 20px;
+    font-family: var(--mono); font-weight: 700;
+  }
+  .race-card .cd-block {
+    flex: 1; padding: 10px 4px; text-align: center;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+  }
+  .race-card .cd-num { font-size: 20px; line-height: 1; }
+  .race-card .cd-lbl { font-size: 9px; opacity: 0.5; margin-top: 4px; letter-spacing: 1px; }
+
+  /* DRIVERS */
+  .driver-grid { padding: 0 22px; }
+  .driver-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px 18px;
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+  }
+  .driver-card.captain { background: var(--ink); color: var(--bg); }
+  .driver-card.captain .driver-team-line { color: rgba(245,241,234,0.5); }
+  .driver-pos {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 26px; line-height: 1; letter-spacing: -1px;
+  }
+  .driver-pos.dnf { font-family: var(--mono); font-size: 14px; color: var(--coral); }
+  .driver-name {
+    font-family: var(--serif); font-weight: 700;
+    font-size: 18px; letter-spacing: -0.3px;
+    line-height: 1.1;
+  }
+  .driver-team-line {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 1.5px;
+    margin-top: 3px;
+  }
+  .driver-pts-block { text-align: right; }
+  .driver-pts-val {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 28px; line-height: 1; letter-spacing: -1px;
+  }
+  .driver-pts-val.pos { color: var(--green); }
+  .driver-card.captain .driver-pts-val.pos { color: #5ee69d; }
+  .driver-pts-val.neg { color: var(--coral); }
+  .driver-mul {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--ink-3); margin-top: 2px;
+  }
+  .driver-card.captain .driver-mul { color: rgba(245,241,234,0.5); }
+  .cap-corner {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: 8px; font-weight: 700;
+    color: var(--coral); letter-spacing: 1.5px;
+  }
+
+  /* PREVISIONI */
+  .prev-list { padding: 0 22px; }
+  .prev-item {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 14px; align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .prev-item:last-child { border-bottom: none; }
+  .prev-name {
+    font-family: var(--serif); font-weight: 700; font-size: 16px;
+  }
+  .prev-name small {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 1px; display: block; margin-top: 2px;
+  }
+  .prev-choice {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    padding: 4px 8px; border-radius: 3px;
+    background: var(--bg-2); color: var(--ink-2);
+    letter-spacing: 1px;
+  }
+  .prev-choice.ok { background: var(--green); color: white; }
+  .prev-choice.ko { background: var(--coral); color: white; }
+  .prev-pts {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 22px; letter-spacing: -0.5px; min-width: 50px; text-align: right;
+  }
+  .prev-pts.pos { color: var(--green); }
+  .prev-pts.zero { color: var(--ink-3); }
+
+  /* TICKER (editorial) */
+  .ticker { padding: 0 22px; }
+  .tick {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    display: grid; grid-template-columns: 60px 1fr;
+    gap: 14px;
+  }
+  .tick:last-child { border-bottom: none; }
+  .tick-time {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-3); letter-spacing: 1px;
+  }
+  .tick-text {
+    font-family: var(--serif); font-size: 15px;
+    line-height: 1.35; color: var(--ink);
+  }
+  .tick-text.imp { font-weight: 700; }
+  .tick-label {
+    display: inline-block;
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 2px; margin-right: 6px;
+    background: var(--ink); color: var(--bg);
+    letter-spacing: 1px; vertical-align: middle;
+  }
+  .tick-label.coral { background: var(--coral); }
+  .tick-label.green { background: var(--green); }
+  .tick-label.gold { background: var(--gold); }
+
+  /* RANKING (editorial) */
+  .rank-list { padding: 0 22px; }
+  .rank-item {
+    display: grid; grid-template-columns: 48px 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-item.me {
+    margin: 0 -22px; padding-left: 22px; padding-right: 22px;
+    background: var(--coral-soft);
+    border-bottom-color: var(--coral);
+  }
+  .rank-pos {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 38px; line-height: 1; letter-spacing: -2px;
+    color: var(--ink-3);
+  }
+  .rank-item.gold .rank-pos { color: var(--gold); }
+  .rank-item.me .rank-pos { color: var(--coral); }
+  .rank-name {
+    font-family: var(--serif); font-weight: 700; font-size: 17px;
+    letter-spacing: -0.3px; line-height: 1.1;
+  }
+  .rank-tp {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 1.5px; margin-top: 3px;
+  }
+  .rank-pts-block { text-align: right; }
+  .rank-pts {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 24px; line-height: 1; letter-spacing: -1px;
+  }
+  .rank-cr {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--green); margin-top: 3px;
+  }
+
+  /* MARKET (editorial) */
+  .budget-card {
+    margin: 0 22px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 20px;
+  }
+  .budget-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .budget-l {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 2px;
+  }
+  .budget-v {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 30px; letter-spacing: -1px;
+  }
+  .budget-v small {
+    font-family: var(--serif); font-weight: 400; font-style: italic;
+    font-size: 14px; color: var(--ink-3);
+  }
+  .budget-bar { margin-top: 12px; height: 3px; background: var(--bg-2); border-radius: 2px; overflow: hidden; }
+  .budget-fill { height: 100%; width: 78%; background: var(--coral); }
+
+  .filter-row {
+    padding: 18px 22px 8px;
+    display: flex; gap: 12px;
+    overflow-x: auto;
+  }
+  .filter {
+    font-family: var(--serif); font-style: italic; font-weight: 600;
+    font-size: 14px; color: var(--ink-3);
+    padding: 4px 0; white-space: nowrap;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  .filter.active { color: var(--ink); border-bottom-color: var(--coral); }
+
+  .mkt-item {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 14px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .mkt-name {
+    font-family: var(--serif); font-weight: 700; font-size: 18px;
+    letter-spacing: -0.3px;
+  }
+  .mkt-team {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 1.5px; margin-top: 3px;
+  }
+  .mkt-quote {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .sparkline { width: 64px; height: 20px; }
+  .mkt-val {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 28px; letter-spacing: -1px;
+  }
+  .mkt-delta {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--green);
+  }
+  .mkt-delta.dn { color: var(--coral); }
+
+  /* PULL QUOTE */
+  .pullquote {
+    margin: 30px 22px;
+    padding: 24px 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .pullquote .q {
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: 24px; line-height: 1.25;
+    letter-spacing: -0.5px;
+  }
+  .pullquote .q::before { content: '“'; font-size: 32px; color: var(--coral); }
+  .pullquote .q::after { content: '”'; color: var(--coral); }
+  .pullquote .att {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 2px;
+    margin-top: 14px;
+  }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: sticky; bottom: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 12px 0 14px;
+    margin-top: 30px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--ink-3); text-decoration: none;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+  }
+  .nav-item.active { color: var(--coral); }
+  .nav-ico {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 18px; line-height: 1;
+  }
+
+  /* SEP */
+  .sep {
+    margin: 50px 22px 20px;
+    padding-top: 24px;
+    border-top: 3px double var(--ink);
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-3); letter-spacing: 3px;
+    text-align: center;
+  }
+
+  /* DEMO LABEL */
+  .demo-label {
+    position: fixed; top: 12px; right: 12px;
+    background: var(--ink); color: var(--bg);
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    padding: 4px 8px; border-radius: 4px; letter-spacing: 1.5px;
+    z-index: 100; text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="demo-label">← MOCKUPS</a>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div class="topbar">
+  <div>
+    <div class="brand">Pitufos</div>
+    <div class="brand-issue">N° 09 · MAGGIO 2026</div>
+  </div>
+  <div class="live-pill"><span class="live-dot"></span>LIVE</div>
+</div>
+
+<div class="pages">
+  <a href="#home" class="page-tab active">HOME</a>
+  <a href="#live" class="page-tab">LIVE</a>
+  <a href="#classifica" class="page-tab">CLASSIFICA</a>
+  <a href="#mercato" class="page-tab">MERCATO</a>
+</div>
+
+<!-- ═══════════ HOME / MASTHEAD ═══════════ -->
+<section id="home">
+  <div class="masthead">
+    <div class="kicker">ROUND 09 · IMOLA · IN CORSO</div>
+    <h1 class="display">Un weekend<br>da <em>cardiopalma</em>.</h1>
+    <p class="deck">Norris in pole, Verstappen in difficoltà, e la tua scuderia naviga in seconda piazza a 42 punti dal leader.</p>
+    <div class="byline">
+      <span>STAGIONE 2026</span>
+      <span>9 / 24 GP</span>
+    </div>
+  </div>
+
+  <!-- HERO STAT -->
+  <div class="hero-stat">
+    <div class="label">PUNTI TOTALI · LP</div>
+    <div class="figure serif">487</div>
+    <div class="meta">
+      <div class="caption">Posizione <strong>2ª</strong> su 11 in lega</div>
+      <div class="delta">+24 vs ultimo GP</div>
+    </div>
+  </div>
+
+  <!-- NEXT RACE -->
+  <div class="section-head">
+    <div>
+      <div class="section-num">N° 01</div>
+      <div class="section-title">Prossima gara</div>
+    </div>
+    <a href="#" class="section-link">Calendario</a>
+  </div>
+  <div class="race-card">
+    <div class="round">ROUND 09 · DOMENICA</div>
+    <div class="race-name">Emilia Romagna<br>Grand Prix</div>
+    <div class="circuit">Autodromo Enzo e Dino Ferrari · Imola</div>
+    <div class="countdown">
+      <div class="cd-block"><div class="cd-num">00</div><div class="cd-lbl">GIORNI</div></div>
+      <div class="cd-block"><div class="cd-num">02</div><div class="cd-lbl">ORE</div></div>
+      <div class="cd-block"><div class="cd-num">14</div><div class="cd-lbl">MIN</div></div>
+      <div class="cd-block"><div class="cd-num">38</div><div class="cd-lbl">SEC</div></div>
+    </div>
+  </div>
+
+  <!-- PULL QUOTE -->
+  <div class="pullquote">
+    <div class="q">Se Norris tiene la testa fino a fine gara, è weekend perfetto: capitano, +56 punti, e classifica reale.</div>
+    <div class="att">— ANALISI · LIVE BOARD</div>
+  </div>
+</section>
+
+<!-- ═══════════ LIVE ═══════════ -->
+<div class="sep">— LIVE · GARA —</div>
+
+<section id="live">
+  <div class="masthead">
+    <div class="kicker">SESSIONE · GARA · GIRO 34 / 63</div>
+    <h1 class="display">Il tuo <em>weekend</em></h1>
+  </div>
+
+  <!-- HERO STAT -->
+  <div class="hero-stat">
+    <div class="label">PUNTEGGIO PROVVISORIO</div>
+    <div class="figure serif">87</div>
+    <div class="meta">
+      <div class="caption">Piloti <strong>62</strong> · Previsioni <strong>25</strong></div>
+      <div class="delta">+12 ultimo</div>
+    </div>
+  </div>
+
+  <!-- DRIVERS -->
+  <div class="section-head">
+    <div>
+      <div class="section-num">N° 02</div>
+      <div class="section-title">I tuoi piloti</div>
+    </div>
+    <a href="#" class="section-link">Modifica</a>
+  </div>
+
+  <div class="driver-grid">
+    <div class="driver-card captain">
+      <div class="cap-corner">↑ CAPITANO · x2</div>
+      <div class="driver-pos serif">1</div>
+      <div>
+        <div class="driver-name">Lando Norris</div>
+        <div class="driver-team-line">MCLAREN · #4 · GIRO VELOCE</div>
+      </div>
+      <div class="driver-pts-block">
+        <div class="driver-pts-val pos">+56</div>
+        <div class="driver-mul">28 × 2</div>
+      </div>
+    </div>
+
+    <div class="driver-card">
+      <div class="driver-pos serif">3</div>
+      <div>
+        <div class="driver-name">George Russell</div>
+        <div class="driver-team-line">MERCEDES · #63</div>
+      </div>
+      <div class="driver-pts-block">
+        <div class="driver-pts-val pos">+15</div>
+      </div>
+    </div>
+
+    <div class="driver-card">
+      <div class="driver-pos serif">7</div>
+      <div>
+        <div class="driver-name">Charles Leclerc</div>
+        <div class="driver-team-line">FERRARI · #16</div>
+      </div>
+      <div class="driver-pts-block">
+        <div class="driver-pts-val pos">+6</div>
+      </div>
+    </div>
+
+    <div class="driver-card">
+      <div class="driver-pos serif">11</div>
+      <div>
+        <div class="driver-name">Pierre Gasly</div>
+        <div class="driver-team-line">ALPINE · #10</div>
+      </div>
+      <div class="driver-pts-block">
+        <div class="driver-pts-val" style="color:var(--ink-3);">0</div>
+      </div>
+    </div>
+
+    <div class="driver-card">
+      <div class="driver-pos dnf">DNF</div>
+      <div>
+        <div class="driver-name" style="text-decoration:line-through;color:var(--ink-3);">Valtteri Bottas</div>
+        <div class="driver-team-line">CADILLAC · #77 · RITIRATO</div>
+      </div>
+      <div class="driver-pts-block">
+        <div class="driver-pts-val neg">−10</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVISIONI -->
+  <div class="section-head">
+    <div>
+      <div class="section-num">N° 03</div>
+      <div class="section-title">Le tue previsioni</div>
+    </div>
+    <span class="section-link" style="text-decoration:none;color:var(--ink-3);">4 / 6 risolte</span>
+  </div>
+  <div class="prev-list" style="padding-bottom: 6px;">
+    <div class="prev-item">
+      <div class="prev-name">Safety Car<small>EVENTO CONFERMATO</small></div>
+      <span class="prev-choice ok">SI ✓</span>
+      <div class="prev-pts pos">+4</div>
+    </div>
+    <div class="prev-item">
+      <div class="prev-name">Virtual Safety Car<small>HAI SBAGLIATO</small></div>
+      <span class="prev-choice ko">NO ✗</span>
+      <div class="prev-pts zero">0</div>
+    </div>
+    <div class="prev-item">
+      <div class="prev-name">Red Flag<small>IN ATTESA</small></div>
+      <span class="prev-choice">NO</span>
+      <div class="prev-pts zero">·</div>
+    </div>
+    <div class="prev-item">
+      <div class="prev-name">Numero DNF<small>HAI INDOVINATO</small></div>
+      <span class="prev-choice ok">2 ✓</span>
+      <div class="prev-pts pos">+5</div>
+    </div>
+  </div>
+
+  <!-- RACE CONTROL -->
+  <div class="section-head">
+    <div>
+      <div class="section-num">N° 04</div>
+      <div class="section-title">Race Control</div>
+    </div>
+    <a href="#" class="section-link">Feed completo</a>
+  </div>
+  <div class="ticker">
+    <div class="tick">
+      <div class="tick-time">14:32</div>
+      <div class="tick-text imp"><span class="tick-label gold">SC</span>Safety Car deployed in turn 4.</div>
+    </div>
+    <div class="tick">
+      <div class="tick-time">14:28</div>
+      <div class="tick-text"><span class="tick-label">PEN</span>Stroll riceve 5 secondi di penalità per unsafe release.</div>
+    </div>
+    <div class="tick">
+      <div class="tick-time">14:21</div>
+      <div class="tick-text imp"><span class="tick-label coral">DNF</span>Bottas si ritira: problema meccanico al posteriore.</div>
+    </div>
+    <div class="tick">
+      <div class="tick-time">14:05</div>
+      <div class="tick-text"><span class="tick-label green">GO</span>Lights out and away we go.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CLASSIFICA ═══════════ -->
+<div class="sep">— RANKING WEEKEND —</div>
+
+<section id="classifica">
+  <div class="masthead">
+    <div class="kicker">CLASSIFICA · ROUND 09 · LIVE</div>
+    <h1 class="display">In <em>seconda</em> piazza</h1>
+    <p class="deck">A 25 punti dal leader, con due rivali a fiato sul collo.</p>
+  </div>
+
+  <div class="rank-list">
+    <div class="rank-item gold">
+      <div class="rank-pos">1</div>
+      <div>
+        <div class="rank-name">McLaren Supremacy</div>
+        <div class="rank-tp">@PAPAROSSI</div>
+      </div>
+      <div class="rank-pts-block">
+        <div class="rank-pts">112</div>
+        <div class="rank-cr">+25 CR</div>
+      </div>
+    </div>
+    <div class="rank-item me">
+      <div class="rank-pos">2</div>
+      <div>
+        <div class="rank-name">Scuderia Pitufa <em style="color:var(--coral);font-family:var(--serif);">— TU</em></div>
+        <div class="rank-tp">@TUO_NOME</div>
+      </div>
+      <div class="rank-pts-block">
+        <div class="rank-pts">87</div>
+        <div class="rank-cr">+18 CR</div>
+      </div>
+    </div>
+    <div class="rank-item">
+      <div class="rank-pos">3</div>
+      <div>
+        <div class="rank-name">Red Bull Destroyers</div>
+        <div class="rank-tp">@MARCOF1</div>
+      </div>
+      <div class="rank-pts-block">
+        <div class="rank-pts">83</div>
+        <div class="rank-cr">+15 CR</div>
+      </div>
+    </div>
+    <div class="rank-item">
+      <div class="rank-pos">4</div>
+      <div>
+        <div class="rank-name">Ferrari Forever</div>
+        <div class="rank-tp">@GIULIASPEED</div>
+      </div>
+      <div class="rank-pts-block">
+        <div class="rank-pts">71</div>
+        <div class="rank-cr">+12 CR</div>
+      </div>
+    </div>
+    <div class="rank-item">
+      <div class="rank-pos">5</div>
+      <div>
+        <div class="rank-name">Pit Stop Kings</div>
+        <div class="rank-tp">@ANDREAGP</div>
+      </div>
+      <div class="rank-pts-block">
+        <div class="rank-pts">58</div>
+        <div class="rank-cr">+10 CR</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ MERCATO ═══════════ -->
+<div class="sep">— MERCATO PILOTI —</div>
+
+<section id="mercato">
+  <div class="masthead">
+    <div class="kicker">MERCATO · ROUND 10 · APERTO</div>
+    <h1 class="display">Compra,<br><em>vendi</em>, vinci.</h1>
+  </div>
+
+  <div class="budget-card">
+    <div class="budget-row">
+      <div>
+        <div class="budget-l">SOLDINI RESIDUI</div>
+        <div class="budget-v">78<small> / 100</small></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="budget-l">CAMBI</div>
+        <div class="budget-v">1<small> / 2 free</small></div>
+      </div>
+    </div>
+    <div class="budget-bar"><div class="budget-fill"></div></div>
+  </div>
+
+  <div class="filter-row">
+    <a href="#" class="filter active">Tutti i piloti</a>
+    <a href="#" class="filter">Top tier</a>
+    <a href="#" class="filter">Mid</a>
+    <a href="#" class="filter">Budget</a>
+  </div>
+
+  <div class="mkt-item">
+    <div>
+      <div class="mkt-name">Lando Norris</div>
+      <div class="mkt-team">MCLAREN · #4</div>
+    </div>
+    <div class="mkt-quote">
+      <svg class="sparkline" viewBox="0 0 60 20"><polyline fill="none" stroke="#1f7a4f" stroke-width="1.5" points="0,14 10,12 20,9 30,10 40,6 50,4 60,2"/></svg>
+      <div style="text-align:right;">
+        <div class="mkt-val">38</div>
+        <div class="mkt-delta">+2 SOLDINI</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mkt-item">
+    <div>
+      <div class="mkt-name">Max Verstappen</div>
+      <div class="mkt-team">RED BULL · #1</div>
+    </div>
+    <div class="mkt-quote">
+      <svg class="sparkline" viewBox="0 0 60 20"><polyline fill="none" stroke="#ff5a47" stroke-width="1.5" points="0,4 10,5 20,7 30,8 40,8 50,11 60,13"/></svg>
+      <div style="text-align:right;">
+        <div class="mkt-val">34</div>
+        <div class="mkt-delta dn">−2 SOLDINI</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mkt-item">
+    <div>
+      <div class="mkt-name">Charles Leclerc</div>
+      <div class="mkt-team">FERRARI · #16</div>
+    </div>
+    <div class="mkt-quote">
+      <svg class="sparkline" viewBox="0 0 60 20"><polyline fill="none" stroke="#1f7a4f" stroke-width="1.5" points="0,14 10,12 20,10 30,8 40,7 50,7 60,6"/></svg>
+      <div style="text-align:right;">
+        <div class="mkt-val">31</div>
+        <div class="mkt-delta">+1 SOLDINO</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mkt-item">
+    <div>
+      <div class="mkt-name">Carlos Sainz</div>
+      <div class="mkt-team">WILLIAMS · #55</div>
+    </div>
+    <div class="mkt-quote">
+      <svg class="sparkline" viewBox="0 0 60 20"><polyline fill="none" stroke="rgba(14,14,16,0.3)" stroke-width="1.5" points="0,10 10,10 20,9 30,11 40,10 50,9 60,10"/></svg>
+      <div style="text-align:right;">
+        <div class="mkt-val">14</div>
+        <div class="mkt-delta" style="color:var(--ink-3);">±0</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ BOTTOM NAV ═══════════ -->
+<nav class="bottom-nav">
+  <a href="#home" class="nav-item active">
+    <div class="nav-ico">H</div>HOME
+  </a>
+  <a href="#live" class="nav-item">
+    <div class="nav-ico">●</div>LIVE
+  </a>
+  <a href="#classifica" class="nav-item">
+    <div class="nav-ico">R</div>RANK
+  </a>
+  <a href="#mercato" class="nav-item">
+    <div class="nav-ico">$</div>MKT
+  </a>
+  <a href="#" class="nav-item">
+    <div class="nav-ico">T</div>TEAM
+  </a>
+</nav>
+
+</body>
+</html>

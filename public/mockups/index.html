@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pitufos — Direzioni Redesign</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0c;
+    color: #f5f5f7;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .sub { color: rgba(255,255,255,0.5); margin-bottom: 40px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card {
+    background: #141416;
+    border: 1px solid #232328;
+    border-radius: 14px;
+    padding: 24px;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: all 0.2s;
+  }
+  .card:hover { border-color: #3a3a44; transform: translateY(-2px); }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  .tag.pit { background: rgba(255,45,85,0.12); color: #ff2d55; }
+  .tag.mag { background: rgba(255,159,10,0.12); color: #ff9f0a; }
+  .tag.arc { background: rgba(48,209,88,0.12); color: #30d158; }
+  .card h2 { font-size: 18px; margin-bottom: 8px; }
+  .card p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+  .links { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .links a {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+  }
+  .links a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Direzioni di redesign — Los Pitufos FantaF1</h1>
+  <p class="sub">Tre proposte UX a confronto. Apri ognuna per vedere home, gara live, classifica e mercato.</p>
+  <div class="grid">
+    <a class="card" href="pitwall.html">
+      <span class="tag pit">PITWALL</span>
+      <h2>Telemetria / Cockpit</h2>
+      <p>Stile HUD F1. Mono tipografica, dati grossi, gauge style, sfondo nero profondo. Identità forte, perfetto per il live scoring.</p>
+      <div class="links">
+        <a href="pitwall.html#home">Home</a>
+        <a href="pitwall.html#live">Live</a>
+        <a href="pitwall.html#classifica">Classifica</a>
+        <a href="pitwall.html#mercato">Mercato</a>
+      </div>
+    </a>
+    <a class="card" href="magazine.html">
+      <span class="tag mag">MAGAZINE</span>
+      <h2>Editoriale / Rivista</h2>
+      <p>Tipografia grossa e raffinata, foto piloti stile rivista, palette corallo, spazi ampi. Premium e distintivo.</p>
+      <div class="links">
+        <a href="magazine.html#home">Home</a>
+        <a href="magazine.html#live">Live</a>
+        <a href="magazine.html#classifica">Classifica</a>
+        <a href="magazine.html#mercato">Mercato</a>
+      </div>
+    </a>
+    <a class="card" href="arcade.html">
+      <span class="tag arc">ARCADE</span>
+      <h2>Trading Card / Game</h2>
+      <p>Piloti come card collezionabili con tilt 3D, mercato stile borsa con sparkline, chip come power-up animati. Giocoso e social.</p>
+      <div class="links">
+        <a href="arcade.html#home">Home</a>
+        <a href="arcade.html#live">Live</a>
+        <a href="arcade.html#classifica">Classifica</a>
+        <a href="arcade.html#mercato">Mercato</a>
+      </div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
