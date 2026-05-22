@@ -49,6 +49,42 @@ export interface ChipPrevisioniConfig {
   chipTarget: string | null;  // key della previsione target (es. "safetyCar")
 }
 
+// ─── Variazione quotazione pilota (algoritmo a fasce CDA) ───
+
+const PRICE_MIN = 5;
+const PRICE_MAX = 45;
+
+/**
+ * Calcola la nuova quotazione di un pilota dato il prezzo corrente e i punti
+ * fatti nel weekend (somma piloti, NON moltiplicati per chip/capitano).
+ *
+ * Fasce approvate dal CDA:
+ *   ≥40 punti → +3
+ *   25-39    → +2
+ *   10-24    → +1
+ *   0-9      →  0
+ *   -1/-10   → -1
+ *   ≤-11     → -2
+ * Limiti: min 5, max 45.
+ *
+ * Funzione pura, no side-effect. Da usare nel post-gara una volta che esiste
+ * la tabella driver_prices(round, driver_number, price).
+ */
+export function aggiornaQuotazione(prezzoAttuale: number, puntiPilotaWeekend: number): number {
+  let delta: number;
+  if (puntiPilotaWeekend >= 40) delta = 3;
+  else if (puntiPilotaWeekend >= 25) delta = 2;
+  else if (puntiPilotaWeekend >= 10) delta = 1;
+  else if (puntiPilotaWeekend >= 0) delta = 0;
+  else if (puntiPilotaWeekend >= -10) delta = -1;
+  else delta = -2;
+
+  const nuovo = prezzoAttuale + delta;
+  if (nuovo < PRICE_MIN) return PRICE_MIN;
+  if (nuovo > PRICE_MAX) return PRICE_MAX;
+  return nuovo;
+}
+
 // ─── Calcolo punteggio qualifica ───
 
 export function calcolaQualifica(position: number, nc = false): number {
@@ -202,7 +238,7 @@ export function getScoreBreakdown(
 
 // ─── Calcolo punteggio totale pilota nel weekend ───
 
-function calcolaPuntiPilotaBase(
+export function calcolaPuntiPilotaBase(
   driverNumber: number,
   results: RaceWeekendResults
 ): number {

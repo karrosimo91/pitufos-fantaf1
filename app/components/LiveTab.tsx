@@ -1,251 +1,21 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useLiveScoring, type LivePilotaScore, type LivePrevisioneStatus } from "../lib/use-live-scoring";
-import { useLiveWebSocket, type LiveRaceControl } from "../lib/use-live-ws";
-import { getDriverByNumber } from "../lib/drivers-data";
-import { Crown, Zap, Shield, ShieldCheck, Wifi, WifiOff, X } from "lucide-react";
-import { createClient, isSupabaseConfigured } from "../lib/supabase";
-import {
-  calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
-  calcolaPuntiPrevisioni, getScoreBreakdown,
-  type DriverResult, type ChipPilotiConfig, type ChipPrevisioniConfig, type ScoreBreakdown,
-} from "../lib/scoring";
-import { PREVISIONI_PUNTI } from "../lib/types";
+import { useEffect, useMemo, useState } from "react";
+import { useLiveScoring } from "../lib/use-live-scoring";
+import { useWeekendClassifica } from "../lib/use-weekend-classifica";
+import type { ChipPilotiConfig, ChipPrevisioniConfig } from "../lib/scoring";
+import type { Previsioni } from "../lib/types";
 import { saveProvisionalScores } from "../lib/provisional-scores";
-
-// ─── Sub-components ───
-
-function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, expanded, onToggle }: {
-  p: LivePilotaScore;
-  primoPilota: number | null;
-  chipPiloti: string | null;
-  breakdownSections?: { label: string; breakdown: ScoreBreakdown }[];
-  expanded?: boolean;
-  onToggle?: () => void;
-}) {
-  const driver = getDriverByNumber(p.driver_number);
-  const isPrimo = p.driver_number === primoPilota;
-  const isBoosted = chipPiloti === "boost" && p.moltiplicatore === 3;
-  const isScudo = isPrimo && chipPiloti === "scudo";
-
-  const borderClass = p.isDnf
-    ? "border-red-500/20 bg-red-500/[0.03]"
-    : isPrimo
-      ? "border-[#E8002D]/40 bg-[#E8002D]/[0.04]"
-      : isBoosted
-        ? "border-amber-500/40 bg-amber-500/[0.04]"
-        : "border-white/[0.06] bg-white/[0.02]";
-
-  return (
-    <div className={`relative rounded-xl mb-1.5 border transition-all ${borderClass}`}>
-      <div className="flex items-center justify-between p-3 cursor-pointer" onClick={onToggle}>
-        {isPrimo && (
-          <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-            <Crown size={8} /> CAP {isScudo ? "SCUDO" : "x2"}
-          </div>
-        )}
-        {isBoosted && (
-          <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-            <Zap size={8} /> BOOST x3
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold w-6 text-center ${
-            p.isDnf ? "text-red-400" : p.position <= 3 ? "text-[#E8002D]" : "text-white/50"
-          }`}>
-            {p.isDnf ? "DNF" : `P${p.position}`}
-          </div>
-          {driver && (
-            <div className="w-[3px] h-7 rounded-full" style={{ backgroundColor: `#${driver.teamColour || "555"}` }} />
-          )}
-          <div>
-            <div className={`text-[13px] font-semibold ${p.isDnf ? "text-white/40 line-through" : ""}`}>
-              {driver?.name || `#${p.driver_number}`}
-            </div>
-            <div className="text-[10px] text-white/30">{driver?.team || ""}</div>
-          </div>
-          {p.isFastestLap && (
-            <span className="text-[8px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">FL</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
-            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
-          }`}>
-            {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
-          </span>
-          {p.moltiplicatore > 1 && (
-            <span className="text-[10px] text-white/30">x{p.moltiplicatore}</span>
-          )}
-        </div>
-      </div>
-
-      {expanded && breakdownSections && breakdownSections.length > 0 && (
-        <div className="px-3 pb-3 pt-0">
-          <div className="bg-black/30 rounded-lg p-3 space-y-2">
-            {breakdownSections.map((section, si) => (
-              <div key={si}>
-                {breakdownSections.length > 1 && (
-                  <div className="text-[9px] tracking-[1.5px] text-white/25 uppercase font-bold mb-1">{section.label}</div>
-                )}
-                {section.breakdown.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between text-[12px]">
-                    <span className="text-white/40">{item.label}</span>
-                    <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
-                    }`}>
-                      {item.value > 0 ? "+" : ""}{item.value}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/30">Subtotale</span>
-                  <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-white/40`}>
-                    {section.breakdown.finalTotal > 0 ? "+" : ""}{section.breakdown.finalTotal}
-                  </span>
-                </div>
-                {si < breakdownSections.length - 1 && <div className="border-t border-white/[0.06] my-1.5"></div>}
-              </div>
-            ))}
-            <div className="border-t border-white/[0.08] my-1.5"></div>
-            {(() => {
-              const grandTotal = breakdownSections.reduce((s, sec) => s + sec.breakdown.finalTotal, 0);
-              return (
-                <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-white/70 font-bold">Totale Weekend</span>
-                  <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                    grandTotal > 0 ? "text-green-400" : grandTotal < 0 ? "text-red-400" : "text-white/15"
-                  }`}>
-                    {grandTotal > 0 ? "+" : ""}{grandTotal}
-                  </span>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PrevisioneLiveCard({ p }: { p: LivePrevisioneStatus }) {
-  const isCorrect = p.correct === true;
-  const isWrong = p.correct === false;
-
-  const borderClass = isCorrect
-    ? "border-green-500/30 bg-green-500/[0.06]"
-    : isWrong
-      ? "border-red-500/15 bg-red-500/[0.04]"
-      : "border-white/[0.06] bg-white/[0.02]";
-
-  return (
-    <div className={`rounded-xl p-3 border transition-all ${borderClass}`}>
-      <div className="text-[10px] font-bold text-white/50 mb-1">{p.label}</div>
-      <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold ${
-        isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/20"
-      }`}>
-        {p.key === "numeroDnf"
-          ? `${p.prediction ?? "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
-          : `${p.prediction === true ? "SI" : p.prediction === false ? "NO" : "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
-        }
-      </div>
-      <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-0.5 ${
-        isCorrect ? "text-green-400/60" : isWrong ? "text-red-400/40" : "text-white/10"
-      }`}>
-        {isCorrect ? `+${p.points} pts` : isWrong ? "0 pts" : ""}
-      </div>
-    </div>
-  );
-}
-
-function RaceControlMessage({ rc }: { rc: LiveRaceControl }) {
-  const msg = (rc.message || "").toUpperCase();
-  const isSC = msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL");
-  const isVSC = msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC");
-  const isRF = msg.includes("RED FLAG") || (rc.flag || "").toUpperCase() === "RED";
-  const isDNF = msg.includes("RETIRED") || msg.includes("OUT OF THE RACE");
-  const isPenalty = msg.includes("PENALTY");
-  const isGreen = msg.includes("GREEN") || msg.includes("LIGHTS OUT");
-
-  const borderColor = isRF ? "border-l-[#E8002D] bg-[#E8002D]/[0.04]"
-    : isSC ? "border-l-amber-500 bg-amber-500/[0.04]"
-    : isVSC ? "border-l-amber-500 bg-amber-500/[0.03]"
-    : isDNF ? "border-l-red-400"
-    : isPenalty ? "border-l-purple-400 bg-purple-500/[0.04]"
-    : isGreen ? "border-l-green-400"
-    : "border-l-white/10";
-
-  const time = rc.date ? new Date(rc.date).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "";
-
-  return (
-    <div className={`flex items-start gap-2 p-2 border-l-2 mb-1 text-[11px] ${borderColor}`}>
-      <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 min-w-[40px]">{time}</span>
-      <span className="text-white/60">{rc.message}</span>
-    </div>
-  );
-}
-
-// ─── Componente principale ───
-
-// ─── Dati mock per debug ───
-
-function useMockData(driverNumbers: number[], primoPilota: number | null, chipPiloti: ChipPilotiConfig | null) {
-  const mockPositions = [1, 3, 7, 11, 22]; // posizioni finte per i 5 piloti
-  const piloti: LivePilotaScore[] = driverNumbers.map((num, i) => {
-    const position = mockPositions[i] || 15;
-    const isPrimo = num === primoPilota;
-    const isBoosted = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === num && !isPrimo;
-    const isDnf = i === 4; // ultimo pilota = DNF mock
-    const moltiplicatore = isPrimo ? 2 : isBoosted ? 3 : 1;
-    const puntiBase = isDnf ? -10 : position === 1 ? 25 : position <= 3 ? 15 : position <= 10 ? 4 : 0;
-    const isScudo = isPrimo && chipPiloti?.chipPiloti === "scudo";
-    const puntiFinali = isScudo
-      ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
-      : puntiBase * moltiplicatore;
-    return { driver_number: num, position, puntiBase, moltiplicatore, puntiFinali: chipPiloti?.chipPiloti === "halo" && puntiFinali < 0 ? 0 : puntiFinali, isDnf, isFastestLap: i === 0 };
-  });
-
-  const previsioniStatus: LivePrevisioneStatus[] = [
-    { key: "safetyCar", label: "Safety Car", prediction: true, happened: true, correct: true, points: 4 },
-    { key: "virtualSafetyCar", label: "Virtual Safety Car", prediction: false, happened: true, correct: false, points: 0 },
-    { key: "redFlag", label: "Red Flag", prediction: false, happened: null, correct: null, points: 0 },
-    { key: "gommeWet", label: "Gomme Wet", prediction: false, happened: false, correct: null, points: 0 },
-    { key: "poleVince", label: "Pole vince", prediction: true, happened: null, correct: null, points: 0 },
-    { key: "numeroDnf", label: "Numero DNF", prediction: 2, happened: true as unknown as boolean, correct: true, points: 5 },
-  ];
-
-  const raceControlFeed: LiveRaceControl[] = [
-    { message: "GREEN FLAG — Track clear", date: new Date().toISOString() },
-    { message: "SAFETY CAR DEPLOYED", flag: "YELLOW", date: new Date(Date.now() - 120000).toISOString() },
-    { message: "PENALTY — Stroll: 5 sec time penalty", date: new Date(Date.now() - 240000).toISOString() },
-    { message: "RETIRED — Car 14 (Alonso) mechanical", driver_number: 14, date: new Date(Date.now() - 360000).toISOString() },
-    { message: "VIRTUAL SAFETY CAR DEPLOYED", date: new Date(Date.now() - 600000).toISOString() },
-    { message: "RETIRED — Car 77 (Bottas) collision damage", driver_number: 77, date: new Date(Date.now() - 900000).toISOString() },
-    { message: "LIGHTS OUT AND AWAY WE GO", date: new Date(Date.now() - 3600000).toISOString() },
-  ];
-
-  const totalPiloti = piloti.reduce((s, p) => s + p.puntiFinali, 0);
-  const totalPrevisioni = previsioniStatus.reduce((s, p) => s + p.points, 0);
-
-  return {
-    piloti, totalPiloti, previsioniStatus, totalPrevisioni,
-    totalPoints: totalPiloti + totalPrevisioni,
-    raceControlFeed, connected: true,
-    events: { safetyCar: true, virtualSafetyCar: true, redFlag: false, wetTyres: false, totalDnf: 2 },
-  };
-}
-
-// ─── Tipo classifica ───
-
-interface ClassificaEntry {
-  userId: string;
-  scuderiaName: string;
-  tpName: string;
-  points: number;
-  isMe: boolean;
-}
+import { buildPilotaBreakdown } from "../lib/player-breakdown";
+import { PilotaLiveRow } from "./live/PilotaLiveRow";
+import { PrevisioneLiveCard } from "./live/PrevisioneLiveCard";
+import { RaceControlMessage } from "./live/RaceControlMessage";
+import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
+import { PlayerDetailModal } from "./live/PlayerDetailModal";
+import { buildMockLiveData, MOCK_CLASSIFICA } from "./live/mock-data";
+import { buildLiveWeekendResults, detectLiveEvents } from "../lib/build-live-results";
+import { HudCard } from "./ui/HudCard";
+import { SectionHead } from "./ui/SectionHead";
+import { ConnectedPill } from "./ui/LivePill";
 
 export default function LiveTab({
   sessionKey,
@@ -272,368 +42,36 @@ export default function LiveTab({
   primoPilota: number | null;
   chipPiloti: ChipPilotiConfig | null;
   chipPrevisioni: ChipPrevisioniConfig | null;
-  previsioni: {
-    safetyCar: boolean | null;
-    virtualSafetyCar: boolean | null;
-    redFlag: boolean | null;
-    gommeWet: boolean | null;
-    poleVince: boolean | null;
-    numeroDnf: number | null;
-  };
+  previsioni: Previsioni;
   qualifyingPole?: number | null;
   debug?: boolean;
 }) {
-  // Fetch risultati sessioni precedenti del weekend (da Supabase)
-  const [previousResults, setPreviousResults] = useState<import("../lib/scoring").RaceWeekendResults | null>(null);
-  useEffect(() => {
-    if (debug || !round || !isSupabaseConfigured) return;
-    const supabase = createClient();
-    if (!supabase) return;
+  // Hook unificato: fetch formazioni/previsioni della lega + WS + previousResults + grid
+  const data = useWeekendClassifica({ round, sessionType, sessionKey, meetingKey, legaId, userId, debug });
 
-    (async () => {
-      const { data } = await supabase
-        .from("weekend_results")
-        .select("data")
-        .eq("round", round)
-        .maybeSingle();
-      if (data?.data) setPreviousResults(data.data);
-    })();
-  }, [round, debug]);
-
-  // Fetch grid positions dalla qualifica via proxy (no CORS)
-  const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
-  useEffect(() => {
-    if (debug || !meetingKey) return;
-    const isRaceSession = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint");
-    if (!isRaceSession) return;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/live-grid?meeting_key=${meetingKey}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const { grid } = await res.json();
-        const gridMap = new Map<number, number>();
-        for (const [driverStr, pos] of Object.entries(grid)) {
-          gridMap.set(Number(driverStr), pos as number);
-        }
-        setGridPositions(gridMap);
-      } catch { /* non bloccante */ }
-    })();
-  }, [meetingKey, sessionType, debug]);
-
-  // Fetch formazioni e previsioni confermate di tutti i giocatori per la classifica
-  const [allFormazioni, setAllFormazioni] = useState<{
-    user_id: string; driver_numbers: number[]; primo_pilota: number | null;
-    chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
-    scuderia_name?: string; tp_name?: string;
-  }[]>([]);
-  const [allPrevisioni, setAllPrevisioni] = useState<Map<string, {
-    safety_car: boolean | null; virtual_safety_car: boolean | null; red_flag: boolean | null;
-    gomme_wet: boolean | null; pole_vince: boolean | null; numero_dnf: number | null;
-    chip_attivo: string | null; chip_target: string | null;
-  }>>(new Map());
-
-  useEffect(() => {
-    if (debug || !round || !isSupabaseConfigured) return;
-    const supabase = createClient();
-    if (!supabase) return;
-
-    (async () => {
-      // Se c'è una lega, filtra per membri della lega
-      let memberIds: string[] | null = null;
-      if (legaId) {
-        const { data: members } = await supabase
-          .from("lega_members")
-          .select("user_id")
-          .eq("lega_id", legaId);
-        if (members) memberIds = members.map((m) => m.user_id);
-      }
-
-      let query = supabase
-        .from("formazioni")
-        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
-        .eq("round", round)
-        .eq("confirmed", true);
-
-      if (memberIds) query = query.in("user_id", memberIds);
-
-      const { data } = await query;
-      if (!data) return;
-
-      // Fetch nomi profili
-      const userIds = data.map((f) => f.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, scuderia_name, team_principal_name")
-        .in("id", userIds);
-
-      const profileMap = new Map<string, { scuderia: string; tp: string }>();
-      for (const p of profiles || []) {
-        profileMap.set(p.id, { scuderia: p.scuderia_name || "—", tp: p.team_principal_name || "—" });
-      }
-
-      setAllFormazioni(data.map((f) => ({
-        ...f,
-        driver_numbers: (f.driver_numbers || []).map(Number),
-        scuderia_name: profileMap.get(f.user_id)?.scuderia,
-        tp_name: profileMap.get(f.user_id)?.tp,
-      })));
-
-      // Fetch previsioni confermate
-      const { data: prevData } = await supabase
-        .from("previsioni")
-        .select("user_id, safety_car, virtual_safety_car, red_flag, gomme_wet, pole_vince, numero_dnf, chip_attivo, chip_target")
-        .eq("round", round)
-        .eq("confirmed", true);
-
-      if (prevData) {
-        const prevMap = new Map<string, typeof prevData[0]>();
-        for (const p of prevData) prevMap.set(p.user_id, p);
-        setAllPrevisioni(prevMap);
-      }
-    })();
-  }, [round, debug, legaId]);
-
+  // Punteggio personale provvisorio (riusa stesso ws sotto il cofano)
   const realLive = useLiveScoring(
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
-    chipPiloti, chipPrevisioni, previsioni, qualifyingPole, gridPositions,
-    previousResults
+    chipPiloti, chipPrevisioni, previsioni, qualifyingPole, data.gridPositions,
+    data.previousResults,
   );
-
-  // Accedi ai dati WS raw per calcolare punti degli altri (solo se non debug)
-  const wsData = useLiveWebSocket(debug ? null : sessionKey);
-
-  // Calcola classifica weekend live
-  const classifica = useMemo<ClassificaEntry[]>(() => {
-    if (debug) {
-      return [
-        { userId: "1", scuderiaName: "McLaren Supremacy", tpName: "@PapaRossi", points: 112, isMe: false },
-        { userId: "2", scuderiaName: "Scuderia Pitufa", tpName: "@TuNome", points: 87, isMe: true },
-        { userId: "3", scuderiaName: "Red Bull Destroyers", tpName: "@MarcoF1", points: 83, isMe: false },
-        { userId: "4", scuderiaName: "Ferrari Forever", tpName: "@GiuliaSpeed", points: 71, isMe: false },
-        { userId: "5", scuderiaName: "Pit Stop Kings", tpName: "@AndreaGP", points: 58, isMe: false },
-      ];
-    }
-
-    if (allFormazioni.length === 0 || wsData.positions.size === 0) return [];
-
-    const stLower = sessionType.toLowerCase();
-    const isQual = stLower === "qualifying";
-    const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
-    const isSprintRace = stLower === "sprint" || (stLower.includes("race") && stLower.includes("sprint"));
-    const isMainRace = stLower.includes("race") && !stLower.includes("sprint");
-
-    const events = (() => {
-      let safetyCar = false, virtualSafetyCar = false, redFlag = false;
-      const dnfDrivers = new Set<number>();
-      for (const rc of wsData.raceControl) {
-        const msg = (rc.message || "").toUpperCase();
-        const flag = (rc.flag || "").toUpperCase();
-        if (msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL")) safetyCar = true;
-        if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtualSafetyCar = true;
-        if (flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) redFlag = true;
-        if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-          if (rc.driver_number) dnfDrivers.add(rc.driver_number);
-        }
-      }
-      const wetTyres = wsData.stints.some((s) => {
-        const c = (s.compound || "").toUpperCase();
-        return c === "WET" || c === "INTERMEDIATE";
-      });
-      return { safetyCar, virtualSafetyCar, redFlag, wetTyres, dnfDrivers, totalDnf: dnfDrivers.size };
-    })();
-
-    // Helper: punti sessioni precedenti per un pilota (da weekend_results)
-    function prevSessionPoints(driverNum: number): number {
-      if (!previousResults) return 0;
-      let pts = 0;
-      const stLower2 = sessionType.toLowerCase();
-      // Non sommare la sessione attuale (quella live)
-      if (stLower2 !== "qualifying") {
-        const qr = previousResults.qualifying?.find((r) => r.driver_number === driverNum);
-        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
-      }
-      if (!stLower2.includes("sprint") || !stLower2.includes("qualifying")) {
-        const ssr = previousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
-        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
-      }
-      if (stLower2 !== "sprint") {
-        const sr = previousResults.sprint?.find((r) => r.driver_number === driverNum);
-        if (sr) pts += calcolaSprint(sr);
-      }
-      if (!stLower2.includes("race") || stLower2.includes("sprint")) {
-        const rr = previousResults.race?.find((r) => r.driver_number === driverNum);
-        if (rr) pts += calcolaGara(rr);
-      }
-      return pts;
-    }
-
-    const entries: ClassificaEntry[] = allFormazioni.map((f) => {
-      let total = 0;
-
-      const fDrivers = [...f.driver_numbers];
-      if (f.chip_piloti === "sesto" && f.sesto_uomo && !fDrivers.includes(f.sesto_uomo)) {
-        fDrivers.push(f.sesto_uomo);
-      }
-
-      for (const driverNum of fDrivers) {
-        const pos = wsData.positions.get(driverNum);
-        const position = pos?.position ?? 22;
-        const isDnf = events.dnfDrivers.has(driverNum);
-        const isFastestLap = wsData.fastestLap?.driver_number === driverNum;
-
-        // Punti sessione corrente (live)
-        let puntiBase = 0;
-        if (isQual) puntiBase = calcolaQualifica(position, isDnf);
-        else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
-        else if (isSprintRace) {
-          const dr: DriverResult = { driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFastestLap };
-          puntiBase = calcolaSprint(dr);
-        } else if (isMainRace) {
-          const grid = gridPositions.get(driverNum);
-          const dr: DriverResult = { driver_number: driverNum, position, dnf: isDnf, grid_position: grid, fastest_lap: isFastestLap, driver_of_the_day: false, penalty: false };
-          puntiBase = calcolaGara(dr);
-        }
-
-        // Punti sessioni precedenti
-        puntiBase += prevSessionPoints(driverNum);
-
-        const isPrimo = driverNum === f.primo_pilota;
-        const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
-        const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
-
-        let puntiFinali: number;
-        if (isPrimo && f.chip_piloti === "scudo") {
-          puntiFinali = puntiBase > 0 ? puntiBase * 2 : puntiBase;
-        } else {
-          puntiFinali = puntiBase * molt;
-        }
-        if (f.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
-
-        total += puntiFinali;
-      }
-
-      // Aggiungi punti previsioni (solo gara)
-      if (isMainRace) {
-        const playerPrev = allPrevisioni.get(f.user_id);
-        if (playerPrev) {
-          const prevObj = {
-            safetyCar: playerPrev.safety_car,
-            virtualSafetyCar: playerPrev.virtual_safety_car,
-            redFlag: playerPrev.red_flag,
-            gommeWet: playerPrev.gomme_wet,
-            poleVince: playerPrev.pole_vince,
-            numeroDnf: playerPrev.numero_dnf,
-          };
-          const eventsObj = {
-            safety_car: events.safetyCar,
-            virtual_safety_car: events.virtualSafetyCar,
-            red_flag: events.redFlag,
-            wet_tyres: events.wetTyres,
-            pole_won: false, // determinabile solo a fine gara
-            total_dnf: events.totalDnf,
-          };
-          const chipPrev = playerPrev.chip_attivo
-            ? { chipAttivo: playerPrev.chip_attivo, chipTarget: playerPrev.chip_target }
-            : undefined;
-          const prevResult = calcolaPuntiPrevisioni(prevObj, eventsObj, chipPrev);
-          total += prevResult.total;
-        }
-      }
-
-      return {
-        userId: f.user_id,
-        scuderiaName: f.scuderia_name || "—",
-        tpName: f.tp_name || "—",
-        points: total,
-        isMe: f.user_id === userId,
-      };
-    });
-
-    entries.sort((a, b) => b.points - a.points);
-    return entries;
-  }, [allFormazioni, allPrevisioni, wsData.positions, wsData.raceControl, wsData.fastestLap, wsData.stints, sessionType, gridPositions, userId, debug, previousResults]);
-
-  const mockLive = useMockData(driverNumbers, primoPilota, chipPiloti);
+  const mockLive = useMemo(() => buildMockLiveData(driverNumbers, primoPilota, chipPiloti), [driverNumbers, primoPilota, chipPiloti]);
   const live = debug ? mockLive : realLive;
 
+  const classifica = debug ? MOCK_CLASSIFICA : data.classifica;
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
-  const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
 
-  const sessionTypeForBreakdown = (() => {
-    const st = sessionType.toLowerCase();
-    if (st === "qualifying") return "qualifying" as const;
-    if (st.includes("sprint") && st.includes("qualifying")) return "sprint_shootout" as const;
-    if (st === "sprint") return "sprint" as const;
-    return "race" as const;
-  })();
-
-  // Helper: genera breakdown completo weekend (sessioni precedenti + corrente)
-  function getFullBreakdown(driverNum: number, isPrimo: boolean, chipPilotiStr: string | null, chipTarget: number | null) {
-    const isBoosted = chipPilotiStr === "boost" && chipTarget === driverNum && !isPrimo;
-    const chipForBreakdown = isBoosted ? "boost" : (isPrimo && chipPilotiStr === "scudo") ? "scudo" : chipPilotiStr === "halo" ? "halo" : null;
-
-    const sections: { label: string; breakdown: ScoreBreakdown }[] = [];
-
-    // Sessioni precedenti dal DB
-    if (previousResults) {
-      if (previousResults.qualifying?.length) {
-        const qr = previousResults.qualifying.find((r) => r.driver_number === driverNum);
-        if (qr) sections.push({ label: "Qualifica", breakdown: getScoreBreakdown(qr, "qualifying", isPrimo, chipForBreakdown) });
-      }
-      if (previousResults.sprint_shootout?.length) {
-        const ssr = previousResults.sprint_shootout.find((r) => r.driver_number === driverNum);
-        if (ssr) sections.push({ label: "Sprint Shootout", breakdown: getScoreBreakdown(ssr, "sprint_shootout", isPrimo, chipForBreakdown) });
-      }
-      if (previousResults.sprint?.length) {
-        const sr = previousResults.sprint.find((r) => r.driver_number === driverNum);
-        if (sr) sections.push({ label: "Sprint", breakdown: getScoreBreakdown(sr, "sprint", isPrimo, chipForBreakdown) });
-      }
-      // Se la gara è già stata calcolata (post-gara), mostra anche quella
-      if (previousResults.race?.length && sessionTypeForBreakdown !== "race") {
-        const rr = previousResults.race.find((r) => r.driver_number === driverNum);
-        if (rr) sections.push({ label: "Gara", breakdown: getScoreBreakdown(rr, "race", isPrimo, chipForBreakdown) });
-      }
-    }
-
-    // Sessione corrente (live)
-    const pos = debug ? 0 : (wsData.positions.get(driverNum)?.position ?? 22);
-    const isDnf = debug ? false : ((() => {
-      for (const rc of wsData.raceControl) {
-        const m = (rc.message || "").toUpperCase();
-        if ((m.includes("RETIRED") || m.includes("OUT OF THE RACE")) && rc.driver_number === driverNum) return true;
-      }
-      return false;
-    })());
-    const isFl = debug ? false : wsData.fastestLap?.driver_number === driverNum;
-
-    const currentResult: DriverResult = {
-      driver_number: driverNum, position: pos, dnf: isDnf,
-      fastest_lap: isFl, driver_of_the_day: false, penalty: false,
-      grid_position: gridPositions.get(driverNum),
-    };
-
-    const sessionLabels: Record<string, string> = {
-      qualifying: "Qualifica", sprint_shootout: "Sprint Shootout", sprint: "Sprint", race: "Gara"
-    };
-    sections.push({
-      label: sessionLabels[sessionTypeForBreakdown] + " (live)",
-      breakdown: getScoreBreakdown(currentResult, sessionTypeForBreakdown, isPrimo, chipForBreakdown),
-    });
-
-    return sections;
-  }
-
-  // Salva punteggi provvisori su Supabase (accumula sessioni weekend)
+  // Salva punteggi provvisori (accumula sessioni weekend)
   useEffect(() => {
     if (debug || classifica.length === 0) return;
     saveProvisionalScores(
       round,
       sessionType,
       classifica.map((c) => {
-        const f = allFormazioni.find((f) => f.user_id === c.userId);
+        const f = data.formazioni.find((x) => x.user_id === c.userId);
         return {
           userId: c.userId,
           scuderiaName: c.scuderiaName,
@@ -644,7 +82,7 @@ export default function LiveTab({
             if (f.chip_piloti === "sesto" && f.sesto_uomo && !dns.includes(f.sesto_uomo)) dns.push(f.sesto_uomo);
             return dns.map((dn) => ({
               driver_number: dn,
-              position: (debug ? 0 : wsData.positions.get(dn)?.position) ?? 22,
+              position: data.ws.positions.get(dn)?.position ?? 22,
               puntiFinali: 0,
               isDnf: false,
             }));
@@ -652,48 +90,63 @@ export default function LiveTab({
         };
       }),
     );
-  }, [classifica, debug, round, sessionType]);
+  }, [classifica, debug, round, sessionType, data.formazioni, data.ws.positions]);
+
+  // Snapshot per il modale (evita ricalcolo)
+  const snap = useMemo(
+    () => ({ positions: data.ws.positions, raceControl: data.ws.raceControl, fastestLap: data.ws.fastestLap, stints: data.ws.stints }),
+    [data.ws.positions, data.ws.raceControl, data.ws.fastestLap, data.ws.stints],
+  );
+
+  // Costruisce live results per il breakdown dei miei piloti
+  const myLiveResults = useMemo(() => {
+    const events = detectLiveEvents(snap);
+    return buildLiveWeekendResults(sessionType, snap, events, data.gridPositions, data.previousResults, qualifyingPole);
+  }, [snap, sessionType, data.gridPositions, data.previousResults, qualifyingPole]);
+
+  const selectedFormazione = selectedPlayer ? data.formazioni.find((f) => f.user_id === selectedPlayer) : null;
+  const selectedEntry = selectedPlayer ? classifica.find((c) => c.userId === selectedPlayer) : null;
+  const selectedPrev = selectedPlayer ? data.previsioniByUser.get(selectedPlayer) : undefined;
 
   return (
     <div>
-      {/* Punteggio provvisorio */}
-      <div className="bg-gradient-to-br from-[#E8002D]/10 to-[#E8002D]/[0.03] border border-[#E8002D]/15 rounded-2xl p-4 text-center mb-4">
-        <div className="text-[9px] tracking-[3px] text-white/30 uppercase mb-1">Punteggio provvisorio</div>
-        <div className="font-[family-name:var(--font-jetbrains)] text-[42px] font-bold leading-none">
-          {live.totalPoints}
+      <HudCard
+        label="PUNTEGGIO PROVVISORIO"
+        meta={<ConnectedPill connected={live.connected} mode={(live as { mode?: "init" | "mqtt" | "polling" }).mode} />}
+        className="mb-4"
+      >
+        <div className="big-num">{live.totalPoints}</div>
+        <div className="flex items-baseline justify-between mt-3">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[1.5px] uppercase">
+            PILOTI <span className="text-white/60 ml-1">{live.totalPiloti}</span>
+            {isRace && (
+              <>
+                <span className="mx-2 text-white/15">·</span>
+                PREVISIONI <span className="text-white/60 ml-1">{live.totalPrevisioni}</span>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex justify-center gap-4 mt-2 text-[11px] text-white/40">
-          <span>Piloti: <span className="font-[family-name:var(--font-jetbrains)]">{live.totalPiloti}</span></span>
-          {isRace && <span>Previsioni: <span className="font-[family-name:var(--font-jetbrains)]">{live.totalPrevisioni}</span></span>}
-        </div>
-        <div className="flex items-center justify-center gap-1.5 mt-2">
-          {live.connected ? (
-            <>
-              <Wifi size={10} className="text-green-400" />
-              <span className="text-[9px] text-green-400/60">Connesso</span>
-            </>
-          ) : (
-            <>
-              <WifiOff size={10} className="text-white/20" />
-              <span className="text-[9px] text-white/20">Connessione...</span>
-            </>
-          )}
-        </div>
-      </div>
+      </HudCard>
 
-      {/* I tuoi piloti */}
-      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
-        I tuoi piloti
-      </div>
+      <SectionHead title="I tuoi piloti" right={`${live.piloti.length} / 5`} className="mt-2" />
       {live.piloti.map((p) => {
         const isPrimo = p.driver_number === primoPilota;
-        const sections = getFullBreakdown(p.driver_number, isPrimo, chipPiloti?.chipPiloti || null, chipPiloti?.chipPilotiTarget || null);
+        const sections = buildPilotaBreakdown(
+          p.driver_number,
+          isPrimo,
+          chipPiloti?.chipPiloti ?? null,
+          chipPiloti?.chipPilotiTarget ?? null,
+          data.previousResults,
+          myLiveResults,
+          sessionType,
+        );
         return (
           <PilotaLiveRow
             key={p.driver_number}
             p={p}
             primoPilota={primoPilota}
-            chipPiloti={chipPiloti?.chipPiloti || null}
+            chipPiloti={chipPiloti?.chipPiloti ?? null}
             breakdownSections={sections}
             expanded={expandedDriver === p.driver_number}
             onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
@@ -701,12 +154,9 @@ export default function LiveTab({
         );
       })}
 
-      {/* Previsioni live (solo gara) */}
       {isRace && live.previsioniStatus.length > 0 && (
         <>
-          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-            Previsioni live
-          </div>
+          <SectionHead title="Previsioni live" right={`${live.previsioniStatus.filter(p => p.correct !== null).length} / 6`} />
           <div className="grid grid-cols-2 gap-1.5 mb-4">
             {live.previsioniStatus.map((p) => (
               <PrevisioneLiveCard key={p.key} p={p} />
@@ -715,215 +165,25 @@ export default function LiveTab({
         </>
       )}
 
-      {/* Classifica Weekend Live */}
-      {classifica.length > 0 && (
-        <>
-          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-            Classifica Weekend
-          </div>
-          <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
-            {classifica.map((entry, i) => (
-              <button
-                key={entry.userId}
-                onClick={() => setSelectedPlayer(entry.userId)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-all text-left hover:bg-white/[0.04] ${
-                  i < classifica.length - 1 ? "border-b border-white/[0.04]" : ""
-                } ${entry.isMe ? "bg-[#E8002D]/[0.05] border-l-[3px] border-l-[#E8002D]" : ""}`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
-                    i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/30"
-                  }`}>
-                    {i + 1}
-                  </div>
-                  <div>
-                    <div className={`text-[13px] font-semibold ${entry.isMe ? "text-white" : ""}`}>
-                      {entry.scuderiaName}
-                    </div>
-                    <div className={`text-[10px] ${entry.isMe ? "text-[#E8002D]/50" : "text-white/25"}`}>
-                      @{entry.tpName}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
-                    entry.isMe ? "text-white" : "text-white/70"
-                  }`}>
-                    {entry.points}
-                  </span>
-                  {i < 10 && (
-                    <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">
-                      +{PUNTI_REALE[i]} CR
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
+      <ClassificaWeekendList classifica={classifica} onSelect={setSelectedPlayer} />
+
+      {selectedFormazione && selectedEntry && (
+        <PlayerDetailModal
+          player={selectedFormazione}
+          entry={selectedEntry}
+          previsioniRow={selectedPrev}
+          snap={snap}
+          gridPositions={data.gridPositions}
+          previousResults={data.previousResults}
+          sessionType={sessionType}
+          onClose={() => setSelectedPlayer(null)}
+        />
       )}
 
-      {/* Modal dettaglio giocatore */}
-      {selectedPlayer && (() => {
-        const player = allFormazioni.find((f) => f.user_id === selectedPlayer);
-        const entry = classifica.find((c) => c.userId === selectedPlayer);
-        if (!player || !entry) return null;
-
-        const stLower = sessionType.toLowerCase();
-        const isQual = stLower === "qualifying";
-        const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
-        const isSprintRace = stLower === "sprint" || (stLower.includes("race") && stLower.includes("sprint"));
-        const isMainRace = stLower.includes("race") && !stLower.includes("sprint");
-        const evts = (() => {
-          const dnf = new Set<number>();
-          for (const rc of (debug ? [] : wsData.raceControl)) {
-            const m = (rc.message || "").toUpperCase();
-            if (m.includes("RETIRED") || m.includes("OUT OF THE RACE")) { if (rc.driver_number) dnf.add(rc.driver_number); }
-          }
-          return dnf;
-        })();
-        const fl = debug ? null : wsData.fastestLap;
-        const pos = debug ? new Map() : wsData.positions;
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4" onMouseDown={() => setSelectedPlayer(null)} onTouchEnd={(e) => { if (e.target === e.currentTarget) setSelectedPlayer(null); }}>
-            <div className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col" onMouseDown={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
-              <div className="shrink-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-base">{entry.tpName}</div>
-                  <div className="text-[11px] text-white/30">{entry.scuderiaName}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{entry.points}</span>
-                  <button onClick={() => setSelectedPlayer(null)} className="text-white/30 hover:text-white/60 p-1">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-y-auto flex-1 min-h-0 px-5 py-4 space-y-4 overscroll-contain" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
-                {/* Piloti */}
-                <div>
-                  <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
-                  <div className="space-y-1.5">
-                {(() => {
-                  const pDrivers = [...player.driver_numbers];
-                  if (player.chip_piloti === "sesto" && player.sesto_uomo && !pDrivers.includes(player.sesto_uomo)) pDrivers.push(player.sesto_uomo);
-                  return pDrivers;
-                })().map((driverNum) => {
-                  const position = pos.get(driverNum)?.position ?? 22;
-                  const isDnf = evts.has(driverNum);
-                  const isFl = fl?.driver_number === driverNum;
-                  const isPrimo = driverNum === player.primo_pilota;
-                  const isBoosted = player.chip_piloti === "boost" && player.chip_piloti_target === driverNum && !isPrimo;
-                  const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
-
-                  let puntiBase = 0;
-                  if (isQual) puntiBase = calcolaQualifica(position, isDnf);
-                  else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
-                  else if (isSprintRace) puntiBase = calcolaSprint({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl } as DriverResult);
-                  else if (isMainRace) puntiBase = calcolaGara({ driver_number: driverNum, position, dnf: isDnf, grid_position: gridPositions.get(driverNum), fastest_lap: isFl, driver_of_the_day: false, penalty: false });
-
-                  let puntiFinali = isPrimo && player.chip_piloti === "scudo"
-                    ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
-                    : puntiBase * molt;
-                  if (player.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
-
-                  const sections = getFullBreakdown(driverNum, isPrimo, player.chip_piloti, player.chip_piloti_target);
-
-                  const pScore: LivePilotaScore = {
-                    driver_number: driverNum, position, puntiBase, moltiplicatore: molt,
-                    puntiFinali, isDnf, isFastestLap: isFl,
-                  };
-
-                  return (
-                    <PilotaLiveRow
-                      key={driverNum}
-                      p={pScore}
-                      primoPilota={player.primo_pilota}
-                      chipPiloti={player.chip_piloti}
-                      breakdownSections={sections}
-                      expanded={expandedDriver === driverNum}
-                      onToggle={() => setExpandedDriver(expandedDriver === driverNum ? null : driverNum)}
-                    />
-                  );
-                })}
-                  </div>
-                </div>
-
-                {/* Previsioni (solo gara) */}
-                {isMainRace && (() => {
-                  const playerPrev = allPrevisioni.get(selectedPlayer);
-                  if (!playerPrev) return null;
-
-                  const prevItems = [
-                    { label: "Safety Car", value: playerPrev.safety_car, happened: live.events.safetyCar },
-                    { label: "Virtual SC", value: playerPrev.virtual_safety_car, happened: live.events.virtualSafetyCar },
-                    { label: "Red Flag", value: playerPrev.red_flag, happened: live.events.redFlag },
-                    { label: "Gomme Wet", value: playerPrev.gomme_wet, happened: live.events.wetTyres },
-                    { label: "Pole vince", value: playerPrev.pole_vince, happened: null },
-                  ];
-
-                  return (
-                    <div>
-                      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {prevItems.map((p) => {
-                          const isCorrect = (p.happened === true && p.value === true) || (p.happened === false && p.value === false);
-                          const isWrong = (p.happened === true && p.value === false) || (p.happened === false && p.value === true);
-                          return (
-                            <div key={p.label} className={`rounded-lg px-3 py-2 border text-[12px] ${
-                              isCorrect ? "border-green-500/30 bg-green-500/[0.06]"
-                              : isWrong ? "border-red-500/15 bg-red-500/[0.04]"
-                              : "border-white/[0.06] bg-white/[0.02]"
-                            }`}>
-                              <div className="text-[10px] text-white/40">{p.label}</div>
-                              <div className={`font-bold ${isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/30"}`}>
-                                {p.value === true ? "SI" : p.value === false ? "NO" : "—"}
-                                {isCorrect ? " ✓" : isWrong ? " ✗" : ""}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <div className={`rounded-lg px-3 py-2 border col-span-2 text-[12px] ${
-                          playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf
-                            ? "border-green-500/30 bg-green-500/[0.06]" : "border-white/[0.06] bg-white/[0.02]"
-                        }`}>
-                          <div className="text-[10px] text-white/40">N. DNF</div>
-                          <div className={`font-bold ${
-                            playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf
-                              ? "text-green-400" : "text-white/30"
-                          }`}>
-                            {playerPrev.numero_dnf ?? "—"}
-                            {playerPrev.numero_dnf !== null && playerPrev.numero_dnf === live.events.totalDnf ? " ✓" : ""}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Chip attivi */}
-                {player.chip_piloti && (
-                  <div>
-                    <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento</div>
-                    <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                      <span className="text-xs font-bold text-amber-400">{player.chip_piloti}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Race Control Feed */}
       {live.raceControlFeed.length > 0 && (
         <>
-          <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2 mt-4">
-            Race Control
-          </div>
-          <div className="max-h-[300px] overflow-y-auto">
+          <SectionHead title="Race Control" right="FEED" />
+          <div className="hud-card max-h-[300px] overflow-y-auto p-1">
             {live.raceControlFeed.slice(0, 30).map((rc, i) => (
               <RaceControlMessage key={i} rc={rc} />
             ))}

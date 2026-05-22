@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pitufos — Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0b0820;
+    --bg-2: #14102e;
+    --card: #1c1840;
+    --card-2: #251f56;
+    --border: rgba(255,255,255,0.08);
+    --neon-pink: #ff3d8a;
+    --neon-purple: #b14cff;
+    --neon-blue: #3df0ff;
+    --neon-yellow: #ffe03d;
+    --neon-green: #3dff8a;
+    --text: #f5f3ff;
+    --text-2: rgba(245,243,255,0.6);
+    --text-3: rgba(245,243,255,0.3);
+    --text-4: rgba(245,243,255,0.12);
+    --sans: 'Space Grotesk', sans-serif;
+    --mono: 'Space Mono', monospace;
+  }
+  html, body { background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: var(--sans);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(177,76,255,0.15), transparent 60%),
+      radial-gradient(circle at 80% 100%, rgba(61,240,255,0.1), transparent 50%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,8,32,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    box-shadow: 0 4px 20px rgba(255,61,138,0.4);
+  }
+  .brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
+  .coin-bal {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,224,61,0.12);
+    border: 1px solid rgba(255,224,61,0.3);
+    padding: 6px 10px; border-radius: 100px;
+  }
+  .coin-bal .ico { color: var(--neon-yellow); font-size: 14px; }
+  .coin-bal .v { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--neon-yellow); }
+
+  /* PAGES */
+  .pages { padding: 12px 16px 0; display: flex; gap: 6px; overflow-x: auto; }
+  .page-tab {
+    font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 100px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    text-decoration: none; white-space: nowrap;
+  }
+  .page-tab.active {
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    border-color: transparent; color: white;
+    box-shadow: 0 4px 16px rgba(255,61,138,0.4);
+  }
+
+  /* HERO PROFILE */
+  .hero-prof { padding: 20px 16px 4px; }
+  .greet { font-size: 13px; color: var(--text-3); font-weight: 500; }
+  .scuderia {
+    font-size: 30px; font-weight: 700; letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff, var(--neon-pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* STAT CARDS */
+  .stat-grid {
+    padding: 14px 16px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: linear-gradient(135deg, var(--card), var(--card-2));
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card.hero {
+    grid-column: span 2;
+    background: linear-gradient(135deg, #ff3d8a 0%, #b14cff 100%);
+    border: none;
+    box-shadow: 0 8px 32px rgba(255,61,138,0.35);
+  }
+  .stat-card.hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.18), transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(61,240,255,0.18), transparent 50%);
+    pointer-events: none;
+  }
+  .stat-label {
+    font-size: 10px; font-weight: 600;
+    color: var(--text-3); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .stat-card.hero .stat-label { color: rgba(255,255,255,0.7); }
+  .stat-value {
+    font-family: var(--mono); font-weight: 700;
+    font-size: 36px; line-height: 1; letter-spacing: -1px;
+  }
+  .stat-card.hero .stat-value { font-size: 56px; }
+  .stat-sub {
+    font-size: 11px; color: var(--text-2); margin-top: 4px;
+  }
+  .stat-card.hero .stat-sub { color: rgba(255,255,255,0.7); font-weight: 500; }
+  .stat-icon {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 22px; opacity: 0.4;
+  }
+
+  /* NEXT RACE — game style */
+  .quest-card {
+    margin: 0 16px;
+    background:
+      linear-gradient(135deg, rgba(61,240,255,0.08), rgba(177,76,255,0.08)),
+      var(--card);
+    border: 1px solid rgba(61,240,255,0.25);
+    border-radius: 18px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .quest-card::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(61,240,255,0.15), transparent 70%);
+  }
+  .quest-head { display: flex; justify-content: space-between; align-items: start; position: relative; }
+  .quest-tag {
+    display: inline-block;
+    background: var(--neon-blue); color: var(--bg);
+    font-size: 10px; font-weight: 700;
+    padding: 4px 8px; border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .quest-name {
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.5px; margin-top: 10px;
+  }
+  .quest-circuit { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .quest-timer {
+    display: flex; gap: 6px; margin-top: 16px;
+  }
+  .qt-block {
+    flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    padding: 8px 4px; text-align: center; border-radius: 10px;
+  }
+  .qt-num { font-family: var(--mono); font-weight: 700; font-size: 18px; line-height: 1; }
+  .qt-lbl { font-size: 9px; color: var(--text-3); margin-top: 4px; letter-spacing: 1px; }
+
+  /* POWER UPS */
+  .section-head {
+    padding: 26px 16px 12px;
+    display: flex; justify-content: space-between; align-items: end;
+  }
+  .section-head h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .section-head .small { font-size: 11px; color: var(--text-3); font-weight: 500; }
+
+  .powerup-row { padding: 0 16px; display: flex; gap: 10px; overflow-x: auto; }
+  .powerup {
+    flex: 0 0 110px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .powerup.active {
+    background: linear-gradient(135deg, rgba(255,224,61,0.15), rgba(255,159,10,0.1));
+    border-color: var(--neon-yellow);
+    box-shadow: 0 4px 20px rgba(255,224,61,0.2);
+  }
+  .powerup.used {
+    opacity: 0.4;
+  }
+  .powerup-ico { font-size: 28px; line-height: 1; }
+  .powerup-name { font-size: 11px; font-weight: 700; margin-top: 8px; letter-spacing: 0.3px; }
+  .powerup-count {
+    position: absolute; top: -6px; right: -6px;
+    background: var(--neon-pink); color: white;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+  }
+  .powerup.active .powerup-count { background: var(--neon-yellow); color: var(--bg); }
+
+  /* TRADING CARD — driver */
+  .card-grid { padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pilot-card {
+    background: linear-gradient(160deg, var(--card), var(--bg-2));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1.25;
+  }
+  .pilot-card.captain {
+    border: 2px solid var(--neon-yellow);
+    background: linear-gradient(160deg, rgba(255,224,61,0.12), var(--card-2));
+    box-shadow: 0 8px 32px rgba(255,224,61,0.2);
+  }
+  .pilot-card.dnf { opacity: 0.6; }
+  .pilot-card::before {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 40%;
+    background: linear-gradient(135deg, transparent 30%, var(--team-color, var(--neon-purple)) 100%);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .pc-top {
+    display: flex; justify-content: space-between; align-items: start;
+    position: relative; z-index: 1;
+  }
+  .pc-pos {
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: 8px;
+    font-family: var(--mono); font-weight: 700; font-size: 12px;
+  }
+  .pc-pos.p1 { background: var(--neon-yellow); color: var(--bg); border-color: transparent; }
+  .pilot-card.dnf .pc-pos { background: var(--neon-pink); color: white; border-color: transparent; }
+  .pc-cap {
+    background: var(--neon-yellow); color: var(--bg);
+    font-size: 9px; font-weight: 700;
+    padding: 3px 6px; border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .pc-fl {
+    background: var(--neon-purple); color: white;
+    font-size: 9px; font-weight: 700;
+    padding: 3px 6px; border-radius: 6px;
+  }
+  .pc-num {
+    font-family: var(--mono); font-weight: 700;
+    font-size: 48px; line-height: 1;
+    color: var(--text-4);
+    position: absolute;
+    bottom: 40px; right: 14px;
+    z-index: 1;
+  }
+  .pc-name {
+    position: relative; z-index: 2;
+    font-size: 14px; font-weight: 700;
+    margin-top: auto; line-height: 1.1;
+  }
+  .pc-team { font-size: 10px; color: var(--text-2); margin-top: 2px; position: relative; z-index: 2; }
+  .pc-pts {
+    position: absolute; bottom: 12px; left: 12px;
+    z-index: 2;
+  }
+  .pc-pts-val {
+    font-family: var(--mono); font-weight: 700;
+    font-size: 22px; line-height: 1;
+  }
+  .pc-pts-val.pos { color: var(--neon-green); text-shadow: 0 0 12px rgba(61,255,138,0.4); }
+  .pc-pts-val.neg { color: var(--neon-pink); text-shadow: 0 0 12px rgba(255,61,138,0.4); }
+  .pc-pts-mul { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+  .pilot-card .pc-content {
+    display: flex; flex-direction: column;
+    height: 100%; position: relative; z-index: 2;
+  }
+  .pc-bottom { margin-top: auto; padding-top: 50px; }
+
+  /* PREVISIONI badges */
+  .pred-grid { padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .pred {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+    position: relative;
+  }
+  .pred.ok {
+    background: linear-gradient(135deg, rgba(61,255,138,0.15), transparent);
+    border-color: rgba(61,255,138,0.5);
+  }
+  .pred.ko {
+    background: rgba(255,61,138,0.05);
+    border-color: rgba(255,61,138,0.25);
+    opacity: 0.7;
+  }
+  .pred-ico { font-size: 18px; }
+  .pred-label { font-size: 9px; color: var(--text-3); margin-top: 4px; font-weight: 600; letter-spacing: 0.5px; }
+  .pred-val { font-family: var(--mono); font-weight: 700; font-size: 13px; margin-top: 2px; }
+  .pred.ok .pred-val { color: var(--neon-green); }
+  .pred.ko .pred-val { color: var(--neon-pink); }
+  .pred-pts {
+    position: absolute; top: -6px; right: -6px;
+    background: var(--neon-green); color: var(--bg);
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    padding: 2px 5px; border-radius: 100px;
+  }
+
+  /* TICKER (gaming feed) */
+  .feed { padding: 0 16px; }
+  .feed-item {
+    display: flex; gap: 12px; align-items: start;
+    padding: 12px; margin-bottom: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  .feed-item.sc { border-left-color: var(--neon-yellow); }
+  .feed-item.rf { border-left-color: var(--neon-pink); }
+  .feed-item.dnf { border-left-color: var(--neon-pink); }
+  .feed-item.gr { border-left-color: var(--neon-green); }
+  .feed-item.pn { border-left-color: var(--neon-purple); }
+  .feed-ico {
+    flex: 0 0 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .feed-item.sc .feed-ico { background: rgba(255,224,61,0.15); }
+  .feed-item.rf .feed-ico, .feed-item.dnf .feed-ico { background: rgba(255,61,138,0.15); }
+  .feed-item.gr .feed-ico { background: rgba(61,255,138,0.15); }
+  .feed-item.pn .feed-ico { background: rgba(177,76,255,0.15); }
+  .feed-body { flex: 1; }
+  .feed-msg { color: var(--text); line-height: 1.4; }
+  .feed-time { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 2px; }
+
+  /* RANKING — leaderboard */
+  .lb { padding: 0 16px; }
+  .lb-row {
+    display: grid; grid-template-columns: 44px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    position: relative;
+  }
+  .lb-row.me {
+    background: linear-gradient(135deg, rgba(255,61,138,0.12), rgba(177,76,255,0.08));
+    border-color: var(--neon-pink);
+    box-shadow: 0 4px 20px rgba(255,61,138,0.2);
+  }
+  .lb-row.gold {
+    background: linear-gradient(135deg, rgba(255,224,61,0.1), transparent);
+    border-color: rgba(255,224,61,0.3);
+  }
+  .lb-medal {
+    width: 36px; height: 36px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; font-size: 14px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-2);
+  }
+  .lb-row.gold .lb-medal { background: var(--neon-yellow); color: var(--bg); }
+  .lb-row.me .lb-medal { background: var(--neon-pink); color: white; }
+  .lb-info .name { font-size: 14px; font-weight: 700; }
+  .lb-info .tp { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .lb-pts { text-align: right; }
+  .lb-pts-val {
+    font-family: var(--mono); font-weight: 700; font-size: 18px; line-height: 1;
+  }
+  .lb-pts-cr { font-family: var(--mono); font-size: 10px; color: var(--neon-green); margin-top: 3px; }
+
+  /* MARKET — stock-like */
+  .budget-hero {
+    margin: 0 16px;
+    background:
+      linear-gradient(135deg, rgba(255,224,61,0.1), rgba(255,159,10,0.05)),
+      var(--card);
+    border: 1px solid rgba(255,224,61,0.2);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .bh-row { display: flex; justify-content: space-between; align-items: end; }
+  .bh-label { font-size: 11px; color: var(--text-3); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+  .bh-val { font-family: var(--mono); font-weight: 700; font-size: 38px; letter-spacing: -1px; line-height: 1; }
+  .bh-val .of { color: var(--text-3); font-size: 18px; }
+  .bh-coin { font-size: 28px; }
+  .bh-bar { margin-top: 14px; height: 6px; background: rgba(0,0,0,0.3); border-radius: 100px; overflow: hidden; }
+  .bh-fill {
+    height: 100%; width: 78%;
+    background: linear-gradient(90deg, var(--neon-green), var(--neon-yellow));
+    border-radius: 100px;
+  }
+  .bh-info { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-2); }
+
+  .mkt-filters { padding: 16px; display: flex; gap: 6px; overflow-x: auto; }
+  .mfilter {
+    font-size: 12px; font-weight: 600;
+    padding: 6px 12px; border-radius: 100px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .mfilter.active { background: white; color: var(--bg); border-color: transparent; }
+
+  .mkt-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 0 16px 8px;
+    display: grid; grid-template-columns: 40px 1fr auto auto;
+    gap: 12px; align-items: center;
+  }
+  .mkt-avatar {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--team-color, var(--neon-purple));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; font-size: 13px;
+    color: white;
+  }
+  .mkt-name { font-size: 14px; font-weight: 700; }
+  .mkt-team { font-size: 10px; color: var(--text-3); margin-top: 2px; letter-spacing: 0.5px; }
+  .sparkline { width: 64px; height: 22px; }
+  .mkt-val { text-align: right; }
+  .mkt-quote { font-family: var(--mono); font-weight: 700; font-size: 17px; }
+  .mkt-delta { font-family: var(--mono); font-size: 10px; font-weight: 700; }
+  .mkt-delta.up { color: var(--neon-green); }
+  .mkt-delta.dn { color: var(--neon-pink); }
+
+  /* BOTTOM NAV — game style */
+  .bottom-nav {
+    position: sticky; bottom: 0;
+    background: rgba(11,8,32,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 10px 0 14px;
+    margin-top: 30px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--text-3); text-decoration: none;
+    font-size: 10px; font-weight: 600;
+  }
+  .nav-item.active { color: var(--neon-pink); }
+  .nav-ico {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+  .nav-item.active .nav-ico {
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    color: white;
+    box-shadow: 0 4px 16px rgba(255,61,138,0.4);
+  }
+
+  /* SEP */
+  .sep {
+    margin: 36px 16px 14px;
+    padding: 4px 0;
+    border-top: 1px dashed rgba(255,255,255,0.1);
+    text-align: center; position: relative;
+  }
+  .sep::after {
+    content: attr(data-l);
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--bg); padding: 0 14px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-3); letter-spacing: 2.5px;
+  }
+
+  /* DEMO LABEL */
+  .demo-label {
+    position: fixed; top: 12px; right: 12px;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    color: white;
+    font-size: 10px; font-weight: 700;
+    padding: 5px 10px; border-radius: 100px; letter-spacing: 1px;
+    z-index: 100; text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="demo-label">← MOCKUPS</a>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">P</div>
+    <div class="brand-name">Pitufos</div>
+  </div>
+  <div class="coin-bal">
+    <span class="ico">◆</span>
+    <span class="v">78</span>
+  </div>
+</div>
+
+<div class="pages">
+  <a href="#home" class="page-tab active">Home</a>
+  <a href="#live" class="page-tab">⚡ Live</a>
+  <a href="#classifica" class="page-tab">Classifica</a>
+  <a href="#mercato" class="page-tab">Mercato</a>
+</div>
+
+<!-- ═══════════ HOME ═══════════ -->
+<section id="home">
+  <div class="hero-prof">
+    <div class="greet">Bentornato, Team Principal</div>
+    <div class="scuderia">Scuderia Pitufa</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-grid">
+    <div class="stat-card hero">
+      <div class="stat-label">PUNTI TOTALI STAGIONE</div>
+      <div class="stat-value">487</div>
+      <div class="stat-sub">▲ +24 ultimo GP · 2ª su 11</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">🏆</span>
+      <div class="stat-label">CR REALE</div>
+      <div class="stat-value">186</div>
+      <div class="stat-sub">+18 questo round</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">⚡</span>
+      <div class="stat-label">GAP LEADER</div>
+      <div class="stat-value" style="color:var(--neon-pink);">−42</div>
+      <div class="stat-sub">Riprendibile in 2 GP</div>
+    </div>
+  </div>
+
+  <!-- Quest / Next Race -->
+  <div class="section-head">
+    <h3>🎯 Quest attiva</h3>
+    <span class="small">Round 09</span>
+  </div>
+  <div class="quest-card">
+    <div class="quest-head">
+      <div>
+        <span class="quest-tag">IN CORSO · GARA</span>
+        <div class="quest-name">GP Emilia Romagna</div>
+        <div class="quest-circuit">Imola · 🇮🇹</div>
+      </div>
+      <div style="font-size:36px;line-height:1;">🏁</div>
+    </div>
+    <div class="quest-timer">
+      <div class="qt-block"><div class="qt-num">00</div><div class="qt-lbl">GIORNI</div></div>
+      <div class="qt-block"><div class="qt-num">02</div><div class="qt-lbl">ORE</div></div>
+      <div class="qt-block"><div class="qt-num">14</div><div class="qt-lbl">MIN</div></div>
+      <div class="qt-block"><div class="qt-num">38</div><div class="qt-lbl">SEC</div></div>
+    </div>
+  </div>
+
+  <!-- Power-ups / Chip -->
+  <div class="section-head">
+    <h3>⚡ Power-up</h3>
+    <span class="small">5 disponibili · 1 attivo</span>
+  </div>
+  <div class="powerup-row">
+    <div class="powerup active">
+      <span class="powerup-count">ON</span>
+      <div class="powerup-ico">🚀</div>
+      <div class="powerup-name">BOOST x3</div>
+    </div>
+    <div class="powerup">
+      <span class="powerup-count">2</span>
+      <div class="powerup-ico">🛡️</div>
+      <div class="powerup-name">HALO</div>
+    </div>
+    <div class="powerup">
+      <span class="powerup-count">2</span>
+      <div class="powerup-ico">👑</div>
+      <div class="powerup-name">SCUDO</div>
+    </div>
+    <div class="powerup">
+      <span class="powerup-count">2</span>
+      <div class="powerup-ico">🎲</div>
+      <div class="powerup-name">SESTO</div>
+    </div>
+    <div class="powerup">
+      <span class="powerup-count">2</span>
+      <div class="powerup-ico">🃏</div>
+      <div class="powerup-name">WILDCARD</div>
+    </div>
+    <div class="powerup">
+      <span class="powerup-count">2</span>
+      <div class="powerup-ico">🎯</div>
+      <div class="powerup-name">SICURA</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ LIVE ═══════════ -->
+<div class="sep" data-l="LIVE · GARA"></div>
+
+<section id="live">
+  <div class="hero-prof">
+    <div class="greet">Sessione live · Giro 34 / 63</div>
+    <div class="scuderia" style="background:linear-gradient(135deg,#3df0ff,#b14cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Punteggio Live</div>
+  </div>
+
+  <!-- HUD provvisorio -->
+  <div class="stat-grid">
+    <div class="stat-card hero" style="background:linear-gradient(135deg,#3df0ff 0%,#b14cff 100%);box-shadow:0 8px 32px rgba(177,76,255,0.4);">
+      <div class="stat-label">PUNTEGGIO PROVVISORIO</div>
+      <div class="stat-value">87</div>
+      <div class="stat-sub">▲ +12 · piloti 62 · previsioni 25</div>
+    </div>
+  </div>
+
+  <!-- Cards piloti -->
+  <div class="section-head">
+    <h3>🏎️ I tuoi piloti</h3>
+    <span class="small">5 / 5 in pista</span>
+  </div>
+  <div class="card-grid">
+    <div class="pilot-card captain" style="--team-color:#FF8000;">
+      <div class="pc-content">
+        <div class="pc-top">
+          <div class="pc-pos p1">P1</div>
+          <div class="pc-cap">👑 CAP x2</div>
+        </div>
+        <div class="pc-num">04</div>
+        <div class="pc-bottom">
+          <div class="pc-name">Lando<br>Norris</div>
+          <div class="pc-team">MCLAREN · FL</div>
+        </div>
+      </div>
+      <div class="pc-pts">
+        <div class="pc-pts-val pos">+56</div>
+        <div class="pc-pts-mul">28 × 2</div>
+      </div>
+    </div>
+
+    <div class="pilot-card" style="--team-color:#27F4D2;">
+      <div class="pc-content">
+        <div class="pc-top">
+          <div class="pc-pos">P3</div>
+        </div>
+        <div class="pc-num">63</div>
+        <div class="pc-bottom">
+          <div class="pc-name">George<br>Russell</div>
+          <div class="pc-team">MERCEDES</div>
+        </div>
+      </div>
+      <div class="pc-pts">
+        <div class="pc-pts-val pos">+15</div>
+      </div>
+    </div>
+
+    <div class="pilot-card" style="--team-color:#E80020;">
+      <div class="pc-content">
+        <div class="pc-top">
+          <div class="pc-pos">P7</div>
+        </div>
+        <div class="pc-num">16</div>
+        <div class="pc-bottom">
+          <div class="pc-name">Charles<br>Leclerc</div>
+          <div class="pc-team">FERRARI</div>
+        </div>
+      </div>
+      <div class="pc-pts">
+        <div class="pc-pts-val pos">+6</div>
+      </div>
+    </div>
+
+    <div class="pilot-card" style="--team-color:#229971;">
+      <div class="pc-content">
+        <div class="pc-top">
+          <div class="pc-pos">P11</div>
+        </div>
+        <div class="pc-num">10</div>
+        <div class="pc-bottom">
+          <div class="pc-name">Pierre<br>Gasly</div>
+          <div class="pc-team">ALPINE</div>
+        </div>
+      </div>
+      <div class="pc-pts">
+        <div class="pc-pts-val" style="color:var(--text-3);">0</div>
+      </div>
+    </div>
+
+    <div class="pilot-card dnf" style="--team-color:#52E252;grid-column:span 2;aspect-ratio:auto;padding:14px;">
+      <div class="pc-content" style="flex-direction:row;align-items:center;gap:14px;">
+        <div class="pc-pos" style="background:var(--neon-pink);color:white;border:none;">DNF</div>
+        <div style="flex:1;">
+          <div class="pc-name" style="font-size:14px;text-decoration:line-through;opacity:0.6;">Valtteri Bottas</div>
+          <div class="pc-team">CADILLAC · #77 · RITIRATO</div>
+        </div>
+        <div class="pc-pts-val neg" style="position:static;font-size:24px;">−10</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previsioni -->
+  <div class="section-head">
+    <h3>🎯 Previsioni live</h3>
+    <span class="small">4 / 6 risolte</span>
+  </div>
+  <div class="pred-grid">
+    <div class="pred ok">
+      <span class="pred-pts">+4</span>
+      <div class="pred-ico">🚓</div>
+      <div class="pred-label">SAFETY CAR</div>
+      <div class="pred-val">SI ✓</div>
+    </div>
+    <div class="pred ko">
+      <div class="pred-ico">🐢</div>
+      <div class="pred-label">VSC</div>
+      <div class="pred-val">NO ✗</div>
+    </div>
+    <div class="pred">
+      <div class="pred-ico">🚩</div>
+      <div class="pred-label">RED FLAG</div>
+      <div class="pred-val" style="color:var(--text-3);">·</div>
+    </div>
+    <div class="pred">
+      <div class="pred-ico">🌧️</div>
+      <div class="pred-label">WET</div>
+      <div class="pred-val" style="color:var(--text-3);">·</div>
+    </div>
+    <div class="pred">
+      <div class="pred-ico">🏆</div>
+      <div class="pred-label">POLE VINCE</div>
+      <div class="pred-val" style="color:var(--text-3);">·</div>
+    </div>
+    <div class="pred ok">
+      <span class="pred-pts">+5</span>
+      <div class="pred-ico">💥</div>
+      <div class="pred-label">N. DNF</div>
+      <div class="pred-val">2 ✓</div>
+    </div>
+  </div>
+
+  <!-- Race control -->
+  <div class="section-head">
+    <h3>📻 Race Control</h3>
+    <span class="small">Live feed</span>
+  </div>
+  <div class="feed">
+    <div class="feed-item sc">
+      <div class="feed-ico">🚓</div>
+      <div class="feed-body">
+        <div class="feed-msg">Safety Car deployed</div>
+        <div class="feed-time">14:32</div>
+      </div>
+    </div>
+    <div class="feed-item pn">
+      <div class="feed-ico">⚠️</div>
+      <div class="feed-body">
+        <div class="feed-msg">Stroll · penalità 5 sec</div>
+        <div class="feed-time">14:28</div>
+      </div>
+    </div>
+    <div class="feed-item dnf">
+      <div class="feed-ico">💥</div>
+      <div class="feed-body">
+        <div class="feed-msg">Bottas (#77) ritirato · meccanica</div>
+        <div class="feed-time">14:21</div>
+      </div>
+    </div>
+    <div class="feed-item gr">
+      <div class="feed-ico">🟢</div>
+      <div class="feed-body">
+        <div class="feed-msg">Lights out and away we go!</div>
+        <div class="feed-time">14:05</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CLASSIFICA ═══════════ -->
+<div class="sep" data-l="LEADERBOARD"></div>
+
+<section id="classifica">
+  <div class="hero-prof">
+    <div class="greet">Classifica weekend · live</div>
+    <div class="scuderia">Leaderboard</div>
+  </div>
+
+  <div class="lb">
+    <div class="lb-row gold">
+      <div class="lb-medal">🥇</div>
+      <div class="lb-info">
+        <div class="name">McLaren Supremacy</div>
+        <div class="tp">@PapaRossi</div>
+      </div>
+      <div class="lb-pts">
+        <div class="lb-pts-val">112</div>
+        <div class="lb-pts-cr">+25 CR</div>
+      </div>
+    </div>
+    <div class="lb-row me">
+      <div class="lb-medal">🥈</div>
+      <div class="lb-info">
+        <div class="name">Scuderia Pitufa</div>
+        <div class="tp">@TUO_NOME · TU</div>
+      </div>
+      <div class="lb-pts">
+        <div class="lb-pts-val">87</div>
+        <div class="lb-pts-cr">+18 CR</div>
+      </div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-medal">🥉</div>
+      <div class="lb-info">
+        <div class="name">Red Bull Destroyers</div>
+        <div class="tp">@MarcoF1</div>
+      </div>
+      <div class="lb-pts">
+        <div class="lb-pts-val">83</div>
+        <div class="lb-pts-cr">+15 CR</div>
+      </div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-medal">04</div>
+      <div class="lb-info">
+        <div class="name">Ferrari Forever</div>
+        <div class="tp">@GiuliaSpeed</div>
+      </div>
+      <div class="lb-pts">
+        <div class="lb-pts-val">71</div>
+        <div class="lb-pts-cr">+12 CR</div>
+      </div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-medal">05</div>
+      <div class="lb-info">
+        <div class="name">Pit Stop Kings</div>
+        <div class="tp">@AndreaGP</div>
+      </div>
+      <div class="lb-pts">
+        <div class="lb-pts-val">58</div>
+        <div class="lb-pts-cr">+10 CR</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ MERCATO ═══════════ -->
+<div class="sep" data-l="MERCATO · STOCK MARKET"></div>
+
+<section id="mercato">
+  <div class="hero-prof">
+    <div class="greet">Mercato piloti · round 10</div>
+    <div class="scuderia" style="background:linear-gradient(135deg,#ffe03d,#ff9f0a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Soldini Trade</div>
+  </div>
+
+  <!-- Budget Hero -->
+  <div class="budget-hero">
+    <div class="bh-row">
+      <div>
+        <div class="bh-label">Budget residuo</div>
+        <div class="bh-val">78<span class="of"> / 100</span></div>
+      </div>
+      <div class="bh-coin">◆</div>
+    </div>
+    <div class="bh-bar"><div class="bh-fill"></div></div>
+    <div class="bh-info">
+      <span>22 Soldini spesi</span>
+      <span>1 / 2 cambi free</span>
+    </div>
+  </div>
+
+  <div class="mkt-filters">
+    <span class="mfilter active">Tutti</span>
+    <span class="mfilter">🔥 Top</span>
+    <span class="mfilter">⭐ Mid</span>
+    <span class="mfilter">💸 Budget</span>
+    <span class="mfilter">📈 Salgono</span>
+  </div>
+
+  <div class="mkt-card" style="--team-color:#FF8000;">
+    <div class="mkt-avatar">04</div>
+    <div>
+      <div class="mkt-name">Lando Norris</div>
+      <div class="mkt-team">MCLAREN</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 22"><polyline fill="none" stroke="#3dff8a" stroke-width="2" points="0,16 10,14 20,10 30,12 40,8 50,5 60,2"/></svg>
+    <div class="mkt-val">
+      <div class="mkt-quote">◆38</div>
+      <div class="mkt-delta up">▲ +2</div>
+    </div>
+  </div>
+
+  <div class="mkt-card" style="--team-color:#3671C6;">
+    <div class="mkt-avatar">01</div>
+    <div>
+      <div class="mkt-name">Max Verstappen</div>
+      <div class="mkt-team">RED BULL</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 22"><polyline fill="none" stroke="#ff3d8a" stroke-width="2" points="0,4 10,5 20,8 30,9 40,10 50,13 60,16"/></svg>
+    <div class="mkt-val">
+      <div class="mkt-quote">◆34</div>
+      <div class="mkt-delta dn">▼ −2</div>
+    </div>
+  </div>
+
+  <div class="mkt-card" style="--team-color:#E80020;">
+    <div class="mkt-avatar">16</div>
+    <div>
+      <div class="mkt-name">Charles Leclerc</div>
+      <div class="mkt-team">FERRARI</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 22"><polyline fill="none" stroke="#3dff8a" stroke-width="2" points="0,16 10,14 20,11 30,10 40,8 50,8 60,6"/></svg>
+    <div class="mkt-val">
+      <div class="mkt-quote">◆31</div>
+      <div class="mkt-delta up">▲ +1</div>
+    </div>
+  </div>
+
+  <div class="mkt-card" style="--team-color:#52E252;">
+    <div class="mkt-avatar">55</div>
+    <div>
+      <div class="mkt-name">Carlos Sainz</div>
+      <div class="mkt-team">WILLIAMS</div>
+    </div>
+    <svg class="sparkline" viewBox="0 0 60 22"><polyline fill="none" stroke="rgba(245,243,255,0.4)" stroke-width="2" points="0,10 10,10 20,9 30,11 40,10 50,9 60,10"/></svg>
+    <div class="mkt-val">
+      <div class="mkt-quote">◆14</div>
+      <div class="mkt-delta" style="color:var(--text-3);">— 0</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ BOTTOM NAV ═══════════ -->
+<nav class="bottom-nav">
+  <a href="#home" class="nav-item active">
+    <div class="nav-ico">🏠</div>Home
+  </a>
+  <a href="#live" class="nav-item">
+    <div class="nav-ico">⚡</div>Live
+  </a>
+  <a href="#classifica" class="nav-item">
+    <div class="nav-ico">🏆</div>Rank
+  </a>
+  <a href="#mercato" class="nav-item">
+    <div class="nav-ico">◆</div>Mercato
+  </a>
+  <a href="#" class="nav-item">
+    <div class="nav-ico">👤</div>Team
+  </a>
+</nav>
+
+</body>
+</html>

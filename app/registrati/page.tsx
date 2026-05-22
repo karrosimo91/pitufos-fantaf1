@@ -31,7 +31,7 @@ export default function RegistratiPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@ export default function RegistratiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
@@ -81,7 +81,7 @@ export default function RegistratiPage() {
               value={teamPrincipal}
               onChange={(e) => setTeamPrincipal(e.target.value)}
               required
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="es. Simone"
             />
           </div>
@@ -95,7 +95,7 @@ export default function RegistratiPage() {
               value={scuderiaName}
               onChange={(e) => setScuderiaName(e.target.value)}
               required
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="es. Pitufos Racing"
             />
           </div>
@@ -107,7 +107,7 @@ export default function RegistratiPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="la-tua@email.com"
             />
           </div>
@@ -120,7 +120,7 @@ export default function RegistratiPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="Min. 6 caratteri"
             />
           </div>

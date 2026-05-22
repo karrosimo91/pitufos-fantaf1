@@ -31,7 +31,7 @@ export default function AltroPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
@@ -42,7 +42,7 @@ export default function AltroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
@@ -75,7 +75,7 @@ export default function AltroPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-4 bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.06] transition-all"
+                className="flex items-center gap-4 hud-card p-4 hover:bg-white/[0.06] transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
                   <Icon size={18} className="text-white/40" />
@@ -92,7 +92,7 @@ export default function AltroPage() {
 
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-4 w-full bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 hover:bg-red-500/5 hover:border-red-500/10 transition-all mb-8"
+          className="flex items-center gap-4 w-full hud-card p-4 hover:bg-red-500/5 hover:border-red-500/10 transition-all mb-8"
         >
           <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
             <LogOut size={18} className="text-red-400/60" />
@@ -104,7 +104,7 @@ export default function AltroPage() {
         </button>
 
         {/* Info App */}
-        <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-5">
+        <div className="hud-card p-5">
           <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-3">Info App</div>
           <div className="space-y-3">
             <div>

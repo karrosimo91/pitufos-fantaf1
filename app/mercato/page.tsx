@@ -9,6 +9,7 @@ import { useSquadra } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getCurrentRound } from "../lib/races";
 import { useLiveSession } from "../lib/use-live-session";
+import { useDriverPrices, getDriverPrice } from "../lib/use-driver-prices";
 import { ArrowRightLeft, AlertTriangle, Radio } from "lucide-react";
 
 export default function MercatoPage() {
@@ -22,6 +23,7 @@ export default function MercatoPage() {
   const round = getCurrentRound();
   const squadra = useSquadra(round);
   const { isLive } = useLiveSession();
+  const { prices: dynamicPrices } = useDriverPrices(round);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -70,6 +72,7 @@ export default function MercatoPage() {
   };
 
   const filtered = DRIVERS_2026
+    .map((d) => ({ ...d, price: getDriverPrice(dynamicPrices, d.number) }))
     .filter((d) => {
       const q = search.toLowerCase();
       return d.name.toLowerCase().includes(q) || d.team.toLowerCase().includes(q);
@@ -83,11 +86,11 @@ export default function MercatoPage() {
   const isOwned = (num: number) => squadra.driverNumbers.includes(num);
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#E8002D] text-white text-sm font-bold px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(232,0,45,0.4)]">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#E8002D] text-white text-[12px] font-bold tracking-[1.5px] uppercase px-5 py-3 rounded font-[family-name:var(--font-jetbrains)] shadow-[0_0_30px_rgba(232,0,45,0.4)]">
           {toast}
         </div>
       )}
@@ -95,126 +98,133 @@ export default function MercatoPage() {
       {/* Dialog conferma cambio a pagamento */}
       {confirmDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setConfirmDialog(null)}>
-          <div className="bg-[#12121e] border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-[0_0_40px_rgba(232,0,45,0.15)]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={20} className="text-amber-400" />
-              <h3 className="font-bold text-lg">Cambio a pagamento</h3>
+          <div className="hud-card hud-card-accent max-w-sm w-full shadow-[0_0_40px_rgba(232,0,45,0.18)]" onClick={(e) => e.stopPropagation()}>
+            <div className="hud-card-head">
+              <div className="hud-label" style={{ color: "var(--amber)" }}>CAMBIO A PAGAMENTO</div>
+              <AlertTriangle size={14} className="text-amber-400" />
             </div>
-            <p className="text-sm text-white/60 mb-1">
-              Vuoi acquistare <span className="text-white font-bold">{confirmDialog.name}</span>?
-            </p>
-            <p className="text-sm text-amber-400 font-bold mb-5">
-              Questo cambio costa -{squadra.PENALITA_CAMBIO_EXTRA} punti sul weekend.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 py-3 rounded-xl text-sm font-bold border border-white/10 text-white/50 hover:bg-white/5 transition-all"
-              >
-                Annulla
-              </button>
-              <button
-                onClick={handleConfirmAcquisto}
-                className="flex-1 py-3 rounded-xl text-sm font-bold bg-[#E8002D] text-white hover:bg-[#ff1a3d] transition-all"
-              >
-                Conferma (-{squadra.PENALITA_CAMBIO_EXTRA} pts)
-              </button>
+            <div className="p-5">
+              <p className="text-[13px] text-white/70 mb-1">
+                Vuoi acquistare <span className="text-white font-bold">{confirmDialog.name}</span>?
+              </p>
+              <p className="text-[12px] text-amber-400 font-bold mb-5 font-[family-name:var(--font-jetbrains)] tracking-[0.5px]">
+                COSTO: −{squadra.PENALITA_CAMBIO_EXTRA} PUNTI WEEKEND
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDialog(null)}
+                  className="flex-1 py-3 rounded font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tracking-[1.5px] uppercase border border-[#1c1c26] text-white/50 hover:bg-white/[0.04] transition-colors"
+                >
+                  ANNULLA
+                </button>
+                <button
+                  onClick={handleConfirmAcquisto}
+                  className="flex-1 py-3 rounded font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tracking-[1.5px] uppercase bg-[#E8002D] text-white hover:bg-[#ff1a3d] transition-colors"
+                >
+                  CONFERMA −{squadra.PENALITA_CAMBIO_EXTRA}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <main className="max-w-5xl mx-auto px-4 py-8 pb-bottomnav">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+      <main className="max-w-5xl mx-auto px-4 py-6 pb-bottomnav">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
           <div>
-            <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-              Compra e vendi piloti
+            <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+              MERCATO · ROUND {round}
             </div>
-            <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">MERCATO</h1>
+            <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">Mercato</h1>
           </div>
-          <div className="flex gap-6">
-            <div className="text-right">
-              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{squadra.budget}</div>
-              <div className="text-[9px] tracking-[2px] text-white/30">SOLDINI</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="hud-card text-right p-3">
+              <div className="hud-label mb-1">SOLDINI</div>
+              <div className="num font-extrabold text-[20px] text-[#E8002D] leading-none">{squadra.budget}</div>
             </div>
-            <div className="text-right">
-              <div className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-white/60">{squadra.drivers.length}/5</div>
-              <div className="text-[9px] tracking-[2px] text-white/30">PILOTI</div>
+            <div className="hud-card text-right p-3">
+              <div className="hud-label mb-1">PILOTI</div>
+              <div className="num font-extrabold text-[20px] leading-none">
+                {squadra.drivers.length}<span className="text-white/30 text-[14px]"> / 5</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Banner blocco durante sessione live */}
         {isLive && (
-          <div className="mb-6 rounded-xl p-4 border border-[#E8002D]/20 bg-[#E8002D]/5 flex items-center gap-3">
-            <Radio size={16} className="text-[#E8002D] shrink-0 animate-pulse" />
-            <div>
-              <div className="text-sm font-bold text-[#E8002D]">Mercato bloccato</div>
-              <div className="text-[11px] text-white/40">Sessione in corso — il mercato riapre al termine della sessione</div>
+          <div className="mb-5 hud-card hud-card-accent">
+            <div className="hud-card-head">
+              <div className="hud-label" style={{ color: "var(--accent)" }}>
+                <span className="inline-flex items-center gap-1.5">
+                  <Radio size={11} className="animate-live-pulse" /> MERCATO BLOCCATO
+                </span>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="text-[12px] text-white/60">Sessione in corso — il mercato riapre al termine della sessione</div>
             </div>
           </div>
         )}
 
         {/* Info cambi */}
-        <div className={`mb-6 rounded-xl p-4 border ${
-          squadra.penalitaProssimoCambio > 0
-            ? "bg-amber-500/5 border-amber-500/20"
-            : "bg-white/[0.03] border-white/[0.06]"
+        <div className={`mb-5 hud-card ${
+          squadra.penalitaProssimoCambio > 0 ? "border-amber-500/30" : ""
         }`}>
-          <div className="flex items-center justify-between">
+          <div className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <ArrowRightLeft size={16} className={squadra.penalitaProssimoCambio > 0 ? "text-amber-400" : "text-white/40"} />
               <div>
-                <div className="text-sm font-bold">
-                  Cambi: <span className="font-[family-name:var(--font-jetbrains)]">{squadra.cambiRound}/{squadra.CAMBI_GRATIS}</span>
-                  <span className="text-white/30 font-normal ml-1">gratis usati</span>
+                <div className="text-[13px] font-bold">
+                  Cambi: <span className="font-[family-name:var(--font-jetbrains)] tabular-nums">{squadra.cambiRound}/{squadra.CAMBI_GRATIS}</span>
+                  <span className="text-white/30 font-normal ml-1.5 font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] uppercase">gratis usati</span>
                 </div>
                 {squadra.chipPiloti === "wildcard" ? (
-                  <div className="text-[11px] text-green-400 mt-0.5">
-                    Wildcard attiva — cambi illimitati senza penalità
+                  <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-green-400 mt-1 tracking-[0.5px] uppercase">
+                    WILDCARD ATTIVA · CAMBI ILLIMITATI
                   </div>
                 ) : squadra.penalitaProssimoCambio > 0 ? (
-                  <div className="text-[11px] text-amber-400 flex items-center gap-1 mt-0.5">
-                    <AlertTriangle size={11} />
-                    Prossimo cambio: -{squadra.PENALITA_CAMBIO_EXTRA} punti weekend
+                  <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-amber-400 flex items-center gap-1 mt-1 tracking-[0.5px] uppercase">
+                    <AlertTriangle size={10} />
+                    PROSSIMO CAMBIO: −{squadra.PENALITA_CAMBIO_EXTRA} PUNTI WEEKEND
                   </div>
                 ) : (
-                  <div className="text-[11px] text-white/30 mt-0.5">
-                    {squadra.cambiGratisRimasti} cambi gratis rimasti questo round
+                  <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 mt-1 tracking-[0.5px] uppercase">
+                    {squadra.cambiGratisRimasti} CAMBI GRATIS RIMASTI
                   </div>
                 )}
               </div>
             </div>
             {squadra.penalitaTotale > 0 && (
               <div className="text-right">
-                <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-amber-400">-{squadra.penalitaTotale} pts</div>
-                <div className="text-[8px] tracking-[1px] text-amber-400/60">SUL WEEKEND</div>
+                <div className="font-[family-name:var(--font-jetbrains)] text-[15px] font-extrabold text-amber-400 tabular-nums">−{squadra.penalitaTotale}</div>
+                <div className="hud-label" style={{ color: "rgba(255,176,0,0.5)" }}>PTS WEEKEND</div>
               </div>
             )}
           </div>
         </div>
 
         {/* Filtri */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-2 mb-5">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cerca pilota o team..."
-            className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+            className="flex-1 bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-[13px] text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/50 transition-colors"
           />
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             {(["price", "name", "team"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSortBy(s)}
-                className={`text-[10px] tracking-wider uppercase px-4 py-3 rounded-xl border transition-all font-bold ${
+                className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] uppercase px-4 py-3 rounded border transition-colors ${
                   sortBy === s
-                    ? "bg-[#E8002D]/10 border-[#E8002D]/30 text-[#E8002D]"
-                    : "bg-white/[0.03] border-white/[0.06] text-white/40 hover:text-white/60"
+                    ? "bg-[#E8002D]/12 border-[#E8002D]/45 text-[#E8002D]"
+                    : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
                 }`}
               >
-                {s === "price" ? "Prezzo" : s === "name" ? "Nome" : "Team"}
+                {s === "price" ? "PREZZO" : s === "name" ? "NOME" : "TEAM"}
               </button>
             ))}
           </div>

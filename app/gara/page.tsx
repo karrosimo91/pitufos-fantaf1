@@ -101,69 +101,68 @@ const DriverRow = memo(function DriverRow({
 
   return (
     <div
-      className={`relative flex items-center gap-3 bg-white/[0.03] rounded-xl p-3 transition-all ${
-        isCaptain ? "border border-[#E8002D]/40 shadow-[0_0_12px_rgba(232,0,45,0.08)]"
-        : isBoosted ? "border border-amber-500/40"
-        : isSestoUomo ? "border border-blue-500/30 border-dashed"
-        : "border border-white/[0.06]"
+      className={`relative flex items-center gap-3 rounded p-3 transition-colors ${
+        isCaptain ? "bg-[#E8002D]/[0.05] border border-[#E8002D]/45 shadow-[0_0_18px_rgba(232,0,45,0.1)]"
+        : isBoosted ? "bg-amber-500/[0.04] border border-amber-500/45"
+        : isSestoUomo ? "bg-blue-500/[0.03] border border-blue-500/30 border-dashed"
+        : "bg-[#0e0e14] border border-[#1c1c26]"
       }`}
     >
       {isCaptain && (
-        <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded">
-          PRIMO PILOTA x2
+        <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white font-[family-name:var(--font-jetbrains)] text-[8px] font-bold tracking-[1.5px] px-2 py-0.5 rounded-sm">
+          PRIMO PILOTA · x2
         </div>
       )}
       {isBoosted && !isCaptain && (
-        <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[8px] font-bold tracking-wider px-2 py-0.5 rounded">
-          BOOST x3
+        <div className="absolute -top-1.5 left-3 bg-amber-500 text-black font-[family-name:var(--font-jetbrains)] text-[8px] font-bold tracking-[1.5px] px-2 py-0.5 rounded-sm">
+          BOOST · x3
         </div>
       )}
       {isSestoUomo && (
-        <div className="absolute -top-1.5 left-3 bg-blue-500 text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded">
+        <div className="absolute -top-1.5 left-3 bg-blue-500 text-white font-[family-name:var(--font-jetbrains)] text-[8px] font-bold tracking-[1.5px] px-2 py-0.5 rounded-sm">
           SESTO UOMO
         </div>
       )}
 
+      <div className="w-[3px] h-10 rounded shrink-0" style={{ backgroundColor: color }} />
+
       <div
-        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-        style={{ backgroundColor: `${color}25`, color }}
+        className="font-[family-name:var(--font-jetbrains)] text-[13px] font-extrabold w-8 text-center shrink-0 tabular-nums"
+        style={{ color }}
       >
-        <span className="font-[family-name:var(--font-jetbrains)]">{d.number}</span>
+        {d.number}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          {isCaptain && <Crown size={12} className="text-[#E8002D] shrink-0" />}
-          <span className="font-bold text-sm truncate">{d.name}</span>
+          {isCaptain && <Crown size={11} className="text-[#E8002D] shrink-0" />}
+          <span className="font-bold text-[13px] truncate tracking-[-0.2px]">{d.name}</span>
         </div>
-        <div className="text-[11px] text-white/30 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-          {d.team}
-        </div>
+        <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35 tracking-[0.5px] uppercase mt-0.5">{d.team}</div>
       </div>
 
       {points != null && (
-        <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm shrink-0 ${points > 0 ? "text-green-400" : points < 0 ? "text-red-400" : "text-white/20"}`}>
+        <span className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] shrink-0 tabular-nums ${points > 0 ? "text-green-400" : points < 0 ? "text-red-400" : "text-white/20"}`}>
           {points > 0 ? "+" : ""}{points}
         </span>
       )}
 
       {!locked && points == null && (
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex gap-1 shrink-0">
           {!isCaptain && !isSestoUomo && onSetPrimoPilota && (
             <button
               onClick={onSetPrimoPilota}
-              className="text-[8px] tracking-wider font-bold uppercase border border-[#E8002D]/20 text-[#E8002D]/60 hover:bg-[#E8002D]/10 px-2 py-1.5 rounded-lg transition-all leading-tight"
+              className="font-[family-name:var(--font-jetbrains)] text-[8px] tracking-[1.2px] font-bold uppercase border border-[#E8002D]/30 text-[#E8002D]/70 hover:bg-[#E8002D]/10 hover:text-[#E8002D] px-2 py-1.5 rounded transition-colors leading-tight"
             >
-              Primo<br/>Pilota
+              PRIMO<br/>PILOTA
             </button>
           )}
           {onRemove && (
             <button
               onClick={onRemove}
-              className="text-[9px] tracking-wider font-bold uppercase border border-white/10 text-white/30 hover:bg-white/5 px-2 py-1.5 rounded-lg transition-all"
+              className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[1.5px] font-bold uppercase border border-[#1c1c26] text-white/35 hover:bg-white/5 hover:text-white/60 px-2 py-1.5 rounded transition-colors"
             >
-              {isSestoUomo ? "Rimuovi" : "Vendi"}
+              {isSestoUomo ? "RIMUOVI" : "VENDI"}
             </button>
           )}
         </div>
@@ -369,7 +368,7 @@ function GaraPage() {
 
   if (authLoading || !sq.loaded || !prev.loaded || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
@@ -380,11 +379,11 @@ function GaraPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-[#E8002D] text-white text-sm font-bold px-6 py-3 rounded-xl shadow-[0_0_30px_rgba(232,0,45,0.4)]">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-[#E8002D] text-white text-[12px] font-bold tracking-[1.5px] uppercase px-5 py-3 rounded shadow-[0_0_30px_rgba(232,0,45,0.4)] font-[family-name:var(--font-jetbrains)]">
           {toast}
         </div>
       )}
@@ -397,79 +396,85 @@ function GaraPage() {
               <select
                 value={viewRound}
                 onChange={(e) => setViewRound(Number(e.target.value))}
-                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm font-semibold outline-none focus:border-[#E8002D]/40 appearance-none pr-10"
+                className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.5px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
               >
                 {selectableRounds.map((race) => (
-                  <option key={race.round} value={race.round} className="bg-[#0a0a12]">
-                    R{race.round} — {race.flag} {race.name} {race.round === currentRound ? "(attuale)" : ""}
+                  <option key={race.round} value={race.round} className="bg-[#050507]">
+                    R{String(race.round).padStart(2, "0")} — {race.flag} {race.name} {race.round === currentRound ? "(ATTUALE)" : ""}
                   </option>
                 ))}
               </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
             </div>
           </div>
         )}
 
-        {/* ═══ HEADER ═══ */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] tracking-[3px] text-[#E8002D] uppercase font-bold">R{viewRace.round}</span>
-            <div className="flex items-center gap-2">
+        {/* ═══ HEADER (HudCard) ═══ */}
+        <div className="hud-card hud-card-accent mb-4">
+          <div className="hud-card-head">
+            <div className="hud-label">
+              ROUND {String(viewRace.round).padStart(2, "0")} / 24
+            </div>
+            <div className="flex items-center gap-1.5">
               {viewRace.sprint && (
-                <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">SPRINT</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">SPRINT</span>
               )}
               {locked && (
-                <span className="bg-white/10 text-white/50 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">BLOCCATO</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-white/[0.04] border border-[#1c1c26] text-white/40 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">BLOCCATO</span>
               )}
               {hasResults && (
-                <span className="bg-green-500/15 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">COMPLETATO</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-green-500/10 border border-green-500/30 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">DONE</span>
               )}
               {isLive && isCurrentRound && (
-                <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
-                  <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
+                <span className="live-pill">
+                  <span className="live-pill-dot" />
                   LIVE
                 </span>
               )}
               {showProvisional && (
-                <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
-                  PROVVISORIO
-                </span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">PROVVISORIO</span>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <CountryFlag countryCode={viewRace.countryCode} size={32} />
-            <div>
-              <h1 className="text-lg font-black font-[family-name:var(--font-oswald)] leading-tight">{viewRace.name}</h1>
-              <p className="text-white/40 text-xs">{viewRace.circuit}</p>
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <CountryFlag countryCode={viewRace.countryCode} size={36} />
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.4px]">{viewRace.name}</h1>
+                <p className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35 tracking-[0.5px] uppercase mt-1 truncate">{viewRace.circuit}</p>
+              </div>
             </div>
+            {mounted && isCurrentRound && !locked && (
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 mt-4 bg-black/40 border border-[#1c1c26] rounded px-3 py-2.5">
+                <Clock size={13} className="text-[#E8002D]" />
+                <span className="hud-label">DEADLINE</span>
+                <span className="font-[family-name:var(--font-jetbrains)] text-[14px] font-extrabold tabular-nums tracking-[0.5px]">
+                  {countdown.days > 0 && (
+                    <span className="text-[#E8002D]">{String(countdown.days).padStart(2, "0")}<span className="text-white/30 text-[10px] mx-0.5">G</span></span>
+                  )}
+                  {String(countdown.hours).padStart(2, "0")}<span className="text-white/30 mx-0.5">:</span>{String(countdown.minutes).padStart(2, "0")}<span className="text-white/30 mx-0.5">:</span>{String(countdown.seconds).padStart(2, "0")}
+                </span>
+              </div>
+            )}
           </div>
-          {mounted && isCurrentRound && !locked && (
-            <div className="flex items-center gap-2 mt-3 bg-black/30 rounded-lg px-3 py-2">
-              <Clock size={14} className="text-white/30" />
-              <span className="text-[10px] tracking-wider text-white/40 uppercase">Deadline:</span>
-              <span className="font-[family-name:var(--font-jetbrains)] text-xs font-bold tabular-nums">
-                {countdown.days > 0 && `${countdown.days}g `}
-                {String(countdown.hours).padStart(2, "0")}:{String(countdown.minutes).padStart(2, "0")}:{String(countdown.seconds).padStart(2, "0")}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
           {([...((isLive && isCurrentRound) || showProvisional ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = { live: "Live", formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
+            const labels: Record<Tab, string> = { live: "LIVE", formazione: "FORMAZIONE", previsioni: "PREVISIONI", dettaglio: "DETTAGLIO" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
-            if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />;
-            if (t === "dettaglio" && hasResults) indicator = <Trophy size={12} className="text-[#E8002D]" />;
-            if (t === "formazione" && sq.confirmed) indicator = <Check size={12} className="text-green-400" />;
-            if (t === "previsioni" && prev.confirmed) indicator = <Check size={12} className="text-green-400" />;
+            if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-live-pulse" />;
+            if (t === "dettaglio" && hasResults) indicator = <Trophy size={11} className="text-[#E8002D]" />;
+            if (t === "formazione" && sq.confirmed) indicator = <Check size={11} className="text-green-400" />;
+            if (t === "previsioni" && prev.confirmed) indicator = <Check size={11} className="text-green-400" />;
             return (
               <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] tracking-[2px] uppercase font-bold transition-all ${
-                  isActive ? "bg-[#E8002D]/10 border border-[#E8002D]/30 text-[#E8002D]" : "bg-white/[0.03] border border-white/[0.06] text-white/40"
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[2px] font-bold transition-all border ${
+                  isActive
+                    ? "bg-[#E8002D]/12 border-[#E8002D]/45 text-[#E8002D] shadow-[inset_0_-2px_0_var(--accent)]"
+                    : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
                 }`}
               >
                 {indicator}{labels[t]}
@@ -481,47 +486,47 @@ function GaraPage() {
         {/* Banner CDA: questionario non completato */}
         {cdaCanPlay === false && isCurrentRound && !locked && (
           <Link href="/cda"
-            className="flex items-center gap-3 bg-[#E8002D]/10 border border-[#E8002D]/20 rounded-xl px-4 py-3 mb-4 hover:bg-[#E8002D]/15 transition-all"
+            className="flex items-center gap-3 bg-[#E8002D]/8 border-l-[3px] border-l-[#E8002D] border border-[#E8002D]/20 rounded-r px-4 py-3 mb-4 hover:bg-[#E8002D]/12 transition-all"
           >
             <AlertTriangle size={16} className="text-[#E8002D] shrink-0" />
-            <span className="text-sm text-[#E8002D]">Completa il questionario CDA per poter confermare</span>
+            <span className="text-[13px] text-[#E8002D] font-semibold">Completa il questionario CDA per poter confermare</span>
             <ChevronRight size={14} className="ml-auto text-[#E8002D]/50 shrink-0" />
           </Link>
         )}
 
         {/* Banner "Pronto per il GP" */}
         {isCurrentRound && !locked && sq.confirmed && prev.confirmed && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <Check size={18} className="text-green-400" />
+          <div className="hud-card mb-4" style={{ borderColor: "rgba(0,255,136,0.25)" }}>
+            <div className="hud-card-head" style={{ borderBottomColor: "rgba(0,255,136,0.12)" }}>
+              <div className="hud-label" style={{ color: "var(--green)" }}>
+                ▌ PRONTO PER LA GARA
               </div>
-              <div>
-                <div className="text-sm font-bold text-green-400">Pronto per il {viewRace.name}!</div>
-                <div className="text-[11px] text-green-400/50">Formazione e previsioni confermate</div>
-              </div>
+              <Check size={14} className="text-green-400" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Primo Pilota</div>
-                <div className="text-xs font-bold text-[#E8002D]">{sq.primoPilota ? getDriverByNumber(sq.primoPilota)?.name || "—" : "—"}</div>
-              </div>
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Previsioni</div>
-                <div className="text-xs font-bold text-white/60">{prev.completate}/6 complete</div>
-              </div>
-              {sq.chipPiloti && (
-                <div className="bg-black/20 rounded-lg px-3 py-2">
-                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Piloti</div>
-                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+            <div className="p-4">
+              <div className="text-[13px] font-bold mb-3">Formazione e previsioni confermate per il <span className="text-[#E8002D]">{viewRace.name}</span></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                  <div className="hud-label mb-1">PRIMO PILOTA</div>
+                  <div className="text-[12px] font-bold text-[#E8002D]">{sq.primoPilota ? getDriverByNumber(sq.primoPilota)?.name || "—" : "—"}</div>
                 </div>
-              )}
-              {prev.chipAttivo && (
-                <div className="bg-black/20 rounded-lg px-3 py-2">
-                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Previsioni</div>
-                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                  <div className="hud-label mb-1">PREVISIONI</div>
+                  <div className="text-[12px] font-bold font-[family-name:var(--font-jetbrains)]">{prev.completate}<span className="text-white/30"> / 6</span></div>
                 </div>
-              )}
+                {sq.chipPiloti && (
+                  <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                    <div className="hud-label mb-1">CHIP PILOTI</div>
+                    <div className="text-[12px] font-bold text-amber-400">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+                  </div>
+                )}
+                {prev.chipAttivo && (
+                  <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                    <div className="hud-label mb-1">CHIP PREVISIONI</div>
+                    <div className="text-[12px] font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -549,7 +554,7 @@ function GaraPage() {
               <div className="text-[10px] text-white/20 mt-2">In attesa dei risultati ufficiali</div>
             </div>
 
-            <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+            <div className="hud-label mb-2">
               Classifica Weekend Provvisoria
             </div>
             <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
@@ -611,13 +616,13 @@ function GaraPage() {
         {tab === "formazione" && (
           <div className="space-y-4">
             <div>
-              <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+              <div className="hud-label mb-2">
                 I tuoi piloti ({displayDrivers.length}/5{sestoUomoDriver ? " +1" : ""})
               </div>
 
               {displayDrivers.length === 0 ? (
                 isCurrentRound && !locked ? (
-                  <Link href="/mercato" className="block text-center border-2 border-dashed border-white/10 rounded-xl p-8 text-white/20 hover:text-white/30 transition-all text-sm tracking-wider uppercase">
+                  <Link href="/mercato" className="block text-center border border-dashed border-[#2a2a38] rounded p-8 text-white/20 hover:text-white/30 transition-all text-sm tracking-wider uppercase">
                     Vai al Mercato per scegliere i tuoi piloti
                   </Link>
                 ) : (
@@ -653,7 +658,7 @@ function GaraPage() {
               )}
 
               {displayDrivers.length < 5 && isCurrentRound && !locked && (
-                <Link href="/mercato" className="flex items-center justify-center gap-2 mt-2 border border-dashed border-white/10 rounded-xl p-3 text-white/20 hover:text-white/30 hover:border-white/15 transition-all text-[11px] tracking-wider uppercase">
+                <Link href="/mercato" className="flex items-center justify-center gap-2 mt-2 border border-dashed border-[#2a2a38] rounded p-3 text-white/20 hover:text-white/30 hover:border-white/15 transition-all text-[11px] tracking-wider uppercase">
                   + Aggiungi dal Mercato ({displayDrivers.length}/5) <ChevronRight size={14} />
                 </Link>
               )}
@@ -661,8 +666,8 @@ function GaraPage() {
 
             {/* Chip piloti usati (read-only per round passati) */}
             {locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Piloti</div>
+              <div className="hud-card px-4 py-3">
+                <div className="hud-label mb-1">Aggiornamento Piloti</div>
                 {sq.chipPiloti ? (
                   <>
                     <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
@@ -678,23 +683,25 @@ function GaraPage() {
 
             {/* Aggiornamento Piloti (editabile) */}
             {!locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento Piloti</div>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="hud-card p-4">
+                <div className="hud-label mb-2">Aggiornamento Piloti</div>
+                <div className="grid grid-cols-2 gap-1.5">
                   {CHIP_PILOTI.map((chip) => {
                     const Icon = chip.icon;
                     const active = sq.chipPiloti === chip.id;
                     return (
                       <button key={chip.id}
                         onClick={() => sq.setChipPiloti(active ? null : chip.id)}
-                        className={`flex items-start gap-2 p-3 rounded-xl text-left transition-all ${
-                          active ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04]"
+                        className={`relative flex items-start gap-2 p-3 rounded text-left transition-colors ${
+                          active
+                            ? "bg-[#E8002D]/12 border border-[#E8002D]/45 shadow-[inset_0_-2px_0_var(--accent)]"
+                            : "bg-[#0e0e14] border border-[#1c1c26] hover:border-[#2a2a38]"
                         }`}
                       >
-                        <Icon size={16} className={active ? "text-[#E8002D] mt-0.5" : "text-white/30 mt-0.5"} />
-                        <div>
-                          <div className={`text-[11px] font-bold ${active ? "text-[#E8002D]" : "text-white/50"}`}>{chip.label}</div>
-                          <div className="text-[9px] text-white/25 mt-0.5">{chip.desc}</div>
+                        <Icon size={14} className={active ? "text-[#E8002D] mt-0.5" : "text-white/35 mt-0.5"} />
+                        <div className="min-w-0">
+                          <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] uppercase ${active ? "text-[#E8002D]" : "text-white/55"}`}>{chip.label}</div>
+                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{chip.desc}</div>
                         </div>
                       </button>
                     );
@@ -703,8 +710,8 @@ function GaraPage() {
 
                 {/* Boost: scegli pilota */}
                 {sq.chipPiloti === "boost" && (
-                  <div className="mt-3 bg-black/20 rounded-lg p-3">
-                    <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">Scegli pilota per Boost x3</div>
+                  <div className="mt-3 bg-black/40 border border-[#1c1c26] rounded p-3">
+                    <div className="hud-label mb-2">SCEGLI PILOTA · BOOST x3</div>
                     <div className="grid grid-cols-1 gap-1">
                       {displayDrivers
                         .filter((d) => d.driver_number !== sq.primoPilota)
@@ -714,7 +721,7 @@ function GaraPage() {
                             <button key={d.driver_number}
                               onClick={() => sq.setChipPilotiTarget(sel ? null : d.driver_number)}
                               className={`flex items-center gap-2 p-2 rounded-lg text-left text-sm transition-all ${
-                                sel ? "bg-amber-500/15 border border-amber-500/30 text-amber-300" : "bg-white/[0.02] border border-white/[0.04] text-white/50 hover:bg-white/[0.04]"
+                                sel ? "bg-amber-500/15 border border-amber-500/30 text-amber-300" : "bg-[#0e0e14] border border-[#1c1c26] text-white/50 hover:bg-white/[0.04]"
                               }`}
                             >
                               {sel ? <CheckCircle2 size={14} /> : <Circle size={14} className="text-white/20" />}
@@ -728,13 +735,13 @@ function GaraPage() {
 
                 {/* Sesto uomo: scegli pilota */}
                 {sq.chipPiloti === "sesto" && !sq.sestoUomo && (
-                  <div className="mt-3 bg-black/20 rounded-lg p-3">
-                    <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">Scegli il 6° pilota</div>
+                  <div className="mt-3 bg-black/40 border border-[#1c1c26] rounded p-3">
+                    <div className="hud-label mb-2">SCEGLI IL 6° PILOTA</div>
                     <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
                       {DRIVERS_2026.filter((d) => !sq.driverNumbers.includes(d.number)).map((d: typeof DRIVERS_2026[number]) => (
                         <button key={d.number}
                           onClick={() => sq.setSestoUomo(d.number)}
-                          className="flex items-center gap-2 p-2 rounded-lg text-left text-sm bg-white/[0.02] border border-white/[0.04] text-white/50 hover:bg-white/[0.04] transition-all"
+                          className="flex items-center gap-2 p-2 rounded-lg text-left text-sm bg-[#0e0e14] border border-[#1c1c26] text-white/50 hover:bg-white/[0.04] transition-all"
                         >
                           <Circle size={14} className="text-white/20" />
                           <span>{d.name}</span>
@@ -756,27 +763,29 @@ function GaraPage() {
 
             {/* Penalita' cambi */}
             {sq.penalitaTotale > 0 && (
-              <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3">
-                <AlertTriangle size={16} className="text-amber-400 shrink-0" />
-                <div className="flex-1 text-sm text-amber-400">
-                  Penalità cambi extra: <span className="font-bold font-[family-name:var(--font-jetbrains)]">-{sq.penalitaTotale} punti</span> sul weekend
+              <div className="flex items-center gap-3 bg-amber-500/5 border-l-[3px] border-l-amber-500 border border-amber-500/20 rounded-r px-4 py-3">
+                <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+                <div className="flex-1 text-[12px] text-amber-400">
+                  <span className="font-[family-name:var(--font-jetbrains)] tracking-[0.5px] uppercase text-[10px] text-amber-400/70 block">PENALITÀ CAMBI EXTRA</span>
+                  <span className="font-bold font-[family-name:var(--font-jetbrains)] tabular-nums">−{sq.penalitaTotale}</span> punti sul weekend
                 </div>
               </div>
             )}
 
             {sq.confirmed && (
-              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400">
-                <Check size={16} />Formazione confermata
-                {!locked && <span className="text-green-400/50 text-xs ml-auto">Puoi ancora modificare</span>}
+              <div className="flex items-center gap-2 bg-green-500/8 border-l-[3px] border-l-green-500 border border-green-500/20 rounded-r px-4 py-3 text-[12px] text-green-400">
+                <Check size={15} />
+                <span className="font-bold tracking-[0.3px]">Formazione confermata</span>
+                {!locked && <span className="text-green-400/45 text-[10px] ml-auto font-[family-name:var(--font-jetbrains)] tracking-[1px] uppercase">PUOI MODIFICARE</span>}
               </div>
             )}
 
             {/* Avviso: formazione OK ma previsioni no */}
             {sq.confirmed && !prev.confirmed && !locked && (
               <button onClick={() => setTab("previsioni")}
-                className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400 w-full text-left hover:bg-amber-500/15 transition-all"
+                className="flex items-center gap-2 bg-amber-500/8 border-l-[3px] border-l-amber-500 border border-amber-500/20 rounded-r px-4 py-3 text-[12px] text-amber-400 w-full text-left hover:bg-amber-500/12 transition-colors"
               >
-                <AlertTriangle size={16} className="shrink-0" />
+                <AlertTriangle size={15} className="shrink-0" />
                 <span>Mancano le previsioni — tocca per completarle</span>
                 <ChevronRight size={14} className="ml-auto shrink-0 opacity-50" />
               </button>
@@ -786,17 +795,17 @@ function GaraPage() {
               <button
                 onClick={handleConfermaFormazione}
                 disabled={confirmingForm || sq.drivers.length !== 5 || !sq.primoPilota}
-                className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
+                className={`w-full py-4 rounded font-[family-name:var(--font-jetbrains)] text-[12px] font-extrabold tracking-[2.5px] uppercase transition-all ${
                   sq.drivers.length === 5 && sq.primoPilota
-                    ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]"
-                    : "bg-white/5 text-white/20 cursor-not-allowed"
+                    ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.35)]"
+                    : "bg-[#0e0e14] border border-[#1c1c26] text-white/20 cursor-not-allowed"
                 }`}
               >
-                {confirmingForm ? "Conferma in corso..."
-                  : sq.drivers.length !== 5 ? `Servono ${5 - sq.drivers.length} piloti`
-                  : !sq.primoPilota ? "Scegli un Primo Pilota"
-                  : sq.confirmed ? "Riconferma Formazione"
-                  : "Conferma Formazione"}
+                {confirmingForm ? "CONFERMA IN CORSO…"
+                  : sq.drivers.length !== 5 ? `▶ SERVONO ${5 - sq.drivers.length} PILOTI`
+                  : !sq.primoPilota ? "▶ SCEGLI UN PRIMO PILOTA"
+                  : sq.confirmed ? "▶ RICONFERMA FORMAZIONE"
+                  : "▶ CONFERMA FORMAZIONE"}
               </button>
             )}
           </div>
@@ -820,61 +829,61 @@ function GaraPage() {
               const isWrong = garaCalcolata && myAnswer !== null && myAnswer !== resultValue;
 
               return (
-                <div key={p.key} className={`bg-white/[0.03] border rounded-xl p-4 ${
-                  isCorrect ? "border-green-500/30" : isWrong ? "border-red-500/20" : "border-white/[0.06]"
+                <div key={p.key} className={`hud-card p-4 ${
+                  isCorrect ? "border-green-500/35" : isWrong ? "border-red-500/25" : ""
                 }`}>
                   <div className="mb-3 flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-sm">{p.label}</h3>
-                      <p className="text-[11px] text-white/30 mt-0.5">{p.desc}</p>
+                      <h3 className="font-bold text-[14px] tracking-[-0.2px]">{p.label}</h3>
+                      <p className="text-[11px] text-white/35 mt-0.5">{p.desc}</p>
                     </div>
                     {hasResults && resultValue !== null && (
-                      <span className={`text-[10px] font-bold tracking-wider px-2 py-1 rounded ${
-                        resultValue ? "bg-green-500/15 text-green-400" : "bg-blue-500/15 text-blue-400"
+                      <span className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] px-2 py-1 rounded ${
+                        resultValue ? "bg-green-500/12 border border-green-500/30 text-green-400" : "bg-white/[0.04] border border-[#1c1c26] text-white/60"
                       }`}>
                         {resultValue ? "SI" : "NO"}
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <button onClick={() => !locked && togglePrevisione(p.key, true)} disabled={locked}
-                      className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
+                      className={`flex-1 py-3 rounded font-[family-name:var(--font-jetbrains)] text-[12px] font-bold tracking-[1.5px] uppercase transition-colors ${
                         myAnswer === true
-                          ? isCorrect ? "bg-green-500/20 border border-green-500/40 text-green-400"
-                          : isWrong ? "bg-red-500/15 border border-red-500/30 text-red-400"
-                          : "bg-green-500/20 border border-green-500/40 text-green-400"
-                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                          ? isCorrect ? "bg-green-500/15 border border-green-500/45 text-green-400"
+                          : isWrong ? "bg-red-500/12 border border-red-500/35 text-red-400"
+                          : "bg-green-500/15 border border-green-500/45 text-green-400 shadow-[inset_0_-2px_0_rgba(34,197,94,0.6)]"
+                        : "bg-[#0e0e14] border border-[#1c1c26] text-white/30 hover:text-white/55"
                       } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >SI<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.si} pts</span></button>
+                    >SI<span className="block text-[9px] font-normal mt-0.5 opacity-60 tabular-nums">+{p.si} PTS</span></button>
                     <button onClick={() => !locked && togglePrevisione(p.key, false)} disabled={locked}
-                      className={`flex-1 py-3 rounded-lg text-sm font-bold tracking-wider uppercase transition-all ${
+                      className={`flex-1 py-3 rounded font-[family-name:var(--font-jetbrains)] text-[12px] font-bold tracking-[1.5px] uppercase transition-colors ${
                         myAnswer === false
-                          ? isCorrect ? "bg-green-500/20 border border-green-500/40 text-green-400"
-                          : isWrong ? "bg-red-500/15 border border-red-500/30 text-red-400"
-                          : "bg-blue-500/20 border border-blue-500/40 text-blue-400"
-                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                          ? isCorrect ? "bg-green-500/15 border border-green-500/45 text-green-400"
+                          : isWrong ? "bg-red-500/12 border border-red-500/35 text-red-400"
+                          : "bg-white/[0.06] border border-white/15 text-white shadow-[inset_0_-2px_0_rgba(255,255,255,0.25)]"
+                        : "bg-[#0e0e14] border border-[#1c1c26] text-white/30 hover:text-white/55"
                       } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >NO<span className="block text-[9px] font-normal mt-0.5 opacity-60">+{p.no} pts</span></button>
+                    >NO<span className="block text-[9px] font-normal mt-0.5 opacity-60 tabular-nums">+{p.no} PTS</span></button>
                   </div>
                 </div>
               );
             })}
 
-            <div className={`bg-white/[0.03] border rounded-xl p-4 ${
+            <div className={`hud-card p-4 ${
               (() => { const gc = (weekendResults?.race?.length ?? 0) > 0; return gc && prev.previsioni.numeroDnf !== null
-                ? prev.previsioni.numeroDnf === weekendResults?.events.total_dnf ? "border-green-500/30" : "border-red-500/20"
-                : "border-white/[0.06]"; })()
+                ? prev.previsioni.numeroDnf === weekendResults?.events.total_dnf ? "border-green-500/35" : "border-red-500/25"
+                : ""; })()
             }`}>
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-sm">Numero DNF esatto</h3>
+                <h3 className="font-bold text-[14px] tracking-[-0.2px]">Numero DNF esatto</h3>
                 {(weekendResults?.race?.length ?? 0) > 0 && (
-                  <span className="text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-white/10 text-white/60">
-                    DNF: {weekendResults?.events.total_dnf}
+                  <span className="font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] px-2 py-1 rounded bg-[#0e0e14] border border-[#1c1c26] text-white/60">
+                    DNF · <span className="tabular-nums">{weekendResults?.events.total_dnf}</span>
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-white/30 mb-3">Quanti piloti si ritireranno? (+{PREVISIONI_PUNTI.numeroDnf.esatto} pts se indovini)</p>
-              <div className="flex gap-2 flex-wrap">
+              <p className="text-[11px] text-white/35 mb-3">Quanti piloti si ritireranno? (+{PREVISIONI_PUNTI.numeroDnf.esatto} pts se indovini)</p>
+              <div className="flex gap-1.5 flex-wrap">
                 {Array.from({ length: 8 }, (_, i) => i).map((n) => {
                   const isSelected = prev.previsioni.numeroDnf === n;
                   const garaCalcolata = (weekendResults?.race?.length ?? 0) > 0;
@@ -882,11 +891,11 @@ function GaraPage() {
                   const isMissed = garaCalcolata && isSelected && n !== weekendResults?.events.total_dnf;
                   return (
                     <button key={n} onClick={() => !locked && prev.setNumeroDnf(prev.previsioni.numeroDnf === n ? null : n)} disabled={locked}
-                      className={`w-10 h-10 rounded-lg font-[family-name:var(--font-jetbrains)] font-bold text-sm transition-all ${
-                        isExact ? "bg-green-500/20 border border-green-500/40 text-green-400"
-                        : isMissed ? "bg-red-500/15 border border-red-500/30 text-red-400"
-                        : isSelected ? "bg-[#E8002D]/20 border border-[#E8002D]/40 text-[#E8002D]"
-                        : "bg-white/[0.03] border border-white/[0.06] text-white/30 hover:text-white/50"
+                      className={`w-10 h-10 rounded font-[family-name:var(--font-jetbrains)] font-extrabold text-[14px] tabular-nums transition-colors ${
+                        isExact ? "bg-green-500/15 border border-green-500/45 text-green-400"
+                        : isMissed ? "bg-red-500/12 border border-red-500/35 text-red-400"
+                        : isSelected ? "bg-[#E8002D]/15 border border-[#E8002D]/45 text-[#E8002D] shadow-[inset_0_-2px_0_var(--accent)]"
+                        : "bg-[#0e0e14] border border-[#1c1c26] text-white/30 hover:text-white/55"
                       } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
                     >{n}</button>
                   );
@@ -896,8 +905,8 @@ function GaraPage() {
 
             {/* Chip previsioni usato (read-only per round passati) */}
             {locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Previsioni</div>
+              <div className="hud-card px-4 py-3">
+                <div className="hud-label mb-1">Aggiornamento Previsioni</div>
                 {prev.chipAttivo ? (
                   <>
                     <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
@@ -912,22 +921,24 @@ function GaraPage() {
             )}
 
             {!locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento Previsioni</div>
-                <div className="flex gap-2 flex-wrap">
+              <div className="hud-card p-4">
+                <div className="hud-label mb-2">Aggiornamento Previsioni</div>
+                <div className="grid grid-cols-2 gap-1.5">
                   {CHIP_PREVISIONI.map((chip) => {
                     const Icon = chip.icon;
                     const active = prev.chipAttivo === chip.id;
                     return (
                       <button key={chip.id} onClick={() => prev.setChipAttivo(active ? null : chip.id)}
-                        className={`flex items-start gap-2 px-3 py-3 rounded-xl text-left transition-all ${
-                          active ? "bg-[#E8002D]/10 border border-[#E8002D]/30" : "bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04]"
+                        className={`flex items-start gap-2 p-3 rounded text-left transition-colors ${
+                          active
+                            ? "bg-[#E8002D]/12 border border-[#E8002D]/45 shadow-[inset_0_-2px_0_var(--accent)]"
+                            : "bg-[#0e0e14] border border-[#1c1c26] hover:border-[#2a2a38]"
                         }`}
                       >
-                        <Icon size={14} className={active ? "text-[#E8002D] mt-0.5" : "text-white/30 mt-0.5"} />
-                        <div>
-                          <div className={`text-[11px] font-bold ${active ? "text-[#E8002D]" : "text-white/50"}`}>{chip.label}</div>
-                          <div className="text-[9px] text-white/25 mt-0.5">{chip.desc}</div>
+                        <Icon size={14} className={active ? "text-[#E8002D] mt-0.5" : "text-white/35 mt-0.5"} />
+                        <div className="min-w-0">
+                          <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] uppercase ${active ? "text-[#E8002D]" : "text-white/55"}`}>{chip.label}</div>
+                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{chip.desc}</div>
                         </div>
                       </button>
                     );
@@ -935,9 +946,9 @@ function GaraPage() {
                 </div>
 
                 {(prev.chipAttivo === "sicura" || prev.chipAttivo === "doppia") && (
-                  <div className="mt-3 bg-black/20 rounded-lg p-3">
-                    <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-2">
-                      Applica a quale previsione?
+                  <div className="mt-3 bg-black/40 border border-[#1c1c26] rounded p-3">
+                    <div className="hud-label mb-2">
+                      APPLICA A QUALE PREVISIONE?
                     </div>
                     <div className="grid grid-cols-1 gap-1">
                       {[...PREVISIONI_CONFIG.map(p => ({ id: p.key, label: p.label })), { id: "numeroDnf", label: "Numero DNF" }].map((p) => {
@@ -946,7 +957,7 @@ function GaraPage() {
                           <button key={p.id}
                             onClick={() => prev.setChipTarget(sel ? null : p.id)}
                             className={`flex items-center gap-2 p-2 rounded-lg text-left text-sm transition-all ${
-                              sel ? "bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D]" : "bg-white/[0.02] border border-white/[0.04] text-white/50 hover:bg-white/[0.04]"
+                              sel ? "bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D]" : "bg-[#0e0e14] border border-[#1c1c26] text-white/50 hover:bg-white/[0.04]"
                             }`}
                           >
                             {sel ? <CheckCircle2 size={14} /> : <Circle size={14} className="text-white/20" />}
@@ -961,18 +972,19 @@ function GaraPage() {
             )}
 
             {prev.confirmed && (
-              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-sm text-green-400">
-                <Check size={16} />Previsioni confermate ({prev.completate}/6)
-                {!locked && <span className="text-green-400/50 text-xs ml-auto">Puoi ancora modificare</span>}
+              <div className="flex items-center gap-2 bg-green-500/8 border-l-[3px] border-l-green-500 border border-green-500/20 rounded-r px-4 py-3 text-[12px] text-green-400">
+                <Check size={15} />
+                <span className="font-bold tracking-[0.3px]">Previsioni confermate <span className="font-[family-name:var(--font-jetbrains)] tabular-nums">({prev.completate}/6)</span></span>
+                {!locked && <span className="text-green-400/45 text-[10px] ml-auto font-[family-name:var(--font-jetbrains)] tracking-[1px] uppercase">PUOI MODIFICARE</span>}
               </div>
             )}
 
             {/* Avviso: previsioni OK ma formazione no */}
             {prev.confirmed && !sq.confirmed && !locked && (
               <button onClick={() => setTab("formazione")}
-                className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400 w-full text-left hover:bg-amber-500/15 transition-all"
+                className="flex items-center gap-2 bg-amber-500/8 border-l-[3px] border-l-amber-500 border border-amber-500/20 rounded-r px-4 py-3 text-[12px] text-amber-400 w-full text-left hover:bg-amber-500/12 transition-colors"
               >
-                <AlertTriangle size={16} className="shrink-0" />
+                <AlertTriangle size={15} className="shrink-0" />
                 <span>Manca la formazione — tocca per completarla</span>
                 <ChevronRight size={14} className="ml-auto shrink-0 opacity-50" />
               </button>
@@ -980,11 +992,11 @@ function GaraPage() {
 
             {isCurrentRound && !locked && (
               <button onClick={handleConfermaPrevisioni} disabled={prev.completate < 6 || confirmingPrev}
-                className={`w-full py-4 rounded-xl text-sm font-bold tracking-[2px] uppercase transition-all ${
-                  prev.completate === 6 ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.3)]" : "bg-white/5 text-white/20 cursor-not-allowed"
+                className={`w-full py-4 rounded font-[family-name:var(--font-jetbrains)] text-[12px] font-extrabold tracking-[2.5px] uppercase transition-all ${
+                  prev.completate === 6 ? "bg-[#E8002D] hover:bg-[#ff1a3d] text-white hover:shadow-[0_0_30px_rgba(232,0,45,0.35)]" : "bg-[#0e0e14] border border-[#1c1c26] text-white/20 cursor-not-allowed"
                 }`}
               >
-                {confirmingPrev ? "Conferma in corso..." : prev.confirmed ? "Aggiorna Previsioni" : `Conferma Previsioni (${prev.completate}/6)`}
+                {confirmingPrev ? "CONFERMA IN CORSO…" : prev.confirmed ? "▶ AGGIORNA PREVISIONI" : `▶ CONFERMA PREVISIONI (${prev.completate}/6)`}
               </button>
             )}
           </div>
@@ -998,49 +1010,49 @@ function GaraPage() {
                 {myWeekendScore ? (
                   <>
                     {/* Punteggio totale */}
-                    <div className="bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold">Il tuo weekend</div>
-                        <span className="font-[family-name:var(--font-jetbrains)] text-3xl font-black text-[#E8002D]">
-                          {myWeekendScore.total}
-                        </span>
+                    <div className="hud-card hud-card-accent">
+                      <div className="hud-card-head">
+                        <div className="hud-label">IL TUO WEEKEND</div>
+                        <div className="hud-meta">R{viewRace.round}</div>
                       </div>
+                      <div className="p-4">
+                        <div className="big-num text-center">{myWeekendScore.total}</div>
 
-                      <div className={`grid ${myWeekendScore.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-4`}>
-                        <div className="bg-black/20 rounded-lg p-3 text-center">
-                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.pilotiPoints}</div>
-                          <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
-                        </div>
-                        <div className="bg-black/20 rounded-lg p-3 text-center">
-                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{myWeekendScore.previsioniPoints}</div>
-                          <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
-                        </div>
-                        {myWeekendScore.penalitaCambi > 0 && (
-                          <div className="bg-black/20 rounded-lg p-3 text-center">
-                            <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400">-{myWeekendScore.penalitaCambi}</div>
-                            <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
+                        <div className={`grid ${myWeekendScore.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-1.5 mt-4 mb-4`}>
+                          <div className="bg-black/40 border border-[#1c1c26] rounded p-3 text-center">
+                            <div className="num font-extrabold text-[18px] leading-none">{myWeekendScore.pilotiPoints}</div>
+                            <div className="hud-label mt-1.5">PILOTI</div>
                           </div>
-                        )}
-                      </div>
+                          <div className="bg-black/40 border border-[#1c1c26] rounded p-3 text-center">
+                            <div className="num font-extrabold text-[18px] leading-none">{myWeekendScore.previsioniPoints}</div>
+                            <div className="hud-label mt-1.5">PREVISIONI</div>
+                          </div>
+                          {myWeekendScore.penalitaCambi > 0 && (
+                            <div className="bg-black/40 border border-amber-500/30 rounded p-3 text-center">
+                              <div className="num font-extrabold text-[18px] leading-none text-amber-400">−{myWeekendScore.penalitaCambi}</div>
+                              <div className="hud-label mt-1.5" style={{color: "rgba(255,176,0,0.6)"}}>PENALITÀ</div>
+                            </div>
+                          )}
+                        </div>
 
                       {/* Dettaglio piloti */}
-                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
+                      <div className="hud-label mb-2">Dettaglio Piloti</div>
                       <div className="space-y-1 mb-4">
                         {myWeekendScore.pilotiDettaglio.map((d) => {
                           const color = getDriverByNumber(d.driver_number)?.teamColour;
                           return (
-                            <div key={d.driver_number} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                            <div key={d.driver_number} className="flex items-center justify-between text-[13px] bg-black/30 border border-[#1c1c26] rounded px-3 py-2">
                               <span className="flex items-center gap-2">
-                                {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `#${color}` }} />}
-                                <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/70"}>
+                                {color && <span className="w-[3px] h-5 rounded shrink-0" style={{ backgroundColor: `#${color}` }} />}
+                                <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/75"}>
                                   {d.name}
                                 </span>
-                                {d.moltiplicatore === 2 && <span className="text-[9px] text-[#E8002D]/60">x2</span>}
+                                {d.moltiplicatore === 2 && <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-[#E8002D]/70 tracking-[1px]">x2</span>}
                                 {d.moltiplicatore === 3 && <Zap size={11} className="text-amber-400" />}
                                 {d.isSestoUomo && <Users size={11} className="text-blue-400" />}
                                 {d.haloApplicato && <Shield size={11} className="text-green-400" />}
                               </span>
-                              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
+                              <span className={`font-[family-name:var(--font-jetbrains)] font-bold tabular-nums ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
                                 {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
                               </span>
                             </div>
@@ -1049,16 +1061,17 @@ function GaraPage() {
                       </div>
 
                       {/* Dettaglio previsioni */}
-                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
+                      <div className="hud-label mb-2">Dettaglio Previsioni</div>
                       <div className="space-y-1">
                         {Object.entries(myWeekendScore.previsioniDettaglio).map(([key, pts]) => (
-                          <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
+                          <div key={key} className="flex items-center justify-between text-[13px] bg-black/30 border border-[#1c1c26] rounded px-3 py-2">
                             <span className="text-white/60">{PREVISIONE_LABELS[key] || key}</span>
-                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
+                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold tabular-nums ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
                               {pts > 0 ? `+${pts}` : "0"}
                             </span>
                           </div>
                         ))}
+                      </div>
                       </div>
                     </div>
                   </>
@@ -1069,9 +1082,9 @@ function GaraPage() {
                 )}
 
                 {/* Eventi della gara — solo se la gara è stata calcolata */}
-                {weekendResults.race.length > 0 && <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">Eventi della gara</div>
-                  <div className="grid grid-cols-2 gap-2">
+                {weekendResults.race.length > 0 && <div className="hud-card p-4">
+                  <div className="hud-label mb-3">Eventi della gara</div>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
                       { label: "Safety Car", value: weekendResults.events.safety_car },
                       { label: "VSC", value: weekendResults.events.virtual_safety_car },
@@ -1079,16 +1092,16 @@ function GaraPage() {
                       { label: "Gomme Wet", value: weekendResults.events.wet_tyres },
                       { label: "Pole ha vinto", value: weekendResults.events.pole_won },
                     ].map((e) => (
-                      <div key={e.label} className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
-                        <span className="text-white/40">{e.label}</span>
-                        <span className={e.value ? "text-green-400 font-bold" : "text-white/20"}>
+                      <div key={e.label} className="flex items-center justify-between text-[12px] px-3 py-2 bg-black/30 border border-[#1c1c26] rounded">
+                        <span className="text-white/45">{e.label}</span>
+                        <span className={`font-[family-name:var(--font-jetbrains)] tracking-[1px] ${e.value ? "text-green-400 font-bold" : "text-white/25"}`}>
                           {e.value ? "SI" : "NO"}
                         </span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
-                      <span className="text-white/40">DNF totali</span>
-                      <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/60">
+                    <div className="flex items-center justify-between text-[12px] px-3 py-2 bg-black/30 border border-[#1c1c26] rounded">
+                      <span className="text-white/45">DNF totali</span>
+                      <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/70 tabular-nums">
                         {weekendResults.events.total_dnf}
                       </span>
                     </div>

@@ -3,9 +3,12 @@ import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import {
   calcolaPuntiWeekend,
+  calcolaPuntiPilotaBase,
+  aggiornaQuotazione,
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "../../lib/scoring";
+import { DRIVERS_2026 } from "../../lib/drivers-data";
 import type { Previsioni } from "../../lib/types";
 import { RACES_2026 } from "../../lib/races";
 
@@ -339,6 +342,64 @@ export async function POST(request: NextRequest) {
       }, { onConflict: "user_id,round" });
 
       log.push(`${i + 1}. ${ps.name}: ${ps.weekend_points} pts (P:${ps.piloti_points}${isPostRace ? ` + Prev:${ps.previsioni_points}` : ""}${ps.penalita_cambi > 0 ? ` - Cambi:${ps.penalita_cambi}` : ""}${delta !== ps.weekend_points ? ` | delta: +${delta}` : ""})${isPostRace ? ` | Reale: +${realPoints}` : ""}`);
+    }
+
+    // ═══════════════════════════════════
+    // STEP 5: Aggiorna quotazioni piloti (solo post-race)
+    // Algoritmo a fasce CDA — vedi scoring.ts:aggiornaQuotazione
+    // ═══════════════════════════════════
+    if (isPostRace) {
+      log.push("--- STEP 5: Aggiorna quotazioni piloti ---");
+      try {
+        // Leggi quotazioni vigenti (ultima riga <= round per ogni pilota)
+        const { data: priceRows } = await supabase
+          .from("driver_prices")
+          .select("driver_number, round, price")
+          .lte("round", round)
+          .order("round", { ascending: false });
+
+        const currentPrice = new Map<number, number>();
+        for (const r of priceRows ?? []) {
+          if (!currentPrice.has(r.driver_number)) currentPrice.set(r.driver_number, r.price);
+        }
+
+        // Per ogni pilota della stagione, calcola punti grezzi weekend e nuovo prezzo
+        const nextRound = round + 1;
+        const updates: { driver_number: number; round: number; price: number }[] = [];
+        const changes: string[] = [];
+
+        for (const driver of DRIVERS_2026) {
+          const oldPrice = currentPrice.get(driver.number) ?? driver.price;
+          const puntiGrezzi = calcolaPuntiPilotaBase(driver.number, weekendResults);
+          const newPrice = aggiornaQuotazione(oldPrice, puntiGrezzi);
+          updates.push({ driver_number: driver.number, round: nextRound, price: newPrice });
+          if (newPrice !== oldPrice) {
+            const sign = newPrice > oldPrice ? "+" : "";
+            changes.push(`${driver.name}: ${oldPrice} → ${newPrice} (${sign}${newPrice - oldPrice}, ${puntiGrezzi}pts)`);
+          }
+        }
+
+        const { error: upErr } = await supabase
+          .from("driver_prices")
+          .upsert(updates, { onConflict: "driver_number,round" });
+        if (upErr) log.push(`Errore upsert driver_prices: ${upErr.message}`);
+        else log.push(`Quotazioni aggiornate per round ${nextRound}: ${changes.length} variazioni`);
+
+        // Hardening: se ci sono quotazioni "future" oltre il nextRound, sono
+        // obsolete (calcolate quando il round attuale non era ancora processato
+        // o lo era in modo diverso). Le droppiamo per forzare il ricalcolo
+        // al prossimo post-gara.
+        const { error: delErr, count: deleted } = await supabase
+          .from("driver_prices")
+          .delete({ count: "exact" })
+          .gt("round", nextRound);
+        if (delErr) log.push(`Warning cleanup quotazioni future: ${delErr.message}`);
+        else if (deleted && deleted > 0) log.push(`Cleanup quotazioni obsolete: ${deleted} righe rimosse (round > ${nextRound})`);
+
+        for (const c of changes) log.push(`  ${c}`);
+      } catch (e) {
+        log.push(`Errore aggiornamento quotazioni: ${(e as Error).message}`);
+      }
     }
 
     // Cancella punteggi provvisori

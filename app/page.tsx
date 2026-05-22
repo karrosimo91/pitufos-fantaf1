@@ -1,9 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "./lib/auth";
 import { RACES_2026, getNextRace, getUpcomingRaces, getDeadline } from "./lib/races";
 import { APP_VERSION } from "./lib/types";
 import CountryFlag from "./components/CountryFlag";
+import { Brand } from "./components/ui/Brand";
+import { HudCard } from "./components/ui/HudCard";
+import { SectionHead } from "./components/ui/SectionHead";
 
 function getTimeUntil(dateStr: string) {
   const now = new Date().getTime();
@@ -24,161 +28,158 @@ export default function Home() {
   const { user } = useAuth();
   const nextRace = getNextRace();
   const upcoming = getUpcomingRaces(5);
-
   const deadline = getDeadline(nextRace);
 
   useEffect(() => {
     setMounted(true);
-    const timer = setInterval(() => {
-      setCountdown(getTimeUntil(deadline));
-    }, 1000);
+    const timer = setInterval(() => setCountdown(getTimeUntil(deadline)), 1000);
     setCountdown(getTimeUntil(deadline));
     return () => clearInterval(timer);
   }, [deadline]);
 
   const stats = [
-    { value: "24", label: "GRAN PREMI" },
+    { value: "24", label: "GP" },
     { value: "6", label: "SPRINT" },
     { value: "22", label: "PILOTI" },
     { value: "11", label: "SCUDERIE" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white overflow-hidden relative">
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#E8002D] opacity-[0.03] blur-[150px] rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-[#E8002D] opacity-[0.02] blur-[100px] rounded-full" />
-      </div>
-
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
+    <div className="min-h-screen bg-grid text-white">
+      {/* TopBar */}
+      <header className="sticky top-0 z-40 bg-[#050507]/92 backdrop-blur-xl border-b border-[#1c1c26] px-4 py-2.5 flex items-center justify-between">
+        <Brand />
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#E8002D] to-[#ff4466] flex items-center justify-center font-black text-xs tracking-wider">
-            LP
-          </div>
-          <span className="font-bold text-sm tracking-[3px] uppercase">Los Pitufos</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-[10px] tracking-[2px] text-white/30 uppercase">Stagione 2026</div>
+          <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[2px]">STAGIONE 2026</span>
           {user ? (
-            <a href="/dashboard" className="text-[10px] tracking-[2px] uppercase px-3 py-2 rounded-lg bg-[#E8002D]/10 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
-              Dashboard
-            </a>
+            <Link href="/dashboard" className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1.5px] uppercase px-2.5 py-1.5 rounded bg-[#E8002D]/10 border border-[#E8002D]/30 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
+              DASHBOARD
+            </Link>
           ) : (
-            <a href="/login" className="text-[10px] tracking-[2px] uppercase px-3 py-2 rounded-lg bg-[#E8002D]/10 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
-              Accedi
-            </a>
+            <Link href="/login" className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1.5px] uppercase px-2.5 py-1.5 rounded bg-[#E8002D]/10 border border-[#E8002D]/30 text-[#E8002D] font-bold hover:bg-[#E8002D]/20 transition-all">
+              ACCEDI
+            </Link>
           )}
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-col items-center justify-center px-6 pt-16 pb-8">
-        <div className="text-center mb-12">
-          <div className="text-[10px] tracking-[6px] text-[#E8002D] uppercase mb-4 font-bold">
-            Fantasy Racing League
+      <main className="max-w-lg mx-auto px-4 pb-16">
+        {/* Page head */}
+        <div className="pt-7 pb-4">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-[#E8002D] tracking-[2.5px] mb-2 uppercase font-bold">
+            FANTASY RACING LEAGUE
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-2 font-[family-name:var(--font-oswald)]">
-            LOS
-            <span className="text-[#E8002D]"> PITUFOS</span>
+          <h1 className="text-[44px] font-extrabold tracking-[-1.5px] leading-[0.95]">
+            LOS<br /><span className="text-[#E8002D]">PITUFOS</span>
+            <span className="text-white/30 text-2xl font-mono"> .FantaF1</span>
           </h1>
-          <div className="text-lg md:text-xl font-light tracking-[8px] text-white/40 uppercase mt-2 font-[family-name:var(--font-oswald)]">
-            FantaF1
-          </div>
         </div>
 
-        <div className="w-full max-w-lg mb-10">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase mb-3 font-bold text-center">
-            Prossima Gara
-          </div>
-          <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 text-center">
-            <div className="mb-2"><CountryFlag countryCode={nextRace.countryCode} size={40} /></div>
-            <h2 className="text-xl font-bold mb-1">{nextRace.name}</h2>
-            <p className="text-white/40 text-sm mb-1">{nextRace.circuit}</p>
-            <div className="flex items-center justify-center gap-2 text-xs text-white/30">
-              <span>Round {nextRace.round}/24</span>
-              {nextRace.sprint && (
-                <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
-                  SPRINT
-                </span>
-              )}
-            </div>
-
-            {mounted && (
-              <div className="grid grid-cols-4 gap-3 mt-6">
-                {[
-                  { value: countdown.days, label: "GIORNI" },
-                  { value: countdown.hours, label: "ORE" },
-                  { value: countdown.minutes, label: "MIN" },
-                  { value: countdown.seconds, label: "SEC" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-black/40 rounded-xl p-3">
-                    <div className="text-2xl md:text-3xl font-black font-[family-name:var(--font-jetbrains)] tabular-nums text-white">
-                      {String(item.value).padStart(2, "0")}
-                    </div>
-                    <div className="text-[9px] tracking-[2px] text-white/30 mt-1">
-                      {item.label}
-                    </div>
-                  </div>
-                ))}
+        {/* Next race HUD */}
+        <HudCard
+          label={`ROUND ${nextRace.round} / 24 · PROSSIMA`}
+          meta={nextRace.sprint ? <span className="text-[#E8002D] font-bold">SPRINT</span> : null}
+          className="mb-5"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <div className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.4px]">
+                {nextRace.name}
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 gap-3 w-full max-w-lg mb-12">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="text-2xl font-black text-[#E8002D] font-[family-name:var(--font-jetbrains)]">{stat.value}</div>
-              <div className="text-[8px] tracking-[2px] text-white/30 mt-1">{stat.label}</div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/40 mt-1 tracking-[0.5px] uppercase">
+                {nextRace.circuit}
+              </div>
             </div>
-          ))}
-        </div>
+            <CountryFlag countryCode={nextRace.countryCode} size={32} />
+          </div>
 
-        <div className="flex flex-col items-center gap-4 mb-16">
-          <a
-            href={user ? "/dashboard" : "/registrati"}
-            className="bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-bold text-sm tracking-[2px] uppercase px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(232,0,45,0.3)] inline-block"
-          >
-            {user ? "Vai alla Dashboard" : "Crea la tua Scuderia"}
-          </a>
-          <p className="text-white/20 text-xs">Gratuito — Aperto a tutti</p>
-        </div>
-
-        <div className="w-full max-w-lg">
-          <a href="/calendario" className="text-[10px] tracking-[4px] text-white/30 uppercase mb-4 font-bold text-center block hover:text-white/50 transition-all">
-            Prossime Gare
-          </a>
-          <div className="space-y-2">
-            {upcoming.map((race) => (
-              <div
-                key={race.round}
-                className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] rounded-lg px-4 py-3 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <CountryFlag countryCode={race.countryCode} size={20} />
-                  <div>
-                    <div className="text-sm font-semibold">{race.name}</div>
-                    <div className="text-[11px] text-white/30">{race.circuit}</div>
+          {mounted && (
+            <div className="grid grid-cols-4 gap-1.5 mt-4">
+              {[
+                { value: countdown.days, label: "G" },
+                { value: countdown.hours, label: "H" },
+                { value: countdown.minutes, label: "M" },
+                { value: countdown.seconds, label: "S" },
+              ].map((item) => (
+                <div key={item.label} className="bg-black/40 border border-[#1c1c26] rounded p-2.5 text-center">
+                  <div className="num font-extrabold text-[22px] leading-none">
+                    {String(item.value).padStart(2, "0")}
+                  </div>
+                  <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/30 mt-1.5 tracking-[1.5px]">
+                    {item.label}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs font-[family-name:var(--font-jetbrains)] text-white/60">
-                    {new Date(race.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
-                  </div>
-                  {race.sprint && (
-                    <span className="text-[9px] text-[#E8002D] font-bold tracking-wider">SPRINT</span>
-                  )}
-                </div>
+              ))}
+            </div>
+          )}
+        </HudCard>
+
+        {/* Stat strip */}
+        <div className="hud-card mb-6">
+          <div className="grid grid-cols-4 divide-x divide-[#1c1c26]">
+            {stats.map((s) => (
+              <div key={s.label} className="px-2 py-3 text-center">
+                <div className="num font-extrabold text-[20px] leading-none text-[#E8002D]">{s.value}</div>
+                <div className="font-[family-name:var(--font-jetbrains)] text-[8px] text-white/30 mt-1.5 tracking-[1.5px]">{s.label}</div>
               </div>
             ))}
           </div>
-          <a href="/calendario" className="block text-center text-[11px] text-white/20 hover:text-white/40 mt-3 transition-all">
-            Vedi tutto il calendario →
-          </a>
+        </div>
+
+        {/* CTA */}
+        <Link
+          href={user ? "/dashboard" : "/registrati"}
+          className="block bg-[#E8002D] hover:bg-[#ff1a3d] text-white font-extrabold text-sm tracking-[2px] uppercase text-center py-4 rounded transition-all hover:shadow-[0_0_30px_rgba(232,0,45,0.35)]"
+        >
+          {user ? "▶ Vai alla Dashboard" : "▶ Crea la tua Scuderia"}
+        </Link>
+        <p className="font-[family-name:var(--font-jetbrains)] text-white/25 text-[10px] mt-2 text-center tracking-[1.5px]">
+          GRATUITO · APERTO A TUTTI
+        </p>
+
+        {/* Calendario */}
+        <SectionHead
+          title="Prossime gare"
+          right={
+            <Link href="/calendario" className="hover:text-white/60 transition-colors">VEDI TUTTE →</Link>
+          }
+        />
+        <div className="hud-card overflow-hidden">
+          {upcoming.map((race, i) => (
+            <Link
+              key={race.round}
+              href="/calendario"
+              className={`flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.02] transition-colors ${
+                i < upcoming.length - 1 ? "border-b border-[#1c1c26]" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="num text-[13px] font-extrabold text-white/30 w-7 tabular-nums">
+                  {String(race.round).padStart(2, "0")}
+                </div>
+                <CountryFlag countryCode={race.countryCode} size={20} />
+                <div>
+                  <div className="text-[13px] font-bold leading-tight">{race.name}</div>
+                  <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[0.5px] uppercase mt-0.5">
+                    {race.circuit}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="num font-bold text-[11px] text-white/60">
+                  {new Date(race.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" }).toUpperCase()}
+                </div>
+                {race.sprint && (
+                  <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-[#E8002D] font-bold tracking-[1.5px]">SPRINT</span>
+                )}
+              </div>
+            </Link>
+          ))}
         </div>
       </main>
 
-      <footer className="relative z-10 text-center py-8 text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — {APP_VERSION}
+      <footer className="text-center pb-8 pt-4 font-[family-name:var(--font-jetbrains)] text-white/15 text-[9px] tracking-[2.5px] uppercase">
+        Los Pitufos FantaF1 · {APP_VERSION}
       </footer>
     </div>
   );

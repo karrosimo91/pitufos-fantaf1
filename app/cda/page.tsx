@@ -141,7 +141,7 @@ export default function CdaPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
@@ -158,7 +158,7 @@ export default function CdaPage() {
 
   if (!isMember) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
           <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
@@ -186,7 +186,7 @@ export default function CdaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
@@ -205,7 +205,7 @@ export default function CdaPage() {
         </div>
 
         {/* Progress */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 mb-4">
+        <div className="hud-card p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-white/40">Il tuo progresso</span>
             <span className="font-[family-name:var(--font-jetbrains)] text-xs font-bold">

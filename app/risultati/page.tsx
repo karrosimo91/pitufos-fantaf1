@@ -175,7 +175,7 @@ export default function RisultatiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
@@ -253,7 +253,7 @@ export default function RisultatiPage() {
                 )}
 
                 {/* Breakdown piloti */}
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+                <div className="hud-label mb-2">
                   Piloti ({myResult.pilotiPoints} pts)
                 </div>
                 <div className="space-y-1 mb-4">
@@ -274,7 +274,7 @@ export default function RisultatiPage() {
                 </div>
 
                 {/* Breakdown previsioni */}
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+                <div className="hud-label mb-2">
                   Previsioni ({myResult.previsioniPoints} pts)
                 </div>
                 <div className="space-y-1">
@@ -292,7 +292,7 @@ export default function RisultatiPage() {
 
             {/* Classifica weekend */}
             {results && results.length > 0 && (
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden mb-6">
+              <div className="hud-card overflow-hidden mb-6">
                 <div className="text-[10px] tracking-[4px] text-white/30 uppercase font-bold px-4 py-3 border-b border-white/[0.06]">
                   Classifica Weekend
                 </div>
@@ -326,8 +326,8 @@ export default function RisultatiPage() {
             )}
 
             {/* Eventi gara */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-              <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">
+            <div className="hud-card p-4">
+              <div className="hud-label mb-3">
                 Eventi della gara
               </div>
               <div className="grid grid-cols-2 gap-2">

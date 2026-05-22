@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a12;
-  --foreground: #ededed;
+  /* Pitwall design tokens */
+  --background: #050507;
+  --foreground: #f0f0f5;
+  --bg: #050507;
+  --bg-2: #0a0a10;
+  --panel: #0e0e14;
+  --panel-2: #14141c;
+  --border: #1c1c26;
+  --border-hi: #2a2a38;
+  --accent: #E8002D;
+  --accent-glow: rgba(232, 0, 45, 0.4);
+  --green: #00ff88;
+  --amber: #ffb000;
+  --purple: #b026ff;
+  --text-1: #f0f0f5;
+  --text-2: rgba(240, 240, 245, 0.55);
+  --text-3: rgba(240, 240, 245, 0.28);
+  --text-4: rgba(240, 240, 245, 0.1);
+  --grid-line: rgba(255, 255, 255, 0.035);
 }
 
 @theme inline {
@@ -23,16 +40,167 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Spazio per la bottom nav */
 .pb-bottomnav {
   padding-bottom: 80px;
+}
+
+/* ─── Pitwall utilities ─── */
+
+/* Subtle technical grid background — opt-in via class on a wrapper */
+.bg-grid {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Big monospace numeric — uses JetBrains Mono with tabular nums */
+.num {
+  font-family: var(--font-jetbrains), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pitwall HUD card */
+.hud-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.hud-card-accent::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.hud-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* Telemetry label (uppercase tracked mono) */
+.hud-label {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.hud-meta {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 10px;
+  color: var(--text-2);
+}
+
+/* Section header with red marker (▌) */
+.section-marker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--text-2);
+  text-transform: uppercase;
+}
+.section-marker::before {
+  content: "▌ ";
+  color: var(--accent);
+}
+
+/* Pitwall brand mark */
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+.brand-mark-sm {
+  width: 22px;
+  height: 22px;
+}
+
+/* Live pill (green pulse) */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 1.2px;
+}
+.live-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: live-pulse 1.5s ease-in-out infinite;
 }
 
 /* Animazione pulsazione LIVE */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.35; }
 }
 .animate-live-pulse {
   animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+/* Position chip (P1, P3, etc.) */
+.pos-chip {
+  font-family: var(--font-jetbrains), monospace;
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+  min-width: 28px;
+  color: var(--text-2);
+}
+.pos-chip.p1 { color: var(--accent); }
+.pos-chip.dnf { color: #ff4444; font-size: 10px; }
+
+/* Big stat number with gradient fade */
+.big-num {
+  font-family: var(--font-jetbrains), monospace;
+  font-weight: 800;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Delta indicator (▲ +12 / ▼ -5) */
+.delta-up {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+}
+.delta-up::before { content: "▲ "; }
+.delta-dn {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.delta-dn::before { content: "▼ "; }
+
+/* Subtle hairline divider with optional label */
+.hairline {
+  border-top: 1px dashed var(--border);
 }

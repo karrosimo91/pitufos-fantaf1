@@ -61,7 +61,7 @@ export default function LeghePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
         <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
@@ -155,7 +155,7 @@ export default function LeghePage() {
                       className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none appearance-none"
                     >
                       {RACES_2026.map((r) => (
-                        <option key={r.round} value={r.round} className="bg-[#0a0a12]">
+                        <option key={r.round} value={r.round} className="bg-[#050507]">
                           R{r.round} {r.flag} {r.circuit}
                         </option>
                       ))}
@@ -169,7 +169,7 @@ export default function LeghePage() {
                       className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none appearance-none"
                     >
                       {RACES_2026.filter((r) => r.round >= roundStart).map((r) => (
-                        <option key={r.round} value={r.round} className="bg-[#0a0a12]">
+                        <option key={r.round} value={r.round} className="bg-[#050507]">
                           R{r.round} {r.flag} {r.circuit}
                         </option>
                       ))}

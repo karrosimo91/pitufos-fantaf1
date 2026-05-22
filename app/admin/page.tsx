@@ -74,7 +74,7 @@ export default function AdminPage() {
   // Login screen
   if (!authed) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#050507] flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-2">
@@ -123,7 +123,7 @@ export default function AdminPage() {
   const driversSorted = [...DRIVERS_2026].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white p-4 md:p-8">
+    <div className="min-h-screen bg-[#050507] text-white p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -154,7 +154,7 @@ export default function AdminPage() {
             className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
           >
             {RACES_2026.map((r) => (
-              <option key={r.round} value={r.round} className="bg-[#0a0a12]">
+              <option key={r.round} value={r.round} className="bg-[#050507]">
                 R{r.round} — {r.flag} {r.name} ({new Date(r.date).toLocaleDateString("it-IT")})
               </option>
             ))}
@@ -206,9 +206,9 @@ export default function AdminPage() {
               onChange={(e) => setDotd(e.target.value ? Number(e.target.value) : null)}
               className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
             >
-              <option value="" className="bg-[#0a0a12]">— Nessuno / Non ancora annunciato —</option>
+              <option value="" className="bg-[#050507]">— Nessuno / Non ancora annunciato —</option>
               {driversSorted.map((d) => (
-                <option key={d.number} value={d.number} className="bg-[#0a0a12]">
+                <option key={d.number} value={d.number} className="bg-[#050507]">
                   #{d.number} {d.name} ({d.team})
                 </option>
               ))}
