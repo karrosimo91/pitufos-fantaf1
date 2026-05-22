@@ -25,7 +25,7 @@ export default function DriverCard({
   isPrimoPilota,
   onSelect,
   onSetPrimoPilota,
-  actionLabel = "Acquista",
+  actionLabel = "ACQUISTA",
   showActions = true,
   highlight = false,
 }: DriverCardProps) {
@@ -33,39 +33,46 @@ export default function DriverCard({
 
   return (
     <div
-      className={`relative bg-white/[0.03] border rounded-xl p-4 transition-all hover:bg-white/[0.06] ${
-        highlight ? "border-amber-400/50 bg-amber-400/5" : isPrimoPilota ? "border-[#E8002D]/50 shadow-[0_0_15px_rgba(232,0,45,0.1)]" : "border-white/[0.06]"
+      className={`relative rounded p-4 transition-colors ${
+        highlight
+          ? "bg-amber-400/[0.04] border border-amber-400/45"
+          : isPrimoPilota
+            ? "bg-[#E8002D]/[0.04] border border-[#E8002D]/45 shadow-[0_0_18px_rgba(232,0,45,0.1)]"
+            : "bg-[#0e0e14] border border-[#1c1c26] hover:border-[#2a2a38]"
       }`}
     >
       {isPrimoPilota && (
-        <div className="absolute -top-2 left-3 bg-[#E8002D] text-white text-[9px] font-bold tracking-wider px-2 py-0.5 rounded">
-          PRIMO PILOTA x2
+        <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white font-[family-name:var(--font-jetbrains)] text-[8px] font-bold tracking-[1.5px] px-2 py-0.5 rounded-sm">
+          PRIMO PILOTA · x2
         </div>
       )}
 
       <div className="flex items-center gap-3">
-        {/* Driver photo or placeholder */}
+        {/* Team color bar */}
+        <div className="w-[3px] h-11 rounded shrink-0" style={{ backgroundColor: color }} />
+
+        {/* Driver number / photo */}
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-          style={{ backgroundColor: `${color}30`, color }}
+          className="w-11 h-11 rounded flex items-center justify-center text-sm font-bold shrink-0 border border-[#1c1c26]"
+          style={{ backgroundColor: `${color}1a`, color }}
         >
           {headshot ? (
-            <img src={headshot} alt={name} className="w-12 h-12 rounded-full object-cover" />
+            <img src={headshot} alt={name} className="w-11 h-11 rounded object-cover" />
           ) : (
-            <span className="font-[family-name:var(--font-jetbrains)]">{number}</span>
+            <span className="font-[family-name:var(--font-jetbrains)] tabular-nums">{number}</span>
           )}
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-sm truncate">{name}</div>
-          <div className="text-[11px] text-white/40 truncate">{team}</div>
+          <div className="font-bold text-[14px] truncate tracking-[-0.2px]">{name}</div>
+          <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35 truncate tracking-[0.5px] uppercase mt-0.5">{team}</div>
         </div>
 
         <div className="text-right shrink-0">
-          <div className="font-[family-name:var(--font-jetbrains)] font-bold text-sm" style={{ color }}>
+          <div className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[18px] tabular-nums leading-none" style={{ color }}>
             {price}
           </div>
-          <div className="text-[9px] text-white/30 tracking-wider">SOLDINI</div>
+          <div className="font-[family-name:var(--font-jetbrains)] text-[8px] text-white/30 tracking-[1.5px] mt-1">SOLDINI</div>
         </div>
       </div>
 
@@ -74,7 +81,7 @@ export default function DriverCard({
           {onSelect && (
             <button
               onClick={onSelect}
-              className="flex-1 text-[10px] tracking-wider font-bold uppercase bg-[#E8002D] hover:bg-[#ff1a3d] text-white py-2 rounded-lg transition-all"
+              className="flex-1 font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[2px] font-bold uppercase bg-[#E8002D] hover:bg-[#ff1a3d] text-white py-2.5 rounded transition-colors"
             >
               {actionLabel}
             </button>
@@ -82,9 +89,9 @@ export default function DriverCard({
           {onSetPrimoPilota && (
             <button
               onClick={onSetPrimoPilota}
-              className="text-[10px] tracking-wider font-bold uppercase border border-[#E8002D]/30 text-[#E8002D] hover:bg-[#E8002D]/10 px-3 py-2 rounded-lg transition-all"
+              className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1.5px] font-bold uppercase border border-[#E8002D]/35 text-[#E8002D] hover:bg-[#E8002D]/10 px-3 py-2.5 rounded transition-colors"
             >
-              Primo Pilota
+              PRIMO PILOTA
             </button>
           )}
         </div>

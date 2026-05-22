@@ -384,6 +384,18 @@ export async function POST(request: NextRequest) {
           .upsert(updates, { onConflict: "driver_number,round" });
         if (upErr) log.push(`Errore upsert driver_prices: ${upErr.message}`);
         else log.push(`Quotazioni aggiornate per round ${nextRound}: ${changes.length} variazioni`);
+
+        // Hardening: se ci sono quotazioni "future" oltre il nextRound, sono
+        // obsolete (calcolate quando il round attuale non era ancora processato
+        // o lo era in modo diverso). Le droppiamo per forzare il ricalcolo
+        // al prossimo post-gara.
+        const { error: delErr, count: deleted } = await supabase
+          .from("driver_prices")
+          .delete({ count: "exact" })
+          .gt("round", nextRound);
+        if (delErr) log.push(`Warning cleanup quotazioni future: ${delErr.message}`);
+        else if (deleted && deleted > 0) log.push(`Cleanup quotazioni obsolete: ${deleted} righe rimosse (round > ${nextRound})`);
+
         for (const c of changes) log.push(`  ${c}`);
       } catch (e) {
         log.push(`Errore aggiornamento quotazioni: ${(e as Error).message}`);
