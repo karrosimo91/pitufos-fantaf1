@@ -1,9 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0a0a12"/>
-  <rect x="16" y="16" width="480" height="480" rx="80" fill="none" stroke="#E8002D" stroke-width="4" opacity="0.3"/>
-  <text x="256" y="200" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="120" fill="#E8002D">LP</text>
-  <text x="256" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="48" fill="white" opacity="0.9">FANTA</text>
-  <text x="256" y="370" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="72" fill="#E8002D">F1</text>
-  <rect x="100" y="420" width="312" height="3" rx="1.5" fill="#E8002D" opacity="0.4"/>
-  <text x="256" y="460" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="24" fill="white" opacity="0.3">2026</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Sfondo nero con corner radius stile iOS (22%) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="#000000"/>
+
+  <!-- Parallelogramma rosso (brand-mark Pitwall): inclinato a destra in cima -->
+  <!-- Equivale a clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%) -->
+  <polygon points="432,220 712,220 632,660 352,660" fill="#E8002D"/>
+
+  <!-- Logo "PITUFOS." -->
+  <text x="512" y="855"
+        font-family="Inter, 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="900"
+        font-size="160"
+        letter-spacing="-2"
+        text-anchor="middle"
+        fill="#FFFFFF">PITUFOS<tspan fill="#E8002D">.</tspan></text>
 </svg>
