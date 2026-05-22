@@ -56,10 +56,13 @@ export function useLiveWebSocket(sessionKey: number | null) {
   }, [sessionKey]);
 
   // Fetch iniziale via proxy server-side (no CORS)
-  const fetchInitialData = useCallback(async (sk: number) => {
+  const fetchInitialData = useCallback(async (sk: number, signal: AbortSignal) => {
     try {
-      const res = await fetch(`/api/live-data?session_key=${sk}`, { cache: "no-store" });
-      if (!res.ok) return;
+      const res = await fetch(`/api/live-data?session_key=${sk}`, { cache: "no-store", signal });
+      if (!res.ok) {
+        console.warn("[live-ws] /api/live-data response not ok", res.status);
+        return;
+      }
 
       const data = await res.json();
 
@@ -101,7 +104,9 @@ export function useLiveWebSocket(sessionKey: number | null) {
       if (data.stints?.length) {
         setStints(data.stints);
       }
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return;
+      console.warn("[live-ws] fetchInitialData failed", err);
       // Non bloccante, i dati arriveranno via WS
     }
   }, []);
@@ -110,17 +115,27 @@ export function useLiveWebSocket(sessionKey: number | null) {
     if (!sessionKey) return;
 
     let client: mqtt.MqttClient | null = null;
+    const abortCtrl = new AbortController();
+    let cancelled = false;
 
     async function connect() {
       try {
-        // Fetch dati iniziali via proxy
-        await fetchInitialData(sessionKey!);
+        // Fetch dati iniziali via proxy (abortabile se sessionKey cambia)
+        await fetchInitialData(sessionKey!, abortCtrl.signal);
+        if (cancelled) return;
 
         // Ottieni token per WebSocket
-        const tokenRes = await fetch("/api/openf1-token");
-        if (!tokenRes.ok) return;
+        const tokenRes = await fetch("/api/openf1-token", { signal: abortCtrl.signal });
+        if (!tokenRes.ok) {
+          console.warn("[live-ws] /api/openf1-token response not ok", tokenRes.status);
+          return;
+        }
         const { access_token } = await tokenRes.json();
-        if (!access_token) return;
+        if (!access_token) {
+          console.warn("[live-ws] empty access_token, MQTT will not connect");
+          return;
+        }
+        if (cancelled) return;
 
         // Connetti MQTT over WebSocket
         client = mqtt.connect("wss://mqtt.openf1.org:8084/mqtt", {
@@ -144,7 +159,9 @@ export function useLiveWebSocket(sessionKey: number | null) {
 
         client.on("close", () => setConnected(false));
         client.on("offline", () => setConnected(false));
-        client.on("error", () => {});
+        client.on("error", (err) => {
+          console.warn("[live-ws] mqtt error", err?.message ?? err);
+        });
 
         client.on("message", (_topic: string, payload: Buffer) => {
           try {
@@ -196,18 +213,21 @@ export function useLiveWebSocket(sessionKey: number | null) {
                 date: msg.date || new Date().toISOString(),
               }]);
             }
-          } catch {
-            // Skip
+          } catch (err) {
+            console.warn("[live-ws] failed to parse mqtt message", err);
           }
         });
-      } catch {
-        // Errore connessione
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
+        console.warn("[live-ws] connect() failed", err);
       }
     }
 
     connect();
 
     return () => {
+      cancelled = true;
+      abortCtrl.abort();
       if (client) {
         client.end(true);
         clientRef.current = null;

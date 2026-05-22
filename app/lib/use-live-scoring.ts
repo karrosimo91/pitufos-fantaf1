@@ -2,19 +2,19 @@
 import { useMemo } from "react";
 import { useLiveWebSocket, type LiveRaceControl } from "./use-live-ws";
 import {
-  calcolaQualifica,
-  calcolaSprintShootout,
-  calcolaSprint,
-  calcolaGara,
-  calcolaPuntiPrevisioni,
-  type DriverResult,
+  calcolaPuntiWeekend,
   type RaceWeekendResults,
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "./scoring";
-import { PREVISIONI_PUNTI } from "./types";
+import { PREVISIONI_PUNTI, type Previsioni } from "./types";
+import {
+  buildLiveWeekendResults,
+  detectLiveEvents,
+  classifySession,
+} from "./build-live-results";
 
-// ─── Tipi ───
+// ─── Tipi esposti ───
 
 export interface LivePilotaScore {
   driver_number: number;
@@ -29,254 +29,140 @@ export interface LivePilotaScore {
 export interface LivePrevisioneStatus {
   key: string;
   label: string;
-  prediction: boolean | number | null; // la previsione del giocatore
-  happened: boolean | null;            // null = in attesa
+  prediction: boolean | number | null;
+  happened: boolean | null;
   correct: boolean | null;
   points: number;
-}
-
-export interface LiveClassificaEntry {
-  user_id: string;
-  name: string;
-  points: number;
-}
-
-// ─── Helper: rileva eventi da race control ───
-
-function detectEvents(raceControl: LiveRaceControl[]) {
-  let safetyCar = false;
-  let virtualSafetyCar = false;
-  let redFlag = false;
-  const dnfDrivers = new Set<number>();
-
-  for (const rc of raceControl) {
-    const msg = (rc.message || "").toUpperCase();
-    const flag = (rc.flag || "").toUpperCase();
-
-    if (msg.includes("SAFETY CAR") && !msg.includes("VIRTUAL")) safetyCar = true;
-    if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtualSafetyCar = true;
-    if (flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) redFlag = true;
-    if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-      if (rc.driver_number) dnfDrivers.add(rc.driver_number);
-    }
-  }
-
-  return { safetyCar, virtualSafetyCar, redFlag, dnfDrivers, totalDnf: dnfDrivers.size };
-}
-
-function detectWetTyres(stints: { compound: string }[]) {
-  return stints.some((s) => {
-    const c = (s.compound || "").toUpperCase();
-    return c === "WET" || c === "INTERMEDIATE";
-  });
 }
 
 // ─── Hook principale ───
 
 export function useLiveScoring(
   sessionKey: number | null,
-  sessionType: string, // "Race", "Qualifying", "Sprint", "Sprint Qualifying"
+  sessionType: string,
   myDriverNumbers: number[],
   primoPilota: number | null,
   chipPiloti: ChipPilotiConfig | null,
   chipPrevisioni: ChipPrevisioniConfig | null,
-  myPrevisioni: {
-    safetyCar: boolean | null;
-    virtualSafetyCar: boolean | null;
-    redFlag: boolean | null;
-    gommeWet: boolean | null;
-    poleVince: boolean | null;
-    numeroDnf: number | null;
-  },
-  qualifyingPole?: number | null, // driver_number del pole sitter (per "pole vince")
-  gridPositions?: Map<number, number>, // driver_number → grid position (dalla qualifica)
-  previousResults?: RaceWeekendResults | null, // risultati sessioni precedenti del weekend
+  myPrevisioni: Previsioni,
+  qualifyingPole?: number | null,
+  gridPositions?: Map<number, number>,
+  previousResults?: RaceWeekendResults | null,
 ) {
   const { positions, raceControl, fastestLap, stints, connected } = useLiveWebSocket(sessionKey);
 
-  const result = useMemo(() => {
-    if (!sessionKey || positions.size === 0) {
-      return {
-        piloti: [] as LivePilotaScore[],
-        totalPiloti: 0,
-        previsioniStatus: [] as LivePrevisioneStatus[],
-        totalPrevisioni: 0,
-        totalPoints: 0,
-        raceControlFeed: [] as LiveRaceControl[],
-        events: { safetyCar: false, virtualSafetyCar: false, redFlag: false, wetTyres: false, totalDnf: 0 },
-        connected,
-      };
-    }
+  return useMemo(() => {
+    const empty = {
+      piloti: [] as LivePilotaScore[],
+      totalPiloti: 0,
+      previsioniStatus: [] as LivePrevisioneStatus[],
+      totalPrevisioni: 0,
+      totalPoints: 0,
+      raceControlFeed: [] as LiveRaceControl[],
+      events: { safetyCar: false, virtualSafetyCar: false, redFlag: false, wetTyres: false, totalDnf: 0 },
+      connected,
+    };
+    if (!sessionKey || positions.size === 0) return empty;
 
-    const events = detectEvents(raceControl);
-    const wetTyres = detectWetTyres(stints);
-    const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint");
-    const isSprint = sessionType.toLowerCase() === "sprint" || (sessionType.toLowerCase().includes("race") && sessionType.toLowerCase().includes("sprint"));
-    const isSprintQualifying = sessionType.toLowerCase().includes("sprint") && sessionType.toLowerCase().includes("qualifying");
-    const isQualifying = sessionType.toLowerCase() === "qualifying";
+    const snap = { positions, raceControl, fastestLap, stints };
+    const events = detectLiveEvents(snap);
+    const kind = classifySession(sessionType);
+    const isRace = kind === "race";
 
-    // Helper: punti sessioni precedenti per un pilota
-    function prevPts(driverNum: number): number {
-      if (!previousResults) return 0;
-      let pts = 0;
-      if (!isQualifying) {
-        const qr = previousResults.qualifying?.find((r) => r.driver_number === driverNum);
-        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
-      }
-      if (!isSprintQualifying) {
-        const ssr = previousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
-        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
-      }
-      if (!isSprint) {
-        const sr = previousResults.sprint?.find((r) => r.driver_number === driverNum);
-        if (sr) pts += calcolaSprint(sr);
-      }
-      if (!isRace) {
-        const rr = previousResults.race?.find((r) => r.driver_number === driverNum);
-        if (rr) pts += calcolaGara(rr);
-      }
-      return pts;
-    }
+    const virtualResults = buildLiveWeekendResults(
+      sessionType,
+      snap,
+      events,
+      gridPositions ?? new Map(),
+      previousResults ?? null,
+      qualifyingPole,
+    );
 
-    // Calcola punti per i miei piloti (incluso sesto uomo)
-    const allDrivers = [...myDriverNumbers];
-    if (chipPiloti?.chipPiloti === "sesto" && chipPiloti.sestoUomo && !allDrivers.includes(chipPiloti.sestoUomo)) {
-      allDrivers.push(chipPiloti.sestoUomo);
-    }
+    // Previsioni: si calcolano solo in gara. Per le altre sessioni passiamo previsioni nulle.
+    const previsioniPerCalcolo: Previsioni = isRace ? myPrevisioni : {
+      safetyCar: null, virtualSafetyCar: null, redFlag: null,
+      gommeWet: null, poleVince: null, numeroDnf: null,
+    };
 
-    const piloti: LivePilotaScore[] = allDrivers.map((driverNum) => {
-      const pos = positions.get(driverNum);
-      const position = pos?.position ?? 22;
-      const isDnf = events.dnfDrivers.has(driverNum);
-      const isFastestLap = fastestLap?.driver_number === driverNum;
+    const calc = calcolaPuntiWeekend(
+      myDriverNumbers,
+      primoPilota,
+      previsioniPerCalcolo,
+      virtualResults,
+      chipPiloti ?? undefined,
+      isRace ? (chipPrevisioni ?? undefined) : undefined,
+    );
 
-      // Punti sessione corrente (live)
-      let puntiBase = 0;
+    // Arricchisci con info live per la UI (position, DNF, FL)
+    const piloti: LivePilotaScore[] = calc.pilotiDettaglio.map((d) => ({
+      driver_number: d.driver_number,
+      position: positions.get(d.driver_number)?.position ?? 22,
+      puntiBase: d.puntiBase,
+      moltiplicatore: d.moltiplicatore,
+      puntiFinali: d.puntiFinali,
+      isDnf: events.dnfDrivers.has(d.driver_number),
+      isFastestLap: fastestLap?.driver_number === d.driver_number,
+    }));
 
-      if (isQualifying) {
-        puntiBase = calcolaQualifica(position, isDnf);
-      } else if (isSprintQualifying) {
-        puntiBase = calcolaSprintShootout(position, isDnf);
-      } else if (isSprint) {
-        const driverResult: DriverResult = {
-          driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFastestLap,
-        };
-        puntiBase = calcolaSprint(driverResult);
-      } else if (isRace) {
-        const grid = gridPositions?.get(driverNum);
-        const driverResult: DriverResult = {
-          driver_number: driverNum, position, dnf: isDnf,
-          grid_position: grid,
-          fastest_lap: isFastestLap, driver_of_the_day: false, penalty: false,
-        };
-        puntiBase = calcolaGara(driverResult);
-      }
-
-      // Somma punti sessioni precedenti
-      puntiBase += prevPts(driverNum);
-
-      // Moltiplicatori
-      const isPrimo = driverNum === primoPilota;
-      const isBoosted = chipPiloti?.chipPiloti === "boost" && chipPiloti.chipPilotiTarget === driverNum && !isPrimo;
-
-      let moltiplicatore = 1;
-      if (isPrimo) moltiplicatore = 2;
-      if (isBoosted) moltiplicatore = 3;
-
-      let puntiFinali: number;
-
-      // Scudo Capitano
-      if (isPrimo && chipPiloti?.chipPiloti === "scudo") {
-        puntiFinali = puntiBase > 0 ? puntiBase * 2 : puntiBase;
-      } else {
-        puntiFinali = puntiBase * moltiplicatore;
-      }
-
-      // Halo
-      if (chipPiloti?.chipPiloti === "halo" && puntiFinali < 0) {
-        puntiFinali = 0;
-      }
-
-      return { driver_number: driverNum, position, puntiBase, moltiplicatore, puntiFinali, isDnf, isFastestLap };
-    });
-
-    const totalPiloti = piloti.reduce((sum, p) => sum + p.puntiFinali, 0);
-
-    // Previsioni (solo durante gara)
-    const poleWon = isRace && qualifyingPole
-      ? (positions.get(qualifyingPole)?.position === 1)
-      : null; // non determinabile ancora
-
+    // Costruisci LivePrevisioneStatus solo in gara
     const previsioniStatus: LivePrevisioneStatus[] = [];
-    let totalPrevisioni = 0;
-
     if (isRace) {
-      const prevItems: { key: string; label: string; prediction: boolean | null; happened: boolean; puntiSi: number; puntiNo: number }[] = [
-        { key: "safetyCar", label: "Safety Car", prediction: myPrevisioni.safetyCar, happened: events.safetyCar, puntiSi: PREVISIONI_PUNTI.safetyCar.si, puntiNo: PREVISIONI_PUNTI.safetyCar.no },
-        { key: "virtualSafetyCar", label: "Virtual Safety Car", prediction: myPrevisioni.virtualSafetyCar, happened: events.virtualSafetyCar, puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si, puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no },
-        { key: "redFlag", label: "Red Flag", prediction: myPrevisioni.redFlag, happened: events.redFlag, puntiSi: PREVISIONI_PUNTI.redFlag.si, puntiNo: PREVISIONI_PUNTI.redFlag.no },
-        { key: "gommeWet", label: "Gomme Wet", prediction: myPrevisioni.gommeWet, happened: wetTyres, puntiSi: PREVISIONI_PUNTI.gommeWet.si, puntiNo: PREVISIONI_PUNTI.gommeWet.no },
-        { key: "poleVince", label: "Pole vince", prediction: myPrevisioni.poleVince, happened: poleWon ?? false, puntiSi: PREVISIONI_PUNTI.poleVince.si, puntiNo: PREVISIONI_PUNTI.poleVince.no },
+      const e = virtualResults.events;
+      const prevItems: { key: keyof Previsioni; label: string; happened: boolean; puntiSi: number; puntiNo: number }[] = [
+        { key: "safetyCar", label: "Safety Car", happened: e.safety_car, puntiSi: PREVISIONI_PUNTI.safetyCar.si, puntiNo: PREVISIONI_PUNTI.safetyCar.no },
+        { key: "virtualSafetyCar", label: "Virtual Safety Car", happened: e.virtual_safety_car, puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si, puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no },
+        { key: "redFlag", label: "Red Flag", happened: e.red_flag, puntiSi: PREVISIONI_PUNTI.redFlag.si, puntiNo: PREVISIONI_PUNTI.redFlag.no },
+        { key: "gommeWet", label: "Gomme Wet", happened: e.wet_tyres, puntiSi: PREVISIONI_PUNTI.gommeWet.si, puntiNo: PREVISIONI_PUNTI.gommeWet.no },
+        { key: "poleVince", label: "Pole vince", happened: e.pole_won, puntiSi: PREVISIONI_PUNTI.poleVince.si, puntiNo: PREVISIONI_PUNTI.poleVince.no },
       ];
 
       for (const p of prevItems) {
+        const prediction = myPrevisioni[p.key] as boolean | null;
+        const points = calc.previsioniDettaglio[p.key] ?? 0;
         let correct: boolean | null = null;
-        let points = 0;
-
-        if (p.prediction !== null) {
-          if (p.happened) {
-            // Evento accaduto → chi ha detto SI ha ragione
-            correct = p.prediction === true;
-            points = correct ? p.puntiSi : 0;
-          } else {
-            // Evento NON accaduto (per ora) → chi ha detto NO ha ragione provvisoriamente
-            correct = p.prediction === false; // provvisorio, può cambiare
-            points = correct ? p.puntiNo : 0;
-          }
+        if (prediction !== null) {
+          correct = prediction === p.happened;
         }
-
-        // Chip previsione sicura/doppia
-        if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === p.key && correct === false) {
-          points = p.prediction ? p.puntiSi : p.puntiNo;
-        }
-        if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === p.key) {
-          points *= 2;
-        }
-
-        previsioniStatus.push({ key: p.key, label: p.label, prediction: p.prediction, happened: p.happened, correct, points });
-        totalPrevisioni += points;
+        previsioniStatus.push({
+          key: p.key,
+          label: p.label,
+          prediction,
+          happened: p.happened,
+          correct,
+          points,
+        });
       }
 
-      // Numero DNF
-      const dnfCorrect = myPrevisioni.numeroDnf !== null ? myPrevisioni.numeroDnf === events.totalDnf : null;
-      let dnfPoints = dnfCorrect ? PREVISIONI_PUNTI.numeroDnf.esatto : 0;
-      if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === "numeroDnf" && !dnfCorrect) {
-        dnfPoints = PREVISIONI_PUNTI.numeroDnf.esatto;
-      }
-      if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === "numeroDnf") {
-        dnfPoints *= 2;
-      }
-
+      const dnfPred = myPrevisioni.numeroDnf;
+      const dnfPoints = calc.previsioniDettaglio.numeroDnf ?? 0;
+      const dnfCorrect = dnfPred !== null ? dnfPred === e.total_dnf : null;
       previsioniStatus.push({
-        key: "numeroDnf", label: "Numero DNF",
-        prediction: myPrevisioni.numeroDnf, happened: events.totalDnf as unknown as boolean,
-        correct: dnfCorrect, points: dnfPoints,
+        key: "numeroDnf",
+        label: "Numero DNF",
+        prediction: dnfPred,
+        happened: e.total_dnf as unknown as boolean,
+        correct: dnfCorrect,
+        points: dnfPoints,
       });
-      totalPrevisioni += dnfPoints;
     }
 
     return {
       piloti,
-      totalPiloti,
+      totalPiloti: calc.pilotiPoints,
       previsioniStatus,
-      totalPrevisioni,
-      totalPoints: totalPiloti + totalPrevisioni,
-      raceControlFeed: [...raceControl].reverse(), // più recenti in alto
-      events: { safetyCar: events.safetyCar, virtualSafetyCar: events.virtualSafetyCar, redFlag: events.redFlag, wetTyres, totalDnf: events.totalDnf },
+      totalPrevisioni: isRace ? calc.previsioniPoints : 0,
+      totalPoints: calc.total,
+      raceControlFeed: [...raceControl].reverse(),
+      events: {
+        safetyCar: events.safetyCar,
+        virtualSafetyCar: events.virtualSafetyCar,
+        redFlag: events.redFlag,
+        wetTyres: events.wetTyres,
+        totalDnf: events.totalDnf,
+      },
       connected,
     };
   }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected,
-    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni, qualifyingPole, gridPositions, previousResults]);
-
-  return result;
+    myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni,
+    qualifyingPole, gridPositions, previousResults]);
 }
