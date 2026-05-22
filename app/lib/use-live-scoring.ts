@@ -49,7 +49,7 @@ export function useLiveScoring(
   gridPositions?: Map<number, number>,
   previousResults?: RaceWeekendResults | null,
 ) {
-  const { positions, raceControl, fastestLap, stints, connected } = useLiveWebSocket(sessionKey);
+  const { positions, raceControl, fastestLap, stints, connected, mode } = useLiveWebSocket(sessionKey);
 
   return useMemo(() => {
     const empty = {
@@ -61,6 +61,7 @@ export function useLiveScoring(
       raceControlFeed: [] as LiveRaceControl[],
       events: { safetyCar: false, virtualSafetyCar: false, redFlag: false, wetTyres: false, totalDnf: 0 },
       connected,
+      mode,
     };
     if (!sessionKey || positions.size === 0) return empty;
 
@@ -161,8 +162,9 @@ export function useLiveScoring(
         totalDnf: events.totalDnf,
       },
       connected,
+      mode,
     };
-  }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected,
+  }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected, mode,
     myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni,
     qualifyingPole, gridPositions, previousResults]);
 }

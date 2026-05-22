@@ -112,7 +112,7 @@ export default function LiveTab({
     <div>
       <HudCard
         label="PUNTEGGIO PROVVISORIO"
-        meta={<ConnectedPill connected={live.connected} />}
+        meta={<ConnectedPill connected={live.connected} mode={(live as { mode?: "init" | "mqtt" | "polling" }).mode} />}
         className="mb-4"
       >
         <div className="big-num">{live.totalPoints}</div>
