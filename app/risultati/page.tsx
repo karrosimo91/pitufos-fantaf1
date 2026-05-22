@@ -175,7 +175,7 @@ export default function RisultatiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">

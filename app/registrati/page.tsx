@@ -31,7 +31,7 @@ export default function RegistratiPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@ export default function RegistratiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">

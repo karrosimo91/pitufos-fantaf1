@@ -26,7 +26,7 @@ const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
 export default function ClassificaPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center bg-grid">
         <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
       </div>
     }>
@@ -437,26 +437,26 @@ function ClassificaContent() {
   const isSeasonView = selectedRound === null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-8 pb-bottomnav">
-        <div className="mb-6">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-            Stagione 2026
+      <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
+        <div className="mb-5">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+            RANKING · STAGIONE 2026
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-              CLASSIFICA
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">
+              Classifica
             </h1>
             {hasLiveData && !selectedRound && (
-              <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2.5 py-1 rounded text-[9px] font-bold tracking-wider">
-                <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
+              <span className="live-pill">
+                <span className="live-pill-dot" />
                 LIVE
               </span>
             )}
             {hasProvisionalData && !selectedRound && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded text-[9px] font-bold tracking-wider">
+              <span className="font-[family-name:var(--font-jetbrains)] inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-1 rounded text-[9px] font-bold tracking-[1.5px]">
                 PROVVISORIO
               </span>
             )}
@@ -465,45 +465,47 @@ function ClassificaContent() {
 
         {/* Selettore lega */}
         {legheLoaded && leghe.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-3">
+            <div className="hud-label mb-1.5">LEGA</div>
             <div className="relative">
               <select
                 value={selectedLega}
                 onChange={(e) => { setSelectedLega(e.target.value); setSelectedRound(null); }}
-                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm font-semibold outline-none focus:border-[#E8002D]/40 appearance-none pr-10"
+                className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.3px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
               >
                 {leghe.map((l) => (
-                  <option key={l.id} value={l.id} className="bg-[#0a0a12]">
+                  <option key={l.id} value={l.id} className="bg-[#050507]">
                     {l.name} (R{l.round_start}–R{l.round_end})
                   </option>
                 ))}
               </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
             </div>
             {currentLega && !currentLega.is_generale && (
-              <div className="text-[11px] text-white/30 mt-2 px-1">
-                Round {currentLega.round_start} → {currentLega.round_end} — {currentLega.is_public ? "Pubblica" : "Privata"}
+              <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 mt-2 px-1 tracking-[0.5px] uppercase">
+                R{currentLega.round_start} → R{currentLega.round_end} · {currentLega.is_public ? "PUBBLICA" : "PRIVATA"}
               </div>
             )}
           </div>
         )}
 
         {/* Filtro round */}
-        <div className="mb-6">
+        <div className="mb-5">
+          <div className="hud-label mb-1.5">ROUND</div>
           <div className="relative">
             <select
               value={selectedRound ?? ""}
               onChange={(e) => setSelectedRound(e.target.value ? Number(e.target.value) : null)}
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm font-semibold outline-none focus:border-[#E8002D]/40 appearance-none pr-10"
+              className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.3px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
             >
-              <option value="" className="bg-[#0a0a12]">Stagione completa</option>
+              <option value="" className="bg-[#050507]">STAGIONE COMPLETA</option>
               {availableRounds.map((race) => (
-                <option key={race.round} value={race.round} className="bg-[#0a0a12]">
+                <option key={race.round} value={race.round} className="bg-[#050507]">
                   R{race.round} — {race.flag} {race.name}
                 </option>
               ))}
             </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
           </div>
         </div>
 
@@ -524,22 +526,24 @@ function ClassificaContent() {
           <>
             {/* Podio (solo se almeno 3 giocatori con punti) */}
             {classifica.filter((e) => e.total_points > 0).length >= 3 && (
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-2 mb-6 items-end">
                 {[classifica[1], classifica[0], classifica[2]].map((entry, i) => {
                   const podiumPos = [2, 1, 3][i];
                   const heights = ["h-24", "h-32", "h-20"];
                   const colors = ["text-gray-300", "text-[#E8002D]", "text-amber-600"];
+                  const labels = ["SILVER", "GOLD", "BRONZE"];
                   return (
                     <div key={entry.user_id} className="flex flex-col items-center">
-                      <div className="text-xs font-bold text-white/60 mb-1">{entry.team_principal_name}</div>
-                      <div className="text-[10px] text-white/30 mb-2 truncate max-w-full">{entry.scuderia_name}</div>
+                      <div className="text-[11px] font-bold text-white/70 mb-0.5 truncate max-w-full">{entry.team_principal_name}</div>
+                      <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/30 mb-2 truncate max-w-full tracking-[0.5px] uppercase">{entry.scuderia_name}</div>
                       <div
-                        className={`w-full ${heights[i]} bg-white/[0.03] border border-white/[0.06] rounded-t-xl flex flex-col items-center justify-center`}
+                        className={`w-full ${heights[i]} bg-[#0e0e14] border border-[#1c1c26] ${i === 1 ? "border-[#E8002D]/30 shadow-[0_-2px_24px_rgba(232,0,45,0.15)]" : ""} rounded-t flex flex-col items-center justify-center relative`}
                       >
-                        <div className={`text-2xl font-black font-[family-name:var(--font-oswald)] ${colors[i]}`}>
+                        <div className="font-[family-name:var(--font-jetbrains)] text-[8px] tracking-[2px] text-white/30 absolute top-1.5">{labels[i]}</div>
+                        <div className={`text-[34px] font-extrabold font-[family-name:var(--font-jetbrains)] ${colors[i]} leading-none`}>
                           {podiumPos}
                         </div>
-                        <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold mt-1">
+                        <div className="font-[family-name:var(--font-jetbrains)] text-[13px] font-extrabold mt-1.5 tabular-nums">
                           {entry.total_points}
                         </div>
                       </div>
@@ -550,56 +554,56 @@ function ClassificaContent() {
             )}
 
             {/* Tabella completa */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
-              <div className={`grid ${selectedRound ? "grid-cols-[auto_1fr_auto_auto_auto]" : "grid-cols-[auto_1fr_auto_auto]"} gap-3 px-4 py-3 text-[9px] tracking-[2px] text-white/30 uppercase border-b border-white/[0.06]`}>
-                <span>Pos</span>
-                <span>Team Principal</span>
-                {selectedRound && <span className="text-right">Piloti</span>}
-                {selectedRound && <span className="text-right">Prev</span>}
-                {!selectedRound && <span className="text-right">Weekend</span>}
-                <span className="text-right">{selectedRound ? "Tot" : "Totale"}</span>
+            <div className="hud-card overflow-hidden">
+              <div className={`grid ${selectedRound ? "grid-cols-[44px_1fr_auto_auto_auto]" : "grid-cols-[44px_1fr_auto_auto]"} gap-3 px-3.5 py-2.5 hud-label border-b border-[#1c1c26]`}>
+                <span>POS</span>
+                <span>TEAM PRINCIPAL</span>
+                {selectedRound && <span className="text-right">PILOTI</span>}
+                {selectedRound && <span className="text-right">PREV</span>}
+                {!selectedRound && <span className="text-right">WEEKEND</span>}
+                <span className="text-right">{selectedRound ? "TOT" : "TOTALE"}</span>
               </div>
 
               {classifica.map((entry, i) => (
                 <div
                   key={entry.user_id}
                   onClick={() => canViewSquads ? openPlayerModal(entry) : undefined}
-                  className={`grid ${selectedRound ? "grid-cols-[auto_1fr_auto_auto_auto]" : "grid-cols-[auto_1fr_auto_auto]"} gap-3 px-4 py-3 items-center transition-all hover:bg-white/[0.02] ${
-                    i < classifica.length - 1 ? "border-b border-white/[0.03]" : ""
-                  } ${canViewSquads ? "cursor-pointer active:bg-white/[0.04]" : ""}`}
+                  className={`grid ${selectedRound ? "grid-cols-[44px_1fr_auto_auto_auto]" : "grid-cols-[44px_1fr_auto_auto]"} gap-3 px-3.5 py-3 items-center transition-colors hover:bg-white/[0.025] ${
+                    i < classifica.length - 1 ? "border-b border-[#1c1c26]" : ""
+                  } ${canViewSquads ? "cursor-pointer active:bg-white/[0.05]" : ""} ${i === 0 ? "bg-[#E8002D]/[0.04]" : ""}`}
                 >
                   <span
-                    className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm w-8 ${
-                      i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white/80" : "text-white/30"
+                    className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums ${
+                      i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/30"
                     }`}
                   >
-                    {i + 1}
+                    {String(i + 1).padStart(2, "0")}
                   </span>
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold truncate">{entry.team_principal_name}</div>
-                      <div className="text-[11px] text-white/30 truncate">{entry.scuderia_name}</div>
+                      <div className="text-[13px] font-bold truncate leading-tight">{entry.team_principal_name}</div>
+                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 truncate tracking-[0.5px] uppercase mt-0.5">{entry.scuderia_name}</div>
                     </div>
                     {canViewSquads && (
-                      <Eye size={13} className="text-white/15 shrink-0" />
+                      <Eye size={12} className="text-white/15 shrink-0" />
                     )}
                   </div>
                   {selectedRound ? (
                     <>
                       <div className="text-right">
-                        <span className="font-[family-name:var(--font-jetbrains)] text-xs text-white/40">
+                        <span className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/40 tabular-nums">
                           {entry.piloti_points}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="font-[family-name:var(--font-jetbrains)] text-xs text-white/40">
+                        <span className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/40 tabular-nums">
                           {entry.previsioni_points}
                         </span>
                       </div>
                     </>
                   ) : (
                     <div className="text-right">
-                      <span className={`font-[family-name:var(--font-jetbrains)] text-xs ${
+                      <span className={`font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tabular-nums ${
                         hasLiveData && livePointsMap.has(entry.user_id) ? "text-[#E8002D]"
                         : hasProvisionalData ? "text-amber-400"
                         : "text-white/40"
@@ -609,7 +613,7 @@ function ClassificaContent() {
                     </div>
                   )}
                   <div className="text-right">
-                    <span className="font-[family-name:var(--font-jetbrains)] font-bold text-sm">
+                    <span className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums">
                       {entry.total_points}
                     </span>
                   </div>
@@ -620,9 +624,9 @@ function ClassificaContent() {
         )}
         {/* Hint: tap per vedere squadra */}
         {canViewSquads && classifica.length > 0 && (
-          <div className="text-center mt-4 text-[11px] text-white/20 flex items-center justify-center gap-1.5">
-            <Eye size={12} />
-            Tocca un giocatore per vedere la sua squadra
+          <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
+            <Eye size={11} />
+            Tocca un giocatore per la sua squadra
           </div>
         )}
       </main>

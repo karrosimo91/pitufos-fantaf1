@@ -11,7 +11,7 @@ export default function PrevisioniPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white flex items-center justify-center">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center">
       <div className="text-white/30 text-sm">Reindirizzamento alla pagina Gara...</div>
     </div>
   );

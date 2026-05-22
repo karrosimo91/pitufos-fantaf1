@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
   if (authLoading || !sq.loaded || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const hasConfirmed = sq.confirmed;
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
         {/* Riepilogo personale */}

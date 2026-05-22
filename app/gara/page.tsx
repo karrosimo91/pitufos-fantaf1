@@ -369,7 +369,7 @@ function GaraPage() {
 
   if (authLoading || !sq.loaded || !prev.loaded || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] text-white">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
@@ -380,11 +380,11 @@ function GaraPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white">
+    <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
 
       {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-[#E8002D] text-white text-sm font-bold px-6 py-3 rounded-xl shadow-[0_0_30px_rgba(232,0,45,0.4)]">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-[#E8002D] text-white text-[12px] font-bold tracking-[1.5px] uppercase px-5 py-3 rounded shadow-[0_0_30px_rgba(232,0,45,0.4)] font-[family-name:var(--font-jetbrains)]">
           {toast}
         </div>
       )}
@@ -397,79 +397,85 @@ function GaraPage() {
               <select
                 value={viewRound}
                 onChange={(e) => setViewRound(Number(e.target.value))}
-                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm font-semibold outline-none focus:border-[#E8002D]/40 appearance-none pr-10"
+                className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.5px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
               >
                 {selectableRounds.map((race) => (
-                  <option key={race.round} value={race.round} className="bg-[#0a0a12]">
-                    R{race.round} — {race.flag} {race.name} {race.round === currentRound ? "(attuale)" : ""}
+                  <option key={race.round} value={race.round} className="bg-[#050507]">
+                    R{String(race.round).padStart(2, "0")} — {race.flag} {race.name} {race.round === currentRound ? "(ATTUALE)" : ""}
                   </option>
                 ))}
               </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
             </div>
           </div>
         )}
 
-        {/* ═══ HEADER ═══ */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] tracking-[3px] text-[#E8002D] uppercase font-bold">R{viewRace.round}</span>
-            <div className="flex items-center gap-2">
+        {/* ═══ HEADER (HudCard) ═══ */}
+        <div className="hud-card hud-card-accent mb-4">
+          <div className="hud-card-head">
+            <div className="hud-label">
+              ROUND {String(viewRace.round).padStart(2, "0")} / 24
+            </div>
+            <div className="flex items-center gap-1.5">
               {viewRace.sprint && (
-                <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">SPRINT</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">SPRINT</span>
               )}
               {locked && (
-                <span className="bg-white/10 text-white/50 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">BLOCCATO</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-white/[0.04] border border-[#1c1c26] text-white/40 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">BLOCCATO</span>
               )}
               {hasResults && (
-                <span className="bg-green-500/15 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">COMPLETATO</span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-green-500/10 border border-green-500/30 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">DONE</span>
               )}
               {isLive && isCurrentRound && (
-                <span className="inline-flex items-center gap-1.5 bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
-                  <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />
+                <span className="live-pill">
+                  <span className="live-pill-dot" />
                   LIVE
                 </span>
               )}
               {showProvisional && (
-                <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
-                  PROVVISORIO
-                </span>
+                <span className="font-[family-name:var(--font-jetbrains)] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">PROVVISORIO</span>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <CountryFlag countryCode={viewRace.countryCode} size={32} />
-            <div>
-              <h1 className="text-lg font-black font-[family-name:var(--font-oswald)] leading-tight">{viewRace.name}</h1>
-              <p className="text-white/40 text-xs">{viewRace.circuit}</p>
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <CountryFlag countryCode={viewRace.countryCode} size={36} />
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.4px]">{viewRace.name}</h1>
+                <p className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35 tracking-[0.5px] uppercase mt-1 truncate">{viewRace.circuit}</p>
+              </div>
             </div>
+            {mounted && isCurrentRound && !locked && (
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 mt-4 bg-black/40 border border-[#1c1c26] rounded px-3 py-2.5">
+                <Clock size={13} className="text-[#E8002D]" />
+                <span className="hud-label">DEADLINE</span>
+                <span className="font-[family-name:var(--font-jetbrains)] text-[14px] font-extrabold tabular-nums tracking-[0.5px]">
+                  {countdown.days > 0 && (
+                    <span className="text-[#E8002D]">{String(countdown.days).padStart(2, "0")}<span className="text-white/30 text-[10px] mx-0.5">G</span></span>
+                  )}
+                  {String(countdown.hours).padStart(2, "0")}<span className="text-white/30 mx-0.5">:</span>{String(countdown.minutes).padStart(2, "0")}<span className="text-white/30 mx-0.5">:</span>{String(countdown.seconds).padStart(2, "0")}
+                </span>
+              </div>
+            )}
           </div>
-          {mounted && isCurrentRound && !locked && (
-            <div className="flex items-center gap-2 mt-3 bg-black/30 rounded-lg px-3 py-2">
-              <Clock size={14} className="text-white/30" />
-              <span className="text-[10px] tracking-wider text-white/40 uppercase">Deadline:</span>
-              <span className="font-[family-name:var(--font-jetbrains)] text-xs font-bold tabular-nums">
-                {countdown.days > 0 && `${countdown.days}g `}
-                {String(countdown.hours).padStart(2, "0")}:{String(countdown.minutes).padStart(2, "0")}:{String(countdown.seconds).padStart(2, "0")}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
           {([...((isLive && isCurrentRound) || showProvisional ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = { live: "Live", formazione: "Formazione", previsioni: "Previsioni", dettaglio: "Dettaglio" };
+            const labels: Record<Tab, string> = { live: "LIVE", formazione: "FORMAZIONE", previsioni: "PREVISIONI", dettaglio: "DETTAGLIO" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
-            if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-pulse" />;
-            if (t === "dettaglio" && hasResults) indicator = <Trophy size={12} className="text-[#E8002D]" />;
-            if (t === "formazione" && sq.confirmed) indicator = <Check size={12} className="text-green-400" />;
-            if (t === "previsioni" && prev.confirmed) indicator = <Check size={12} className="text-green-400" />;
+            if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-live-pulse" />;
+            if (t === "dettaglio" && hasResults) indicator = <Trophy size={11} className="text-[#E8002D]" />;
+            if (t === "formazione" && sq.confirmed) indicator = <Check size={11} className="text-green-400" />;
+            if (t === "previsioni" && prev.confirmed) indicator = <Check size={11} className="text-green-400" />;
             return (
               <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] tracking-[2px] uppercase font-bold transition-all ${
-                  isActive ? "bg-[#E8002D]/10 border border-[#E8002D]/30 text-[#E8002D]" : "bg-white/[0.03] border border-white/[0.06] text-white/40"
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[2px] font-bold transition-all border ${
+                  isActive
+                    ? "bg-[#E8002D]/12 border-[#E8002D]/45 text-[#E8002D] shadow-[inset_0_-2px_0_var(--accent)]"
+                    : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
                 }`}
               >
                 {indicator}{labels[t]}
@@ -481,47 +487,47 @@ function GaraPage() {
         {/* Banner CDA: questionario non completato */}
         {cdaCanPlay === false && isCurrentRound && !locked && (
           <Link href="/cda"
-            className="flex items-center gap-3 bg-[#E8002D]/10 border border-[#E8002D]/20 rounded-xl px-4 py-3 mb-4 hover:bg-[#E8002D]/15 transition-all"
+            className="flex items-center gap-3 bg-[#E8002D]/8 border-l-[3px] border-l-[#E8002D] border border-[#E8002D]/20 rounded-r px-4 py-3 mb-4 hover:bg-[#E8002D]/12 transition-all"
           >
             <AlertTriangle size={16} className="text-[#E8002D] shrink-0" />
-            <span className="text-sm text-[#E8002D]">Completa il questionario CDA per poter confermare</span>
+            <span className="text-[13px] text-[#E8002D] font-semibold">Completa il questionario CDA per poter confermare</span>
             <ChevronRight size={14} className="ml-auto text-[#E8002D]/50 shrink-0" />
           </Link>
         )}
 
         {/* Banner "Pronto per il GP" */}
         {isCurrentRound && !locked && sq.confirmed && prev.confirmed && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <Check size={18} className="text-green-400" />
+          <div className="hud-card mb-4" style={{ borderColor: "rgba(0,255,136,0.25)" }}>
+            <div className="hud-card-head" style={{ borderBottomColor: "rgba(0,255,136,0.12)" }}>
+              <div className="hud-label" style={{ color: "var(--green)" }}>
+                ▌ PRONTO PER LA GARA
               </div>
-              <div>
-                <div className="text-sm font-bold text-green-400">Pronto per il {viewRace.name}!</div>
-                <div className="text-[11px] text-green-400/50">Formazione e previsioni confermate</div>
-              </div>
+              <Check size={14} className="text-green-400" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Primo Pilota</div>
-                <div className="text-xs font-bold text-[#E8002D]">{sq.primoPilota ? getDriverByNumber(sq.primoPilota)?.name || "—" : "—"}</div>
-              </div>
-              <div className="bg-black/20 rounded-lg px-3 py-2">
-                <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Previsioni</div>
-                <div className="text-xs font-bold text-white/60">{prev.completate}/6 complete</div>
-              </div>
-              {sq.chipPiloti && (
-                <div className="bg-black/20 rounded-lg px-3 py-2">
-                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Piloti</div>
-                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+            <div className="p-4">
+              <div className="text-[13px] font-bold mb-3">Formazione e previsioni confermate per il <span className="text-[#E8002D]">{viewRace.name}</span></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                  <div className="hud-label mb-1">PRIMO PILOTA</div>
+                  <div className="text-[12px] font-bold text-[#E8002D]">{sq.primoPilota ? getDriverByNumber(sq.primoPilota)?.name || "—" : "—"}</div>
                 </div>
-              )}
-              {prev.chipAttivo && (
-                <div className="bg-black/20 rounded-lg px-3 py-2">
-                  <div className="text-[9px] tracking-[2px] text-white/30 uppercase mb-1">Chip Previsioni</div>
-                  <div className="text-xs font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                  <div className="hud-label mb-1">PREVISIONI</div>
+                  <div className="text-[12px] font-bold font-[family-name:var(--font-jetbrains)]">{prev.completate}<span className="text-white/30"> / 6</span></div>
                 </div>
-              )}
+                {sq.chipPiloti && (
+                  <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                    <div className="hud-label mb-1">CHIP PILOTI</div>
+                    <div className="text-[12px] font-bold text-amber-400">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
+                  </div>
+                )}
+                {prev.chipAttivo && (
+                  <div className="bg-black/40 border border-[#1c1c26] rounded p-2.5">
+                    <div className="hud-label mb-1">CHIP PREVISIONI</div>
+                    <div className="text-[12px] font-bold text-amber-400">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
