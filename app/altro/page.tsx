@@ -5,14 +5,16 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
-import { Users, Info, User, LogOut, ChevronRight, Scale } from "lucide-react";
+import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock } from "lucide-react";
 import { APP_VERSION } from "../lib/types";
 import { useCdaMembership } from "../lib/use-cda";
+import { CHANGELOG } from "../lib/changelog-data";
 
 const MENU_ITEMS = [
   { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
   { href: "/info", label: "Info / Regolamento", desc: "Punteggi, previsioni, aggiornamenti", icon: Info },
   { href: "/profilo", label: "Profilo", desc: "Modifica nome e scuderia", icon: User },
+  { href: "/changelog", label: "Changelog", desc: "Cosa c'è di nuovo nell'app", icon: FileClock },
 ];
 
 export default function AltroPage() {
@@ -47,10 +49,10 @@ export default function AltroPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
         <div className="mb-6">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-            Menu
+          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+            MENU
           </div>
-          <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)]">ALTRO</h1>
+          <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">Altro</h1>
         </div>
 
         <div className="space-y-2 mb-8">
@@ -103,43 +105,47 @@ export default function AltroPage() {
           </div>
         </button>
 
+        {/* Mini changelog preview + link */}
+        <div className="hud-card hud-card-accent">
+          <div className="hud-card-head">
+            <div className="hud-label">NOVITÀ · {APP_VERSION}</div>
+            <div className="hud-meta">{CHANGELOG[0]?.date.toUpperCase()}</div>
+          </div>
+          <div className="p-4">
+            {CHANGELOG[0]?.summary && (
+              <p className="text-[13px] text-white/80 font-medium mb-3 tracking-[-0.2px]">{CHANGELOG[0].summary}</p>
+            )}
+            <ul className="space-y-1.5 mb-4">
+              {CHANGELOG[0]?.sections[0]?.items.slice(0, 3).map((item, i) => (
+                <li
+                  key={i}
+                  className="text-[12px] text-white/65 leading-[1.45] pl-3 border-l-2 border-l-[#E8002D]/35"
+                >
+                  {item.length > 110 ? item.slice(0, 110) + "…" : item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/changelog"
+              className="inline-flex items-center gap-1.5 font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1.5px] uppercase px-3 py-2 rounded border border-[#E8002D]/35 text-[#E8002D] hover:bg-[#E8002D]/10 transition-colors"
+            >
+              <FileClock size={11} /> CHANGELOG COMPLETO
+            </Link>
+          </div>
+        </div>
+
         {/* Info App */}
-        <div className="hud-card p-5">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-3">Info App</div>
-          <div className="space-y-3">
+        <div className="hud-card mt-3 p-4">
+          <div className="hud-label mb-3">INFO APP</div>
+          <div className="grid grid-cols-2 gap-3 text-[12px]">
             <div>
-              <div className="text-xs text-white/30">Sviluppata da</div>
-              <div className="text-sm font-bold">Simone Carroccia <span className="text-white/30 font-normal">(karrosimo91)</span></div>
+              <div className="text-white/30 text-[10px] tracking-[1px] uppercase mb-0.5">Sviluppata da</div>
+              <div className="font-bold text-white/85">Simone Carroccia</div>
+              <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35">@karrosimo91</div>
             </div>
             <div>
-              <div className="text-xs text-white/30">Versione</div>
-              <div className="font-[family-name:var(--font-jetbrains)] text-sm font-bold text-[#E8002D]">{APP_VERSION}</div>
-            </div>
-            <div>
-              <div className="text-xs text-white/30 mb-1.5">Changelog</div>
-              <div className="space-y-2 text-[12px] text-white/50">
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.3.0</span> — Breakdown punteggio pilota: clicca su un pilota per vedere il dettaglio</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.2.1</span> — Fix previsioni live, classifica con punti previsioni, modal dettaglio scrollabile</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.2.0</span> — Dettaglio punteggi live giocatori, punteggi provvisori persistenti post-sessione, classifica stagione live, mercato bloccato durante sessioni</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.1.0</span> — Classifica weekend live: ranking provvisorio di tutti i giocatori aggiornato in tempo reale durante le sessioni</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v1.0.0</span> — Aggiornamento regolamento e punteggi secondo voti CDA v1 e v2, nuovo Aggiornamento Piloti Scudo Capitano, live scoring in tempo reale via WebSocket OpenF1</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99.42</span> — Pagina CDA Los Pitufos con votazione regolamento, PWA (installa da browser), blocco conferma per membri CDA senza questionario completato</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.99</span> — Quotazioni piloti 2026 aggiornate, reset formazioni</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.98</span> — Bandiere immagine al posto delle emoji, fix penalità prima formazione</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.97</span> — Bugfix prima squadra, modal squadre lega, banner stato weekend, versione centralizzata</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.96</span> — Pagina gara con selettore round, dettaglio punti, wildcard, conferma cambi a pagamento, regolamento aggiornato</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.95</span> — Sistema leghe (crea/unisciti, codice invito, classifica per lega)</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.94</span> — Pagina admin post-gara, selezione round e DotD</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.93</span> — Motore scoring, mercato con penalita cambi, dashboard live</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.9</span> — Fix formazione DB, pagine info/campionati, BottomNav</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.7</span> — Motore scoring, pagina risultati, weekend_results</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.6</span> — Piloti 2026, conferma squadra/previsioni bloccante</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.5</span> — Calendario, gara dinamica, navbar mobile</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.4</span> — Classifica da Supabase, pagina profilo</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.3</span> — Auth Supabase, login/registrati, store su DB</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.2</span> — Dashboard, mercato, previsioni, classifica</div>
-                <div><span className="font-[family-name:var(--font-jetbrains)] text-white/30">v0.1</span> — Landing page con countdown</div>
-              </div>
+              <div className="text-white/30 text-[10px] tracking-[1px] uppercase mb-0.5">Versione</div>
+              <div className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[#E8002D] text-[18px] tabular-nums leading-none">{APP_VERSION}</div>
             </div>
           </div>
         </div>
