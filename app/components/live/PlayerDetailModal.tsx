@@ -64,7 +64,7 @@ export function PlayerDetailModal({
           style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
         >
           <div>
-            <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Piloti</div>
+            <div className="hud-label mb-2">Piloti</div>
             <div className="space-y-1.5">
               {detail.piloti.map((p) => {
                 const sections = buildPilotaBreakdown(
@@ -97,7 +97,7 @@ export function PlayerDetailModal({
 
           {player.chip_piloti && (
             <div>
-              <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento</div>
+              <div className="hud-label mb-2">Aggiornamento</div>
               <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
                 <span className="text-xs font-bold text-amber-400">{player.chip_piloti}</span>
               </div>
@@ -126,7 +126,7 @@ function PrevisioniGrid({
 
   return (
     <div>
-      <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Previsioni</div>
+      <div className="hud-label mb-2">Previsioni</div>
       <div className="grid grid-cols-2 gap-1.5">
         {items.map((p) => {
           const isCorrect = (p.happened === true && p.value === true) || (p.happened === false && p.value === false);

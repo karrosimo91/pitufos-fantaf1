@@ -104,7 +104,7 @@ export default function DashboardPage() {
             { value: dashStats.loaded ? `${dashStats.gareGiocate}/24` : "...", label: "GARE GIOCATE", accent: false },
             { value: dashStats.loaded ? (dashStats.mediaPunti !== null ? String(dashStats.mediaPunti) : "-") : "...", label: "MEDIA PUNTI", accent: false },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-center">
+            <div key={stat.label} className="hud-card p-4 text-center">
               <div className={`font-[family-name:var(--font-jetbrains)] text-xl font-bold ${stat.accent ? "text-[#E8002D]" : "text-white/60"}`}>
                 {stat.value}
               </div>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
               const Icon = CHIP_ICONS[chip.id] || Zap;
               const used = (chip.usedPrePausa ? 1 : 0) + (chip.usedPostPausa ? 1 : 0);
               return (
-                <div key={chip.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-3 text-center">
+                <div key={chip.id} className="hud-card px-3 py-3 text-center">
                   <Icon size={16} className="mx-auto mb-1.5 text-white/30" />
                   <div className="text-[10px] font-bold text-white/50 tracking-wider">{chip.label}</div>
                   <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/40 font-bold mt-1.5">

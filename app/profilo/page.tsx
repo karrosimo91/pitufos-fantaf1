@@ -64,7 +64,7 @@ export default function ProfiloPage() {
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="text-[10px] tracking-[2px] text-white/40 uppercase block mb-2">Email</label>
-            <div className="w-full bg-white/[0.02] border border-white/[0.04] rounded-xl px-4 py-3 text-sm text-white/30">
+            <div className="w-full hud-card px-4 py-3 text-sm text-white/30">
               {user.email}
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function ProfiloPage() {
               value={teamPrincipal}
               onChange={(e) => setTeamPrincipal(e.target.value)}
               required
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white outline-none focus:border-[#E8002D]/30 transition-all"
             />
           </div>
 
@@ -91,7 +91,7 @@ export default function ProfiloPage() {
               value={scuderiaName}
               onChange={(e) => setScuderiaName(e.target.value)}
               required
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white outline-none focus:border-[#E8002D]/30 transition-all"
             />
           </div>
 

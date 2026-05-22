@@ -8,7 +8,7 @@ import { ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
 function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="hud-card overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.02] transition-all"

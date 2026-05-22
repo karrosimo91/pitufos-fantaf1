@@ -9,6 +9,7 @@ import { useSquadra } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { getCurrentRound } from "../lib/races";
 import { useLiveSession } from "../lib/use-live-session";
+import { useDriverPrices, getDriverPrice } from "../lib/use-driver-prices";
 import { ArrowRightLeft, AlertTriangle, Radio } from "lucide-react";
 
 export default function MercatoPage() {
@@ -22,6 +23,7 @@ export default function MercatoPage() {
   const round = getCurrentRound();
   const squadra = useSquadra(round);
   const { isLive } = useLiveSession();
+  const { prices: dynamicPrices } = useDriverPrices(round);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -70,6 +72,7 @@ export default function MercatoPage() {
   };
 
   const filtered = DRIVERS_2026
+    .map((d) => ({ ...d, price: getDriverPrice(dynamicPrices, d.number) }))
     .filter((d) => {
       const q = search.toLowerCase();
       return d.name.toLowerCase().includes(q) || d.team.toLowerCase().includes(q);

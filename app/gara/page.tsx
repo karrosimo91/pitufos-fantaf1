@@ -555,7 +555,7 @@ function GaraPage() {
               <div className="text-[10px] text-white/20 mt-2">In attesa dei risultati ufficiali</div>
             </div>
 
-            <div className="text-[9px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+            <div className="hud-label mb-2">
               Classifica Weekend Provvisoria
             </div>
             <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
@@ -617,7 +617,7 @@ function GaraPage() {
         {tab === "formazione" && (
           <div className="space-y-4">
             <div>
-              <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">
+              <div className="hud-label mb-2">
                 I tuoi piloti ({displayDrivers.length}/5{sestoUomoDriver ? " +1" : ""})
               </div>
 
@@ -667,8 +667,8 @@ function GaraPage() {
 
             {/* Chip piloti usati (read-only per round passati) */}
             {locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Piloti</div>
+              <div className="hud-card px-4 py-3">
+                <div className="hud-label mb-1">Aggiornamento Piloti</div>
                 {sq.chipPiloti ? (
                   <>
                     <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[sq.chipPiloti] || sq.chipPiloti}</div>
@@ -684,8 +684,8 @@ function GaraPage() {
 
             {/* Aggiornamento Piloti (editabile) */}
             {!locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento Piloti</div>
+              <div className="hud-card p-4">
+                <div className="hud-label mb-2">Aggiornamento Piloti</div>
                 <div className="grid grid-cols-2 gap-2">
                   {CHIP_PILOTI.map((chip) => {
                     const Icon = chip.icon;
@@ -902,8 +902,8 @@ function GaraPage() {
 
             {/* Chip previsioni usato (read-only per round passati) */}
             {locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-1">Aggiornamento Previsioni</div>
+              <div className="hud-card px-4 py-3">
+                <div className="hud-label mb-1">Aggiornamento Previsioni</div>
                 {prev.chipAttivo ? (
                   <>
                     <div className="text-sm text-[#E8002D] font-bold">{CHIP_LABELS[prev.chipAttivo] || prev.chipAttivo}</div>
@@ -918,8 +918,8 @@ function GaraPage() {
             )}
 
             {!locked && (
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
-                <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Aggiornamento Previsioni</div>
+              <div className="hud-card p-4">
+                <div className="hud-label mb-2">Aggiornamento Previsioni</div>
                 <div className="flex gap-2 flex-wrap">
                   {CHIP_PREVISIONI.map((chip) => {
                     const Icon = chip.icon;
@@ -1030,7 +1030,7 @@ function GaraPage() {
                       </div>
 
                       {/* Dettaglio piloti */}
-                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
+                      <div className="hud-label mb-2">Dettaglio Piloti</div>
                       <div className="space-y-1 mb-4">
                         {myWeekendScore.pilotiDettaglio.map((d) => {
                           const color = getDriverByNumber(d.driver_number)?.teamColour;
@@ -1055,7 +1055,7 @@ function GaraPage() {
                       </div>
 
                       {/* Dettaglio previsioni */}
-                      <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
+                      <div className="hud-label mb-2">Dettaglio Previsioni</div>
                       <div className="space-y-1">
                         {Object.entries(myWeekendScore.previsioniDettaglio).map(([key, pts]) => (
                           <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
@@ -1075,8 +1075,8 @@ function GaraPage() {
                 )}
 
                 {/* Eventi della gara — solo se la gara è stata calcolata */}
-                {weekendResults.race.length > 0 && <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
-                  <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-3">Eventi della gara</div>
+                {weekendResults.race.length > 0 && <div className="hud-card p-4">
+                  <div className="hud-label mb-3">Eventi della gara</div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: "Safety Car", value: weekendResults.events.safety_car },

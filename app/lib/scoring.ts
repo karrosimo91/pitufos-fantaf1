@@ -238,7 +238,7 @@ export function getScoreBreakdown(
 
 // ─── Calcolo punteggio totale pilota nel weekend ───
 
-function calcolaPuntiPilotaBase(
+export function calcolaPuntiPilotaBase(
   driverNumber: number,
   results: RaceWeekendResults
 ): number {

@@ -26,7 +26,7 @@ const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
 export default function ClassificaPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center bg-grid">
+      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
       </div>
     }>
@@ -686,7 +686,7 @@ function ClassificaContent() {
                     </div>
 
                     {/* Dettaglio piloti */}
-                    <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Piloti</div>
+                    <div className="hud-label mb-2">Dettaglio Piloti</div>
                     <div className="space-y-1 mb-4">
                       {playerModal.score.pilotiDettaglio.map((d) => {
                         const color = getDriverByNumber(d.driver_number)?.teamColour;
@@ -711,7 +711,7 @@ function ClassificaContent() {
                     </div>
 
                     {/* Dettaglio previsioni */}
-                    <div className="text-[10px] tracking-[3px] text-white/30 uppercase font-bold mb-2">Dettaglio Previsioni</div>
+                    <div className="hud-label mb-2">Dettaglio Previsioni</div>
                     <div className="space-y-1">
                       {Object.entries(playerModal.score.previsioniDettaglio).map(([key, pts]) => (
                         <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">

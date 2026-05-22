@@ -205,7 +205,7 @@ export default function CdaPage() {
         </div>
 
         {/* Progress */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 mb-4">
+        <div className="hud-card p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-white/40">Il tuo progresso</span>
             <span className="font-[family-name:var(--font-jetbrains)] text-xs font-bold">

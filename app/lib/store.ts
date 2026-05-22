@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 import { useAuth } from "./auth";
 import { getDriverByNumber } from "./drivers-data";
+import { useDriverPrices, getDriverPrice } from "./use-driver-prices";
 import type { Previsioni, Lega } from "./types";
 
 const BUDGET_INIZIALE = 100;
@@ -19,7 +20,7 @@ export interface OwnedDriver {
   price: number;
 }
 
-function driverNumberToOwned(num: number): OwnedDriver | null {
+function driverNumberToOwned(num: number, priceOverride?: Map<number, number>): OwnedDriver | null {
   const d = getDriverByNumber(num);
   if (!d) return null;
   return {
@@ -27,7 +28,7 @@ function driverNumberToOwned(num: number): OwnedDriver | null {
     name: d.name,
     team: d.team,
     teamColour: d.teamColour,
-    price: d.price,
+    price: priceOverride?.get(num) ?? d.price,
   };
 }
 
@@ -153,8 +154,10 @@ export function useSquadra(round: number) {
     })();
   }, [user, round]);
 
+  const { prices: dynamicPrices } = useDriverPrices(round);
+
   const drivers: OwnedDriver[] = state.driverNumbers
-    .map(driverNumberToOwned)
+    .map((n) => driverNumberToOwned(n, dynamicPrices))
     .filter((d): d is OwnedDriver => d !== null);
 
   const budget = BUDGET_INIZIALE - drivers.reduce((sum, d) => sum + d.price, 0);
@@ -191,11 +194,10 @@ export function useSquadra(round: number) {
       const driverData = getDriverByNumber(driverNumber);
       if (!driverData) return { ok: false, error: "Pilota non trovato" };
 
-      const currentBudget = BUDGET_INIZIALE - current.reduce((sum, n) => {
-        const dd = getDriverByNumber(n);
-        return sum + (dd?.price ?? 0);
-      }, 0);
-      if (currentBudget < driverData.price) return { ok: false, error: "Budget insufficiente" };
+      const priceOf = (n: number) => getDriverPrice(dynamicPrices, n);
+      const currentBudget = BUDGET_INIZIALE - current.reduce((sum, n) => sum + priceOf(n), 0);
+      const newPrice = priceOf(driverNumber);
+      if (currentBudget < newPrice) return { ok: false, error: "Budget insufficiente" };
 
       const newDrivers = [...current, driverNumber];
 
@@ -215,7 +217,7 @@ export function useSquadra(round: number) {
       await saveDrivers(newDrivers);
       return { ok: true };
     },
-    [user, state.driverNumbers, rosaBase, round, saveDrivers]
+    [user, state.driverNumbers, rosaBase, round, saveDrivers, dynamicPrices]
   );
 
   const vendi = useCallback(
