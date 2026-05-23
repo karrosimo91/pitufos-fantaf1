@@ -172,13 +172,38 @@ export function useSquadra(round: number) {
     async (newDrivers: number[]) => {
       if (!user || !isSupabaseConfigured) return;
       const supabase = createClient()!;
-      await supabase.from("formazioni").upsert({
+      const { error } = await supabase.from("formazioni").upsert({
         user_id: user.id,
         round,
         driver_numbers: newDrivers,
         confirmed: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,round" });
+      if (error) console.error("[squadra] saveDrivers error:", error);
+    },
+    [user, round]
+  );
+
+  // Auto-save dei campi non-driver (primo pilota, sesto uomo, chip).
+  // Prima erano salvati solo da conferma(): se l'utente cambiava il primo
+  // pilota e non confermava, il valore andava perso al refresh / chiusura tab.
+  const savePartial = useCallback(
+    async (patch: Partial<{
+      primo_pilota: number | null;
+      sesto_uomo: number | null;
+      chip_piloti: string | null;
+      chip_piloti_target: number | null;
+    }>) => {
+      if (!user || !isSupabaseConfigured) return;
+      const supabase = createClient()!;
+      const { error } = await supabase.from("formazioni").upsert({
+        user_id: user.id,
+        round,
+        ...patch,
+        confirmed: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,round" });
+      if (error) console.error("[squadra] savePartial error:", error);
     },
     [user, round]
   );
@@ -239,22 +264,30 @@ export function useSquadra(round: number) {
   // Setters locali
   const setPrimoPilota = useCallback((driverNumber: number) => {
     setState((prev) => ({ ...prev, primoPilota: driverNumber, confirmed: false }));
-  }, []);
+    savePartial({ primo_pilota: driverNumber });
+  }, [savePartial]);
 
   const setSestoUomo = useCallback((driverNumber: number | null) => {
     setState((prev) => ({ ...prev, sestoUomo: driverNumber, confirmed: false }));
-  }, []);
+    savePartial({ sesto_uomo: driverNumber });
+  }, [savePartial]);
 
   const setChipPiloti = useCallback((chip: string | null) => {
-    setState((prev) => ({
-      ...prev, chipPiloti: chip, chipPilotiTarget: null,
-      sestoUomo: chip !== "sesto" ? null : prev.sestoUomo, confirmed: false,
-    }));
-  }, []);
+    setState((prev) => {
+      const nextSesto = chip !== "sesto" ? null : prev.sestoUomo;
+      // Quando cambia il chip resettiamo il target e (se non è "sesto") anche il sesto uomo
+      savePartial({ chip_piloti: chip, chip_piloti_target: null, sesto_uomo: nextSesto });
+      return {
+        ...prev, chipPiloti: chip, chipPilotiTarget: null,
+        sestoUomo: nextSesto, confirmed: false,
+      };
+    });
+  }, [savePartial]);
 
   const setChipPilotiTarget = useCallback((target: number | null) => {
     setState((prev) => ({ ...prev, chipPilotiTarget: target, confirmed: false }));
-  }, []);
+    savePartial({ chip_piloti_target: target });
+  }, [savePartial]);
 
   // Conferma: salva tutto in DB
   const conferma = useCallback(
