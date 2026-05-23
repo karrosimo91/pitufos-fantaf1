@@ -208,9 +208,29 @@ export function useLiveWebSocket(sessionKey: number | null) {
           if (!cancelled) startPolling();
         });
 
+        // Telemetria: contiamo messaggi per session_key. Se vediamo molti
+        // messaggi con session_key ≠ quello atteso, sappiamo che useLiveSession
+        // ha rilevato la sessione sbagliata.
+        const seenSessionKeys = new Map<number, number>();
+        let lastLogAt = 0;
+
         client.on("message", (_topic: string, payload: Buffer) => {
           try {
             const msg = JSON.parse(payload.toString());
+
+            // Debug telemetry: traccia le session_key che arrivano vs attesa
+            if (msg.session_key) {
+              seenSessionKeys.set(msg.session_key, (seenSessionKeys.get(msg.session_key) ?? 0) + 1);
+              const now = Date.now();
+              if (now - lastLogAt > 30_000) {
+                lastLogAt = now;
+                const stats = Array.from(seenSessionKeys.entries())
+                  .map(([k, v]) => `${k}:${v}${k === sessionKey ? "✓" : "✗"}`)
+                  .join(" ");
+                console.log(`[live-ws] expected sessionKey=${sessionKey} · received: ${stats}`);
+              }
+            }
+
             if (msg.session_key && msg.session_key !== sessionKey) return;
 
             const topic = _topic.replace(/^\//, "");

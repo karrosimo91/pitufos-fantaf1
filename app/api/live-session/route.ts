@@ -43,31 +43,64 @@ export async function GET() {
     const sessions = await res.json();
     const now = new Date();
 
-    // Buffer pre-sessione molto stretto (2 min): copre eventuali drift d'orario
-    // negli annunci OpenF1 ma NON blocca il mercato 30 min prima.
+    // Buffer pre-sessione molto stretto (2 min): copre solo drift d'orario
+    // negli annunci OpenF1, NON blocca il mercato troppo presto.
     // Buffer post-sessione più ampio (30 min): le sessioni possono finire in
-    // ritardo (red flag, safety car finale) e i dati live arrivano ancora per un po'.
+    // ritardo (red flag, safety car finale) e i dati live arrivano ancora.
     const PRE_BUFFER_MS = 2 * 60 * 1000;
     const POST_BUFFER_MS = 30 * 60 * 1000;
+
+    // Priorità di selezione (fix bug "punteggio bloccato durante sprint"):
+    //   1. la sessione DAVVERO in corso ora (now ∈ [start, end])
+    //   2. quella nel POST-buffer (appena finita)
+    //   3. quella nel PRE-buffer (sta per iniziare)
+    // Se ne avessimo prese una nel buffer mentre già è iniziata la successiva,
+    // il filtro MQTT scartava i messaggi della nuova session_key e i punteggi
+    // restavano stale.
+    type SessionPayload = { session_key: number; session_type: string; session_name: string; meeting_key: number };
+    let activeNow: SessionPayload | null = null;
+    let postBuffered: SessionPayload | null = null;
+    let preBuffered: SessionPayload | null = null;
 
     for (const s of sessions) {
       if (!s.date_start || !s.date_end) continue;
 
       const start = new Date(s.date_start);
       const end = new Date(s.date_end);
-      const liveStart = new Date(start.getTime() - PRE_BUFFER_MS);
-      const liveEnd = new Date(end.getTime() + POST_BUFFER_MS);
 
-      if (now >= liveStart && now <= liveEnd) {
-        return NextResponse.json({
-          session: {
-            sessionKey: s.session_key,
-            sessionType: s.session_type || "",
-            sessionName: s.session_name || "",
-            meetingKey: s.meeting_key,
-          },
-        });
+      const payload: SessionPayload = {
+        session_key: s.session_key,
+        session_type: s.session_type || "",
+        session_name: s.session_name || "",
+        meeting_key: s.meeting_key,
+      };
+
+      if (now >= start && now <= end) {
+        // Vera "live" — priorità massima, prendi questa e basta
+        activeNow = payload;
+        break;
       }
+      if (now > end && now <= new Date(end.getTime() + POST_BUFFER_MS)) {
+        // La sessione più recente nel post-buffer (sovrascrive se ne ho trovate prima)
+        postBuffered = payload;
+      }
+      if (now < start && now >= new Date(start.getTime() - PRE_BUFFER_MS)) {
+        // La prossima sessione nel pre-buffer
+        if (!preBuffered) preBuffered = payload;
+      }
+    }
+
+    const chosen = activeNow ?? postBuffered ?? preBuffered;
+
+    if (chosen) {
+      return NextResponse.json({
+        session: {
+          sessionKey: chosen.session_key,
+          sessionType: chosen.session_type,
+          sessionName: chosen.session_name,
+          meetingKey: chosen.meeting_key,
+        },
+      });
     }
 
     return NextResponse.json({ session: null });
