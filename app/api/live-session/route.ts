@@ -43,13 +43,20 @@ export async function GET() {
     const sessions = await res.json();
     const now = new Date();
 
+    // Buffer pre-sessione molto stretto (2 min): copre eventuali drift d'orario
+    // negli annunci OpenF1 ma NON blocca il mercato 30 min prima.
+    // Buffer post-sessione più ampio (30 min): le sessioni possono finire in
+    // ritardo (red flag, safety car finale) e i dati live arrivano ancora per un po'.
+    const PRE_BUFFER_MS = 2 * 60 * 1000;
+    const POST_BUFFER_MS = 30 * 60 * 1000;
+
     for (const s of sessions) {
       if (!s.date_start || !s.date_end) continue;
 
       const start = new Date(s.date_start);
       const end = new Date(s.date_end);
-      const liveStart = new Date(start.getTime() - 30 * 60 * 1000);
-      const liveEnd = new Date(end.getTime() + 30 * 60 * 1000);
+      const liveStart = new Date(start.getTime() - PRE_BUFFER_MS);
+      const liveEnd = new Date(end.getTime() + POST_BUFFER_MS);
 
       if (now >= liveStart && now <= liveEnd) {
         return NextResponse.json({
