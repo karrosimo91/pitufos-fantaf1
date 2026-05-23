@@ -564,7 +564,12 @@ function ClassificaContent() {
                 <span className="text-right">{selectedRound ? "TOT" : "TOTALE"}</span>
               </div>
 
-              {classifica.map((entry, i) => (
+              {classifica.map((entry, i) => {
+                const leaderPoints = classifica[0]?.total_points ?? 0;
+                const previousPoints = i > 0 ? classifica[i - 1].total_points : null;
+                const gapLeader = i === 0 ? null : entry.total_points - leaderPoints; // negativo
+                const gapPrev = previousPoints === null ? null : entry.total_points - previousPoints; // negativo o 0
+                return (
                 <div
                   key={entry.user_id}
                   onClick={() => canViewSquads ? openPlayerModal(entry) : undefined}
@@ -572,13 +577,20 @@ function ClassificaContent() {
                     i < classifica.length - 1 ? "border-b border-[#1c1c26]" : ""
                   } ${canViewSquads ? "cursor-pointer active:bg-white/[0.05]" : ""} ${i === 0 ? "bg-[#E8002D]/[0.04]" : ""}`}
                 >
-                  <span
-                    className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums ${
-                      i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/30"
-                    }`}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+                  <div className="flex flex-col items-start">
+                    <span
+                      className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums leading-none ${
+                        i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/30"
+                      }`}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    {gapLeader !== null && !selectedRound && (
+                      <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/25 tabular-nums mt-1 tracking-[-0.3px]">
+                        {gapLeader}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="min-w-0">
                       <div className="text-[13px] font-bold truncate leading-tight">{entry.team_principal_name}</div>
@@ -612,13 +624,19 @@ function ClassificaContent() {
                       </span>
                     </div>
                   )}
-                  <div className="text-right">
-                    <span className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums">
+                  <div className="text-right flex flex-col items-end">
+                    <span className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums leading-none">
                       {entry.total_points}
                     </span>
+                    {gapPrev !== null && !selectedRound && (
+                      <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/35 tabular-nums mt-1 tracking-[-0.3px]">
+                        {gapPrev === 0 ? "= " : ""}{gapPrev}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
