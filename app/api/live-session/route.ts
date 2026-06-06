@@ -65,6 +65,11 @@ export async function GET() {
     for (const s of sessions) {
       if (!s.date_start || !s.date_end) continue;
 
+      // Le prove libere (FP1/FP2/FP3) NON attivano il "live": niente punteggio,
+      // niente blocco. Il live parte solo da Qualifica / Sprint Shootout in poi.
+      const sType = (s.session_type || "").toLowerCase();
+      if (sType.includes("practice")) continue;
+
       const start = new Date(s.date_start);
       const end = new Date(s.date_end);
 

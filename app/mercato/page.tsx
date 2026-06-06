@@ -7,10 +7,9 @@ import DriverCard from "../components/DriverCard";
 import { DRIVERS_2026 } from "../lib/drivers-data";
 import { useSquadra } from "../lib/store";
 import { useAuth } from "../lib/auth";
-import { getCurrentRound } from "../lib/races";
-import { useLiveSession } from "../lib/use-live-session";
+import { getCurrentRound, getRaceByRound, isAfterDeadline } from "../lib/races";
 import { useDriverPrices, getDriverPrice } from "../lib/use-driver-prices";
-import { ArrowRightLeft, AlertTriangle, Radio } from "lucide-react";
+import { ArrowRightLeft, AlertTriangle, Lock } from "lucide-react";
 
 export default function MercatoPage() {
   const router = useRouter();
@@ -22,8 +21,13 @@ export default function MercatoPage() {
 
   const round = getCurrentRound();
   const squadra = useSquadra(round);
-  const { isLive } = useLiveSession();
   const { prices: dynamicPrices } = useDriverPrices(round);
+
+  // Il mercato si blocca all'orario esatto della Qualifica (weekend normale) o
+  // della Sprint Shootout (weekend sprint), esattamente come formazione e
+  // previsioni. Durante le prove libere resta aperto.
+  const race = getRaceByRound(round);
+  const locked = race ? isAfterDeadline(race) : false;
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -151,18 +155,18 @@ export default function MercatoPage() {
           </div>
         </div>
 
-        {/* Banner blocco durante sessione live */}
-        {isLive && (
+        {/* Banner blocco dopo la deadline (qualifica / sprint shootout) */}
+        {locked && (
           <div className="mb-5 hud-card hud-card-accent">
             <div className="hud-card-head">
               <div className="hud-label" style={{ color: "var(--accent)" }}>
                 <span className="inline-flex items-center gap-1.5">
-                  <Radio size={11} className="animate-live-pulse" /> MERCATO BLOCCATO
+                  <Lock size={11} /> MERCATO CHIUSO
                 </span>
               </div>
             </div>
             <div className="p-4">
-              <div className="text-[12px] text-white/60">Sessione in corso — il mercato riapre al termine della sessione</div>
+              <div className="text-[12px] text-white/60">Le qualifiche sono iniziate — il mercato riapre dopo la gara</div>
             </div>
           </div>
         )}
@@ -243,8 +247,8 @@ export default function MercatoPage() {
                 price={driver.price}
                 number={driver.number}
                 actionLabel={owned ? "Vendi" : "Acquista"}
-                showActions={!isLive && (owned || !squadraPiena)}
-                onSelect={isLive ? undefined : (owned ? () => handleVendi(driver.number) : () => handleAcquista(driver.number))}
+                showActions={!locked && (owned || !squadraPiena)}
+                onSelect={locked ? undefined : (owned ? () => handleVendi(driver.number) : () => handleAcquista(driver.number))}
               />
             );
           })}

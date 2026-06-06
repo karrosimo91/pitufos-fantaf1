@@ -35,6 +35,17 @@ function driverNumberToOwned(num: number, priceOverride?: Map<number, number>): 
 const CAMBI_GRATIS = 2;
 const PENALITA_CAMBIO_EXTRA = 10;
 
+// Cassa iniziale di una rosa: 100 − somma delle quotazioni INIZIALI dei piloti.
+// Usata solo come bootstrap quando formazioni.cassa è NULL (rose pre-v17):
+// finora i prezzi non erano variati, quindi la quotazione iniziale è quanto
+// il giocatore ha effettivamente pagato.
+function initialCassa(driverNumbers: number[]): number {
+  return BUDGET_INIZIALE - driverNumbers.reduce((sum, n) => {
+    const d = getDriverByNumber(n);
+    return sum + (d?.price ?? 0);
+  }, 0);
+}
+
 // ═══════════════════════════════════════════
 // Hook: useSquadra — Unica fonte di verita'
 // Tabella: formazioni (user_id, round)
@@ -66,6 +77,7 @@ export function useSquadra(round: number) {
   });
   const [rosaBase, setRosaBase] = useState<number[]>([]);
   const [cambiRound, setCambiRound] = useState(0);
+  const [cassa, setCassa] = useState<number>(BUDGET_INIZIALE);
   const [loaded, setLoaded] = useState(false);
 
   // Carica formazione del round (o copia dal precedente)
@@ -73,6 +85,7 @@ export function useSquadra(round: number) {
     // Reset stato al cambio round per evitare dati stale
     setLoaded(false);
     setCambiRound(0);
+    setCassa(BUDGET_INIZIALE);
     setState({ driverNumbers: [], primoPilota: null, sestoUomo: null, chipPiloti: null, chipPilotiTarget: null, confirmed: false });
     setRosaBase([]);
 
@@ -94,14 +107,27 @@ export function useSquadra(round: number) {
 
       if (data) {
         // Formazione esiste per questo round
+        const driverNumbers = (data.driver_numbers || []).map(Number);
         setState({
-          driverNumbers: (data.driver_numbers || []).map(Number),
+          driverNumbers,
           primoPilota: data.primo_pilota,
           sestoUomo: data.sesto_uomo,
           chipPiloti: data.chip_piloti,
           chipPilotiTarget: data.chip_piloti_target,
           confirmed: !!data.confirmed,
         });
+
+        // Cassa: se già memorizzata usala, altrimenti (rosa pre-v17) inizializza
+        // dai prezzi pagati e persisti, così non si ricalcola più ogni volta.
+        if (data.cassa != null) {
+          setCassa(data.cassa);
+        } else {
+          const initCassa = initialCassa(driverNumbers);
+          setCassa(initCassa);
+          await supabase.from("formazioni").upsert({
+            user_id: user.id, round, cassa: initCassa,
+          }, { onConflict: "user_id,round" });
+        }
 
         // La rosa base è SEMPRE l'ultima confermata di un round PRECEDENTE.
         // Se non esiste (primo round in assoluto), rosaBase = [] → nessuna penalità.
@@ -120,7 +146,7 @@ export function useSquadra(round: number) {
         // Nessuna formazione per questo round: copia dal round precedente
         const { data: prev } = await supabase
           .from("formazioni")
-          .select("driver_numbers")
+          .select("driver_numbers, cassa")
           .eq("user_id", user.id)
           .eq("confirmed", true)
           .order("round", { ascending: false })
@@ -129,14 +155,18 @@ export function useSquadra(round: number) {
 
         if (prev?.driver_numbers) {
           const prevDrivers = (prev.driver_numbers as number[]).map(Number);
+          // La cassa si porta avanti invariata (nessun trade fra i round).
+          const prevCassa = prev.cassa != null ? prev.cassa : initialCassa(prevDrivers);
           setState((s) => ({ ...s, driverNumbers: prevDrivers }));
           setRosaBase(prevDrivers);
+          setCassa(prevCassa);
 
           // Crea la riga in DB per questo round (non confermata)
           await supabase.from("formazioni").upsert({
             user_id: user.id,
             round,
             driver_numbers: prevDrivers,
+            cassa: prevCassa,
             confirmed: false,
           }, { onConflict: "user_id,round" });
         }
@@ -160,22 +190,25 @@ export function useSquadra(round: number) {
     .map((n) => driverNumberToOwned(n, dynamicPrices))
     .filter((d): d is OwnedDriver => d !== null);
 
-  const budget = BUDGET_INIZIALE - drivers.reduce((sum, d) => sum + d.price, 0);
+  // Budget = saldo cassa memorizzato (NON ricalcolato dalle quotazioni attuali).
+  // Le quotazioni muovono la cassa solo al momento di un trade.
+  const budget = cassa;
 
   const cambiGratisRimasti = Math.max(0, CAMBI_GRATIS - cambiRound);
   const hasWildcard = state.chipPiloti === "wildcard";
   const penalitaProssimoCambio = hasWildcard ? 0 : (cambiRound >= CAMBI_GRATIS ? PENALITA_CAMBIO_EXTRA : 0);
   const penalitaTotale = hasWildcard ? 0 : Math.max(0, cambiRound - CAMBI_GRATIS) * PENALITA_CAMBIO_EXTRA;
 
-  // Salva driver_numbers in DB (auto-save)
+  // Salva driver_numbers + cassa in DB (auto-save)
   const saveDrivers = useCallback(
-    async (newDrivers: number[]) => {
+    async (newDrivers: number[], newCassa: number) => {
       if (!user || !isSupabaseConfigured) return;
       const supabase = createClient()!;
       const { error } = await supabase.from("formazioni").upsert({
         user_id: user.id,
         round,
         driver_numbers: newDrivers,
+        cassa: newCassa,
         confirmed: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,round" });
@@ -220,11 +253,11 @@ export function useSquadra(round: number) {
       if (!driverData) return { ok: false, error: "Pilota non trovato" };
 
       const priceOf = (n: number) => getDriverPrice(dynamicPrices, n);
-      const currentBudget = BUDGET_INIZIALE - current.reduce((sum, n) => sum + priceOf(n), 0);
       const newPrice = priceOf(driverNumber);
-      if (currentBudget < newPrice) return { ok: false, error: "Budget insufficiente" };
+      if (cassa < newPrice) return { ok: false, error: "Budget insufficiente" };
 
       const newDrivers = [...current, driverNumber];
+      const newCassa = cassa - newPrice; // paghi la quotazione ATTUALE
 
       // Conta come cambio se il pilota NON era nella rosa base
       // (wildcard annulla la penalita' solo al calcolo post-gara, i cambi si registrano sempre)
@@ -234,31 +267,36 @@ export function useSquadra(round: number) {
         const driverOut = venduti[0] ?? 0;
         await supabase.from("mercato_cambi").insert({
           user_id: user.id, round, driver_in: driverNumber, driver_out: driverOut,
+          prezzo_in: newPrice, prezzo_out: driverOut ? priceOf(driverOut) : null,
         });
         setCambiRound((prev) => prev + 1);
       }
 
       setState((prev) => ({ ...prev, driverNumbers: newDrivers, confirmed: false }));
-      await saveDrivers(newDrivers);
+      setCassa(newCassa);
+      await saveDrivers(newDrivers, newCassa);
       return { ok: true };
     },
-    [user, state.driverNumbers, rosaBase, round, saveDrivers, dynamicPrices]
+    [user, state.driverNumbers, rosaBase, round, saveDrivers, dynamicPrices, cassa]
   );
 
   const vendi = useCallback(
     async (driverNumber: number): Promise<boolean> => {
       if (!user || !isSupabaseConfigured) return false;
       const newDrivers = state.driverNumbers.filter((n) => n !== driverNumber);
+      // Incassi la quotazione ATTUALE del pilota venduto.
+      const newCassa = cassa + getDriverPrice(dynamicPrices, driverNumber);
       setState((prev) => ({
         ...prev,
         driverNumbers: newDrivers,
         primoPilota: prev.primoPilota === driverNumber ? null : prev.primoPilota,
         confirmed: false,
       }));
-      await saveDrivers(newDrivers);
+      setCassa(newCassa);
+      await saveDrivers(newDrivers, newCassa);
       return true;
     },
-    [user, state.driverNumbers, saveDrivers]
+    [user, state.driverNumbers, saveDrivers, dynamicPrices, cassa]
   );
 
   // Setters locali
