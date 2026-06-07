@@ -1,5 +1,6 @@
 import type { RaceWeekendResults, DriverResult } from "./scoring";
 import type { LivePosition, LiveRaceControl, LiveStint } from "./use-live-ws";
+import { extractPenalizedDrivers } from "./penalties";
 
 export interface LiveSnapshot {
   positions: Map<number, LivePosition>;
@@ -59,6 +60,10 @@ function buildLiveDriverResults(
   gridPositions: Map<number, number>,
   withGrid: boolean,
 ): DriverResult[] {
+  // Penalità live da race_control (stesso rilevamento del post-gara):
+  // legge il numero auto dal testo del messaggio. Rilevante solo in gara.
+  const penalizedDrivers = withGrid ? extractPenalizedDrivers(snap.raceControl) : new Set<number>();
+
   const results: DriverResult[] = [];
   for (const [driverNum, posData] of snap.positions) {
     const dr: DriverResult = {
@@ -67,7 +72,7 @@ function buildLiveDriverResults(
       dnf: events.dnfDrivers.has(driverNum),
       fastest_lap: snap.fastestLap?.driver_number === driverNum,
       driver_of_the_day: false,
-      penalty: false,
+      penalty: penalizedDrivers.has(driverNum),
     };
     if (withGrid) dr.grid_position = gridPositions.get(driverNum);
     results.push(dr);
