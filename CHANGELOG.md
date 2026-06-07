@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.5.0 — 7 Giugno 2026
+
+### Fix
+- **Penalità di gara conteggiate** — il malus -5 per scorrettezze in pista (penalità in tempo, drive through, stop and go, penalità post-gara) ora viene assegnato correttamente, una sola volta per pilota. Prima non scattava mai: OpenF1 lascia `driver_number` vuoto nei messaggi dei commissari e il sistema cercava il pilota nel campo sbagliato. Ora il numero auto viene letto dal testo del messaggio (`CAR X`). Verificato sui dati reali del GP di Monaco.
+- Vale sia per il **punteggio live** durante la gara, sia per il **calcolo ufficiale post-gara**.
+
+### Novità
+- **Manutenzione penalità (admin)** — nuovo pannello in `/admin` per ricalcolare penalità e punteggi di un singolo GP o di tutti i GP già disputati. Idempotente: rilanciarlo non altera nulla se non ci sono variazioni.
+
+### Sotto il cofano
+- Rilevamento penalità centralizzato in `lib/penalties.ts`, coperto da test automatici con i dati reali di Monaco
+- Calcolo punteggi del weekend centralizzato in `lib/score-round.ts`, condiviso tra `/api/post-gara` e `/api/recalc-penalties` (eliminata logica duplicata)
+
+---
+
 ## v1.4.0 — 22 Maggio 2026
 
 ### Design

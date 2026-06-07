@@ -15,6 +15,33 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.5.0",
+    date: "7 Giugno 2026",
+    summary: "Penalità di gara finalmente conteggiate (live e post-gara).",
+    sections: [
+      {
+        title: "Fix",
+        items: [
+          "Penalità di gara ora conteggiate correttamente (-5, una sola volta per pilota). Prima non venivano mai assegnate: OpenF1 lascia vuoto il numero pilota nei messaggi dei commissari e il sistema lo cercava nel campo sbagliato. Ora viene letto dal testo del messaggio. Verificato sui dati reali di Monaco.",
+          "Vale sia per il punteggio live durante la gara, sia per il calcolo ufficiale post-gara.",
+        ],
+      },
+      {
+        title: "Novità",
+        items: [
+          "Pannello admin \"Manutenzione penalità\": ricalcola le penalità (e i punteggi) di un singolo GP o di tutti i GP già disputati. Operazione sicura e ripetibile.",
+        ],
+      },
+      {
+        title: "Sotto il cofano",
+        items: [
+          "Rilevamento penalità centralizzato in un unico modulo, coperto da test automatici con i dati reali di Monaco.",
+          "Calcolo punteggi del weekend centralizzato e condiviso tra post-gara e ricalcolo (meno duplicazioni).",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.4.0",
     date: "22 Maggio 2026",
     summary: "Identità Pitwall, quotazioni dinamiche, fallback live.",
