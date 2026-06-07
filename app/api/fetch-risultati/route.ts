@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { RACES_2026 } from "../../lib/races";
+import { extractPenalizedDrivers } from "../../lib/penalties";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
@@ -229,17 +230,17 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
   // Race control per DNF e penalita
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
   const retiredDrivers = new Set<number>();
-  const penalizedDrivers = new Set<number>();
 
   for (const rc of raceControl) {
     const msg = (rc.message || "").toUpperCase();
     if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
       if (rc.driver_number) retiredDrivers.add(rc.driver_number);
     }
-    if (msg.includes("PENALTY") && !msg.includes("GRID") && !msg.includes("REPRIMAND")) {
-      if (rc.driver_number) penalizedDrivers.add(rc.driver_number);
-    }
   }
+
+  // Penalità: rilevazione centralizzata (gestisce driver_number=null leggendo
+  // il numero auto dal testo del messaggio) — vedi lib/penalties.ts
+  const penalizedDrivers = extractPenalizedDrivers(raceControl);
 
   return Array.from(lastPositions.values()).map((r) => ({
     driver_number: r.driver_number,

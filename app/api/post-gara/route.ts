@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import {
-  calcolaPuntiWeekend,
   calcolaPuntiPilotaBase,
   aggiornaQuotazione,
-  type ChipPilotiConfig,
-  type ChipPrevisioniConfig,
 } from "../../lib/scoring";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
-import type { Previsioni } from "../../lib/types";
 import { RACES_2026 } from "../../lib/races";
+import { extractPenalizedDrivers } from "../../lib/penalties";
+import { computePlayerScores } from "../../lib/score-round";
 
 const OPENF1 = "https://api.openf1.org/v1";
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -199,97 +197,10 @@ export async function POST(request: NextRequest) {
 
     log.push("--- STEP 2: Calcolo punteggi ---");
 
-    const { data: formazioni } = await supabase
-      .from("formazioni")
-      .select("*")
-      .eq("round", round)
-      .eq("confirmed", true);
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, team_principal_name, scuderia_name");
-
-    // Previsioni: solo se mode === "race"
-    let previsioniData: any[] | null = null;
-    if (mode === "race") {
-      const { data } = await supabase
-        .from("previsioni")
-        .select("*")
-        .eq("round", round)
-        .eq("confirmed", true);
-      previsioniData = data;
-    }
-
     const isPostRace = mode === "race";
 
-    const playerScores: {
-      user_id: string; name: string; scuderia: string;
-      weekend_points: number; piloti_points: number;
-      previsioni_points: number; penalita_cambi: number;
-    }[] = [];
-
-    for (const formazione of formazioni || []) {
-      const driverNumbers: number[] = (formazione.driver_numbers || []).map(Number);
-      if (driverNumbers.length === 0) continue;
-
-      const chipPiloti: ChipPilotiConfig = {
-        chipPiloti: formazione.chip_piloti,
-        chipPilotiTarget: formazione.chip_piloti_target,
-        sestoUomo: formazione.sesto_uomo,
-      };
-
-      // Previsioni: solo post-race, altrimenti tutte null (0 punti)
-      let previsioni: Previsioni = {
-        safetyCar: null, virtualSafetyCar: null, redFlag: null,
-        gommeWet: null, poleVince: null, numeroDnf: null,
-      };
-      let chipPrevisioni: ChipPrevisioniConfig = { chipAttivo: null, chipTarget: null };
-
-      if (isPostRace) {
-        const prev = previsioniData?.find((p) => p.user_id === formazione.user_id);
-        if (prev) {
-          previsioni = {
-            safetyCar: prev.safety_car,
-            virtualSafetyCar: prev.virtual_safety_car,
-            redFlag: prev.red_flag,
-            gommeWet: prev.gomme_wet,
-            poleVince: prev.pole_vince,
-            numeroDnf: prev.numero_dnf,
-          };
-          chipPrevisioni = {
-            chipAttivo: prev.chip_attivo || null,
-            chipTarget: prev.chip_target || null,
-          };
-        }
-      }
-
-      const calc = calcolaPuntiWeekend(driverNumbers, formazione.primo_pilota, previsioni, weekendResults, chipPiloti, chipPrevisioni);
-      const profile = profiles?.find((p) => p.id === formazione.user_id);
-
-      // Penalità cambi: solo post-race
-      let penalitaCambi = 0;
-      if (isPostRace && formazione.chip_piloti !== "wildcard") {
-        const { data: cambiData } = await supabase
-          .from("mercato_cambi")
-          .select("id")
-          .eq("user_id", formazione.user_id)
-          .eq("round", round);
-        const numCambi = (cambiData || []).length;
-        penalitaCambi = Math.max(0, numCambi - 2) * 10;
-      }
-
-      playerScores.push({
-        user_id: formazione.user_id,
-        name: profile?.team_principal_name || "—",
-        scuderia: profile?.scuderia_name || "—",
-        weekend_points: calc.total - penalitaCambi,
-        piloti_points: calc.pilotiPoints,
-        previsioni_points: calc.previsioniPoints,
-        penalita_cambi: penalitaCambi,
-      });
-    }
-
-    playerScores.sort((a, b) => b.weekend_points - a.weekend_points);
+    // Calcolo punteggi centralizzato (vedi lib/score-round.ts)
+    const playerScores = await computePlayerScores(supabase, round, weekendResults, isPostRace);
     log.push(`Giocatori calcolati: ${playerScores.length}`);
 
     // ═══════════════════════════════════
@@ -496,15 +407,11 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     }
   }
 
-  // Penalità da race_control (session_result non le ha)
+  // Penalità da race_control (session_result non le ha).
+  // NB: OpenF1 lascia driver_number=null sui messaggi dei commissari, il numero
+  // auto è nel testo — la rilevazione è centralizzata in lib/penalties.ts
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
-  const penalizedDrivers = new Set<number>();
-  for (const rc of raceControl) {
-    const msg = (rc.message || "").toUpperCase();
-    if (msg.includes("PENALTY") && !msg.includes("GRID") && !msg.includes("REPRIMAND")) {
-      if (rc.driver_number) penalizedDrivers.add(rc.driver_number);
-    }
-  }
+  const penalizedDrivers = extractPenalizedDrivers(raceControl);
 
   // Fallback: se session_result non ha dati, usa position come prima
   if (resultMap.size === 0) {

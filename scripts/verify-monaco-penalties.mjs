@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Verifica penalità Monaco: confronto metodo ATTUALE vs NUOVO sui dati OpenF1.
+// Verifica penalità: confronto metodo VECCHIO (campo driver_number) vs NUOVO
+// (numero auto dal testo "CAR X") sui dati OpenF1.
 // Uso:
 //   node scripts/verify-monaco-penalties.mjs            # ultima gara di Monaco
 //   node scripts/verify-monaco-penalties.mjs <session_key>
@@ -12,23 +13,19 @@ async function j(url) {
   return r.json();
 }
 
-// ── METODO ATTUALE (come in post-gara/route.ts e fetch-risultati/route.ts) ──
-function isPenaltyCurrent(msg) {
-  return msg.includes("PENALTY") && !msg.includes("GRID") && !msg.includes("REPRIMAND");
-}
+const EXCLUDED = ["GRID", "REPRIMAND"];
+const NON_PENALTY = ["NOTED", "UNDER INVESTIGATION", "WILL BE INVESTIGATED", "NO FURTHER", "UNDER REVIEW"];
+const PENALTY = ["PENALTY", "DRIVE THROUGH", "DRIVE-THROUGH", "STOP AND GO", "STOP/GO"];
 
-// ── METODO NUOVO (keyword esplicite, non dipende solo da "PENALTY") ──
-function isPenaltyNew(msg) {
-  if (msg.includes("GRID") || msg.includes("REPRIMAND")) return false; // griglia=0, reprimand escluso
-  if (msg.includes("UNDER INVESTIGATION") || msg.includes("NOTED") || msg.includes("NO FURTHER")) return false;
-  return (
-    msg.includes("PENALTY") ||
-    msg.includes("DRIVE THROUGH") ||
-    msg.includes("DRIVE-THROUGH") ||
-    msg.includes("STOP AND GO") ||
-    msg.includes("STOP/GO") ||
-    msg.includes("TIME PENALTY")
-  );
+function isPenalty(msg) {
+  const M = msg.toUpperCase();
+  if (EXCLUDED.some((k) => M.includes(k))) return false;
+  if (NON_PENALTY.some((k) => M.includes(k))) return false;
+  return PENALTY.some((k) => M.includes(k));
+}
+function carFromText(msg) {
+  const m = msg.toUpperCase().match(/\bCAR\s+(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 async function main() {
@@ -42,7 +39,7 @@ async function main() {
     sessions.sort((a, b) => new Date(b.date_start) - new Date(a.date_start));
     const s = sessions[0];
     sessionKey = s.session_key;
-    label = `Monaco ${s.year} (session_key=${sessionKey}, ${s.date_start})`;
+    label = `Monaco ${s.year} (session_key=${sessionKey})`;
   } else {
     label = `session_key=${sessionKey}`;
   }
@@ -52,29 +49,22 @@ async function main() {
   const drivers = await j(`${OPENF1}/drivers?session_key=${sessionKey}`);
   const nameOf = new Map(drivers.map((d) => [d.driver_number, d.name_acronym || d.full_name]));
 
-  const cur = new Map(); // driver -> [messaggi]
-  const neu = new Map();
+  const oldMethod = new Set(); // si affida a driver_number (bug)
+  const newMethod = new Set(); // parsa "CAR X" dal testo
   for (const r of rc) {
-    const msg = (r.message || "").toUpperCase();
-    if (!r.driver_number) continue;
-    if (isPenaltyCurrent(msg)) (cur.get(r.driver_number) || cur.set(r.driver_number, []).get(r.driver_number)).push(r.message);
-    if (isPenaltyNew(msg)) (neu.get(r.driver_number) || neu.set(r.driver_number, []).get(r.driver_number)).push(r.message);
+    if (!isPenalty(r.message || "")) continue;
+    if (r.driver_number) oldMethod.add(r.driver_number);
+    const num = r.driver_number ?? carFromText(r.message || "");
+    if (num) newMethod.add(num);
   }
 
-  const allDrivers = new Set([...cur.keys(), ...neu.keys()]);
-  if (allDrivers.size === 0) {
-    console.log("Nessuna penalità rilevata con nessuno dei due metodi.");
+  const all = new Set([...oldMethod, ...newMethod]);
+  if (all.size === 0) console.log("Nessuna penalità rilevata con nessuno dei due metodi.");
+  for (const dn of [...all].sort((a, b) => a - b)) {
+    const o = oldMethod.has(dn), n = newMethod.has(dn);
+    console.log(`${o === n ? "=" : "DIFFERENZA →"} #${dn} ${nameOf.get(dn) || "?"} | vecchio: ${o ? "-5" : "0"} | nuovo: ${n ? "-5" : "0"}`);
   }
-  for (const dn of [...allDrivers].sort((a, b) => a - b)) {
-    const inCur = cur.has(dn);
-    const inNew = neu.has(dn);
-    const flag = inCur === inNew ? "=" : "DIFFERENZA →";
-    console.log(`${flag} #${dn} ${nameOf.get(dn) || "?"}  | attuale: ${inCur ? "-5" : "0"} | nuovo: ${inNew ? "-5" : "0"}`);
-    const msgs = (inNew ? neu.get(dn) : cur.get(dn)) || [];
-    for (const m of msgs) console.log(`      • ${m}`);
-  }
-
-  console.log(`\nRiepilogo: ATTUALE penalizza ${cur.size} piloti, NUOVO penalizza ${neu.size} piloti.`);
+  console.log(`\nRiepilogo: VECCHIO ${oldMethod.size} piloti, NUOVO ${newMethod.size} piloti.`);
 }
 
 main().catch((e) => { console.error("Errore:", e.message); process.exit(1); });

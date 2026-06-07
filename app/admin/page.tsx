@@ -19,8 +19,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [recalcPen, setRecalcPen] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [reviewData, setReviewData] = useState<any>(null);
+  const [recalcData, setRecalcData] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
   const handleLogin = () => {
@@ -52,6 +54,29 @@ export default function AdminPage() {
       setResult({ error: err.message });
     }
     setLoading(false);
+  };
+
+  const handleRecalcPenalties = async (allRounds: boolean) => {
+    const msg = allRounds
+      ? "Ricalcolare le penalità di gara per TUTTI i GP già processati? I punteggi verranno aggiornati di conseguenza."
+      : `Ricalcolare le penalità di gara solo per il Round ${round}?`;
+    if (!confirm(msg)) return;
+    setRecalcPen(true);
+    setRecalcData(null);
+    try {
+      const body: any = { admin_key: ADMIN_API_KEY };
+      if (!allRounds) body.round = round;
+      const res = await fetch("/api/recalc-penalties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      setRecalcData(data);
+    } catch (err: any) {
+      setRecalcData({ error: err.message });
+    }
+    setRecalcPen(false);
   };
 
   const handleReview = async () => {
@@ -291,6 +316,103 @@ export default function AdminPage() {
             )}
           </button>
         </div>
+
+        {/* Ricalcolo penalità */}
+        <div className="mt-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+          <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-1">
+            Manutenzione penalità
+          </div>
+          <p className="text-xs text-white/40 mb-4">
+            Ricontrolla le penalità di gara da OpenF1 e aggiorna i punteggi (-5 una volta per pilota).
+            Idempotente: rilanciarlo non cambia nulla se non ci sono variazioni.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleRecalcPenalties(false)}
+              disabled={recalcPen || loading || resetting}
+              className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
+                recalcPen || loading || resetting
+                  ? "bg-white/10 text-white/30 cursor-wait"
+                  : "bg-purple-600 hover:bg-purple-600/80 text-white"
+              }`}
+            >
+              {recalcPen ? "Ricalcolo..." : `Ricalcola penalità R${round}`}
+            </button>
+            <button
+              onClick={() => handleRecalcPenalties(true)}
+              disabled={recalcPen || loading || resetting}
+              className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
+                recalcPen || loading || resetting
+                  ? "bg-white/10 text-white/30 cursor-wait"
+                  : "bg-purple-700 hover:bg-purple-700/80 text-white"
+              }`}
+            >
+              {recalcPen ? "Ricalcolo..." : "Ricalcola TUTTI i GP"}
+            </button>
+          </div>
+        </div>
+
+        {/* Risultato ricalcolo penalità */}
+        {recalcData && (
+          <div className="mt-6">
+            {recalcData.error ? (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
+                <div className="text-red-400 font-bold text-sm mb-2">Errore ricalcolo</div>
+                <div className="text-red-300 text-sm">{recalcData.error}</div>
+              </div>
+            ) : (
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+                <div className="text-[10px] tracking-[2px] text-purple-400 uppercase font-bold mb-3">
+                  Ricalcolo penalità — {recalcData.round_verificati} GP verificati, {recalcData.round_con_variazioni} con variazioni
+                </div>
+                {recalcData.round_con_variazioni === 0 ? (
+                  <div className="text-green-400 text-sm font-bold">
+                    Nessuna variazione: le penalità erano già corrette.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recalcData.report?.filter((r: any) => r.variazioni).map((r: any) => (
+                      <div key={r.round} className="bg-white/[0.02] rounded-xl p-4">
+                        <div className="text-sm font-bold text-white mb-2">R{r.round} — {r.gara}</div>
+                        {r.aggiunte?.length > 0 && (
+                          <div className="text-xs text-orange-400 mb-1">+ Penalità: {r.aggiunte.join(", ")}</div>
+                        )}
+                        {r.rimosse?.length > 0 && (
+                          <div className="text-xs text-green-400 mb-1">− Rimosse: {r.rimosse.join(", ")}</div>
+                        )}
+                        {r.giocatori_impattati?.length > 0 && (
+                          <div className="mt-2 space-y-0.5">
+                            {r.giocatori_impattati.map((g: any, i: number) => (
+                              <div key={i} className="text-[11px] text-white/50 flex justify-between">
+                                <span>{g.nome}</span>
+                                <span className="font-[family-name:var(--font-jetbrains)]">
+                                  punti: {g.delta_punti > 0 ? "+" : ""}{g.delta_punti}
+                                  {g.delta_reale !== 0 && <span className="text-white/30"> | reale: {g.delta_reale > 0 ? "+" : ""}{g.delta_reale}</span>}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {recalcData.log?.length > 0 && (
+                  <details className="mt-4">
+                    <summary className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold cursor-pointer">
+                      Log ({recalcData.log.length})
+                    </summary>
+                    <div className="mt-2 font-[family-name:var(--font-jetbrains)] text-[11px] space-y-1 max-h-60 overflow-y-auto">
+                      {recalcData.log.map((l: string, i: number) => (
+                        <div key={i} className="text-white/50">{l}</div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Risultato */}
         {result && (
