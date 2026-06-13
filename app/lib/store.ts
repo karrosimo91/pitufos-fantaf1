@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 import { useAuth } from "./auth";
 import { getDriverByNumber } from "./drivers-data";
@@ -7,6 +7,36 @@ import { useDriverPrices, getDriverPrice } from "./use-driver-prices";
 import type { Previsioni, Lega } from "./types";
 
 const BUDGET_INIZIALE = 100;
+
+// ═══════════════════════════════════════════
+// Chip / Aggiornamenti — limite per metà stagione
+//
+// Regolamento: ogni chip ha 2 utilizzi, 1 prima della pausa estiva e
+// 1 dopo. Round < PAUSA_ESTIVA_ROUND = prima pausa, >= = dopo.
+// ═══════════════════════════════════════════
+
+export const PAUSA_ESTIVA_ROUND = 14; // Round 14+ = dopo la pausa estiva
+
+// True se i due round cadono nella stessa metà di stagione (entrambi
+// pre-pausa o entrambi post-pausa).
+export function isSameHalf(a: number, b: number): boolean {
+  return (a < PAUSA_ESTIVA_ROUND) === (b < PAUSA_ESTIVA_ROUND);
+}
+
+// Da una lista di utilizzi confermati { chip, round } in ALTRI round,
+// costruisce la mappa chipId → round in cui è già stato usato nella stessa
+// metà stagione del round corrente. Un chip presente nella mappa non è più
+// disponibile per quel round.
+function buildChipUnavailable(
+  used: { chip: string; round: number }[],
+  round: number
+): Record<string, number> {
+  const m: Record<string, number> = {};
+  for (const u of used) {
+    if (isSameHalf(u.round, round)) m[u.chip] = u.round;
+  }
+  return m;
+}
 
 // ═══════════════════════════════════════════
 // Tipi condivisi
@@ -79,6 +109,8 @@ export function useSquadra(round: number) {
   const [cambiRound, setCambiRound] = useState(0);
   const [cassa, setCassa] = useState<number>(BUDGET_INIZIALE);
   const [loaded, setLoaded] = useState(false);
+  // Chip piloti già confermati in ALTRI round (per limite metà stagione)
+  const [chipPilotiUsedOther, setChipPilotiUsedOther] = useState<{ chip: string; round: number }[]>([]);
 
   // Carica formazione del round (o copia dal precedente)
   useEffect(() => {
@@ -88,6 +120,7 @@ export function useSquadra(round: number) {
     setCassa(BUDGET_INIZIALE);
     setState({ driverNumbers: [], primoPilota: null, sestoUomo: null, chipPiloti: null, chipPilotiTarget: null, confirmed: false });
     setRosaBase([]);
+    setChipPilotiUsedOther([]);
 
     if (!user || !isSupabaseConfigured) {
       setLoaded(true);
@@ -180,6 +213,19 @@ export function useSquadra(round: number) {
         .eq("round", round);
       setCambiRound((cambiData || []).length);
 
+      // Carica i chip piloti già usati in altri round confermati,
+      // per applicare il limite di 1 utilizzo per metà stagione.
+      const { data: chipRows } = await supabase
+        .from("formazioni")
+        .select("round, chip_piloti")
+        .eq("user_id", user.id)
+        .eq("confirmed", true)
+        .neq("round", round)
+        .not("chip_piloti", "is", null);
+      setChipPilotiUsedOther(
+        (chipRows || []).map((r) => ({ chip: r.chip_piloti as string, round: r.round as number }))
+      );
+
       setLoaded(true);
     })();
   }, [user, round]);
@@ -193,6 +239,15 @@ export function useSquadra(round: number) {
   // Budget = saldo cassa memorizzato (NON ricalcolato dalle quotazioni attuali).
   // Le quotazioni muovono la cassa solo al momento di un trade.
   const budget = cassa;
+
+  // Chip piloti non più disponibili in questo round (già usati nella stessa
+  // metà stagione). Mappa chipId → round di utilizzo.
+  const chipPilotiUnavailable = useMemo(
+    () => buildChipUnavailable(chipPilotiUsedOther, round),
+    [chipPilotiUsedOther, round]
+  );
+  const chipUnavailRef = useRef(chipPilotiUnavailable);
+  chipUnavailRef.current = chipPilotiUnavailable;
 
   const cambiGratisRimasti = Math.max(0, CAMBI_GRATIS - cambiRound);
   const hasWildcard = state.chipPiloti === "wildcard";
@@ -311,6 +366,11 @@ export function useSquadra(round: number) {
   }, [savePartial]);
 
   const setChipPiloti = useCallback((chip: string | null) => {
+    // Limite metà stagione: rifiuta un chip già usato in un altro round.
+    if (chip && chipUnavailRef.current[chip] != null) {
+      console.warn(`[squadra] chip "${chip}" già usato nel round ${chipUnavailRef.current[chip]} di questa metà stagione`);
+      return;
+    }
     setState((prev) => {
       const nextSesto = chip !== "sesto" ? null : prev.sestoUomo;
       // Quando cambia il chip resettiamo il target e (se non è "sesto") anche il sesto uomo
@@ -336,6 +396,13 @@ export function useSquadra(round: number) {
         setState((current) => {
           if (current.driverNumbers.length !== 5) { resolve(false); return current; }
           if (!current.primoPilota) { resolve(false); return current; }
+          // Limite metà stagione: blocca la conferma se il chip è già stato
+          // usato in un altro round della stessa metà.
+          if (current.chipPiloti && chipUnavailRef.current[current.chipPiloti] != null) {
+            console.warn(`[squadra] conferma rifiutata: chip "${current.chipPiloti}" già usato nel round ${chipUnavailRef.current[current.chipPiloti]}`);
+            resolve(false);
+            return current;
+          }
 
           const payload = {
             user_id: user!.id,
@@ -378,6 +445,7 @@ export function useSquadra(round: number) {
     conferma,
     cambiRound, cambiGratisRimasti, penalitaProssimoCambio, penalitaTotale,
     CAMBI_GRATIS, PENALITA_CAMBIO_EXTRA,
+    chipPilotiUnavailable,
   };
 }
 
@@ -404,6 +472,8 @@ export function usePrevisioni(round = 1) {
   const [chipTarget, setChipTargetState] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Chip previsioni già confermati in ALTRI round (per limite metà stagione)
+  const [chipPrevUsedOther, setChipPrevUsedOther] = useState<{ chip: string; round: number }[]>([]);
 
   const previsioniRef = useRef(previsioni);
   previsioniRef.current = previsioni;
@@ -411,6 +481,15 @@ export function usePrevisioni(round = 1) {
   chipRef.current = chipAttivo;
   const chipTargetRef = useRef(chipTarget);
   chipTargetRef.current = chipTarget;
+
+  // Chip previsioni non più disponibili in questo round (già usati nella
+  // stessa metà stagione). Mappa chipId → round di utilizzo.
+  const chipPrevisioniUnavailable = useMemo(
+    () => buildChipUnavailable(chipPrevUsedOther, round),
+    [chipPrevUsedOther, round]
+  );
+  const chipPrevUnavailRef = useRef(chipPrevisioniUnavailable);
+  chipPrevUnavailRef.current = chipPrevisioniUnavailable;
 
   useEffect(() => {
     if (!user || !isSupabaseConfigured) {
@@ -443,6 +522,20 @@ export function usePrevisioni(round = 1) {
           setConfirmed(!!data.confirmed);
         }
         setLoaded(true);
+      });
+
+    // Chip previsioni già usati in altri round confermati (limite metà stagione)
+    supabase
+      .from("previsioni")
+      .select("round, chip_attivo")
+      .eq("user_id", user.id)
+      .eq("confirmed", true)
+      .neq("round", round)
+      .not("chip_attivo", "is", null)
+      .then(({ data }) => {
+        setChipPrevUsedOther(
+          (data || []).map((r) => ({ chip: r.chip_attivo as string, round: r.round as number }))
+        );
       });
   }, [user, round]);
 
@@ -499,6 +592,11 @@ export function usePrevisioni(round = 1) {
 
   const setChipAttivo = useCallback(
     (chip: string | null) => {
+      // Limite metà stagione: rifiuta un chip già usato in un altro round.
+      if (chip && chipPrevUnavailRef.current[chip] != null) {
+        console.warn(`[previsioni] chip "${chip}" già usato nel round ${chipPrevUnavailRef.current[chip]} di questa metà stagione`);
+        return;
+      }
       setChipAttivoState(chip);
       setConfirmed(false);
       // Se si deseleziona il chip, resetta anche il target
@@ -528,6 +626,13 @@ export function usePrevisioni(round = 1) {
         .filter(([, v]) => v !== null).length + (p.numeroDnf !== null ? 1 : 0);
 
     if (completate < 6) return false;
+
+    // Limite metà stagione: blocca la conferma se il chip previsioni è già
+    // stato usato in un altro round della stessa metà.
+    if (chipRef.current && chipPrevUnavailRef.current[chipRef.current] != null) {
+      console.warn(`[previsioni] conferma rifiutata: chip "${chipRef.current}" già usato nel round ${chipPrevUnavailRef.current[chipRef.current]}`);
+      return false;
+    }
 
     const supabase = createClient()!;
     const payload = {
@@ -568,6 +673,7 @@ export function usePrevisioni(round = 1) {
   return {
     previsioni, chipAttivo, chipTarget, completate, confirmed, loaded,
     setPrevisione, setNumeroDnf, setChipAttivo, setChipTarget, confermaPrevisioni,
+    chipPrevisioniUnavailable,
   };
 }
 
@@ -575,8 +681,6 @@ export function usePrevisioni(round = 1) {
 // Hook: useAggiornamenti — Chip usati nella stagione
 // Legge da formazioni + previsioni
 // ═══════════════════════════════════════════
-
-const PAUSA_ESTIVA_ROUND = 14; // Round 14+ = dopo la pausa estiva
 
 export interface ChipUsage {
   id: string;
@@ -630,7 +734,7 @@ export function useAggiornamenti() {
 
   function getChipStatus(chipId: string, source: { chip: string; round: number }[]): ChipUsage {
     const labels: Record<string, string> = {
-      boost: "Boost Mode", halo: "Halo", sesto: "Sesto Uomo", wildcard: "Wildcard",
+      boost: "Boost Mode", halo: "Halo", scudo: "Scudo Capitano", sesto: "Sesto Uomo", wildcard: "Wildcard",
       sicura: "Prev. Sicura", doppia: "Prev. Doppia",
     };
     const uses = source.filter((u) => u.chip === chipId);
@@ -646,7 +750,7 @@ export function useAggiornamenti() {
     };
   }
 
-  const pilotiChips = ["boost", "halo", "sesto", "wildcard"].map((id) =>
+  const pilotiChips = ["boost", "halo", "scudo", "sesto", "wildcard"].map((id) =>
     getChipStatus(id, chipPilotiUsed)
   );
 

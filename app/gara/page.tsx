@@ -689,19 +689,24 @@ function GaraPage() {
                   {CHIP_PILOTI.map((chip) => {
                     const Icon = chip.icon;
                     const active = sq.chipPiloti === chip.id;
+                    const usedRound = sq.chipPilotiUnavailable[chip.id];
+                    const disabled = usedRound != null && !active;
                     return (
                       <button key={chip.id}
-                        onClick={() => sq.setChipPiloti(active ? null : chip.id)}
+                        disabled={disabled}
+                        onClick={() => { if (!disabled) sq.setChipPiloti(active ? null : chip.id); }}
                         className={`relative flex items-start gap-2 p-3 rounded text-left transition-colors ${
                           active
                             ? "bg-[#E8002D]/12 border border-[#E8002D]/45 shadow-[inset_0_-2px_0_var(--accent)]"
+                            : disabled
+                            ? "bg-[#0e0e14] border border-[#1c1c26] opacity-40 cursor-not-allowed"
                             : "bg-[#0e0e14] border border-[#1c1c26] hover:border-[#2a2a38]"
                         }`}
                       >
                         <Icon size={14} className={active ? "text-[#E8002D] mt-0.5" : "text-white/35 mt-0.5"} />
                         <div className="min-w-0">
                           <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] uppercase ${active ? "text-[#E8002D]" : "text-white/55"}`}>{chip.label}</div>
-                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{chip.desc}</div>
+                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{disabled ? `Già usato (R${usedRound})` : chip.desc}</div>
                         </div>
                       </button>
                     );
@@ -927,18 +932,24 @@ function GaraPage() {
                   {CHIP_PREVISIONI.map((chip) => {
                     const Icon = chip.icon;
                     const active = prev.chipAttivo === chip.id;
+                    const usedRound = prev.chipPrevisioniUnavailable[chip.id];
+                    const disabled = usedRound != null && !active;
                     return (
-                      <button key={chip.id} onClick={() => prev.setChipAttivo(active ? null : chip.id)}
+                      <button key={chip.id}
+                        disabled={disabled}
+                        onClick={() => { if (!disabled) prev.setChipAttivo(active ? null : chip.id); }}
                         className={`flex items-start gap-2 p-3 rounded text-left transition-colors ${
                           active
                             ? "bg-[#E8002D]/12 border border-[#E8002D]/45 shadow-[inset_0_-2px_0_var(--accent)]"
+                            : disabled
+                            ? "bg-[#0e0e14] border border-[#1c1c26] opacity-40 cursor-not-allowed"
                             : "bg-[#0e0e14] border border-[#1c1c26] hover:border-[#2a2a38]"
                         }`}
                       >
                         <Icon size={14} className={active ? "text-[#E8002D] mt-0.5" : "text-white/35 mt-0.5"} />
                         <div className="min-w-0">
                           <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] uppercase ${active ? "text-[#E8002D]" : "text-white/55"}`}>{chip.label}</div>
-                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{chip.desc}</div>
+                          <div className="text-[10px] text-white/30 mt-0.5 leading-tight">{disabled ? `Già usato (R${usedRound})` : chip.desc}</div>
                         </div>
                       </button>
                     );
