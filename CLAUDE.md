@@ -84,7 +84,6 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 - **Wildcard:** cambi illimitati senza penalità per quel round
 
 **Aggiornamenti Previsioni:**
-- **Previsione Sicura:** 1 previsione dà punti comunque (indovini o no)
 - **Previsione Doppia:** punti x2 su 1 previsione
 
 ### Deadline

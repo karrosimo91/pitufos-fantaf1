@@ -45,7 +45,7 @@ export interface ChipPilotiConfig {
 // ─── Configurazione chip previsioni ───
 
 export interface ChipPrevisioniConfig {
-  chipAttivo: string | null;  // "sicura" | "doppia" | "tardiva" | null
+  chipAttivo: string | null;  // "doppia" | null (la "sicura" è stata rimossa)
   chipTarget: string | null;  // key della previsione target (es. "safetyCar")
 }
 
@@ -291,11 +291,6 @@ export function calcolaPuntiPrevisioni(
     const corretto = valore === (events[p.eventKey] as boolean);
     let pts = corretto ? (valore ? p.punti.si : p.punti.no) : 0;
 
-    // Chip: Previsione Sicura — vale comunque
-    if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === p.key && !corretto) {
-      pts = valore ? p.punti.si : p.punti.no;
-    }
-
     // Chip: Previsione Doppia — punti x2
     if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === p.key) {
       pts *= 2;
@@ -309,9 +304,6 @@ export function calcolaPuntiPrevisioni(
   if (previsioni.numeroDnf !== null) {
     let pts = previsioni.numeroDnf === events.total_dnf ? PREVISIONI_PUNTI.numeroDnf.esatto : 0;
 
-    if (chipPrevisioni?.chipAttivo === "sicura" && chipPrevisioni.chipTarget === "numeroDnf" && pts === 0) {
-      pts = PREVISIONI_PUNTI.numeroDnf.esatto;
-    }
     if (chipPrevisioni?.chipAttivo === "doppia" && chipPrevisioni.chipTarget === "numeroDnf") {
       pts *= 2;
     }

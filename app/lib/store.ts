@@ -754,7 +754,7 @@ export function useAggiornamenti() {
     getChipStatus(id, chipPilotiUsed)
   );
 
-  const previsioniChips = ["sicura", "doppia"].map((id) =>
+  const previsioniChips = ["doppia"].map((id) =>
     getChipStatus(id, chipPrevisioniUsed)
   );
 

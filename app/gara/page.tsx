@@ -52,7 +52,6 @@ const CHIP_PILOTI = [
 ];
 
 const CHIP_PREVISIONI = [
-  { id: "sicura", label: "Prev. Sicura", desc: "1 previsione vale comunque", icon: ShieldCheck },
   { id: "doppia", label: "Prev. Doppia", desc: "Punti x2 su 1 previsione", icon: CopyIcon },
 ];
 
@@ -956,7 +955,7 @@ function GaraPage() {
                   })}
                 </div>
 
-                {(prev.chipAttivo === "sicura" || prev.chipAttivo === "doppia") && (
+                {prev.chipAttivo === "doppia" && (
                   <div className="mt-3 bg-black/40 border border-[#1c1c26] rounded p-3">
                     <div className="hud-label mb-2">
                       APPLICA A QUALE PREVISIONE?

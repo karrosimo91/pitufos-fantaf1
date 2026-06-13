@@ -177,7 +177,6 @@ export default function InfoPage() {
 
             <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mt-3 mb-1">Aggiornamenti Previsioni</div>
             <PuntiTable rows={[
-              ["Prev. Sicura", "1 previsione vale comunque (indovini o no)"],
               ["Prev. Doppia", "Punti x2 su 1 previsione"],
             ]} />
           </Accordion>

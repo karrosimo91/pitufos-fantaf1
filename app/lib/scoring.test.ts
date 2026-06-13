@@ -203,15 +203,6 @@ describe("calcolaPuntiPrevisioni", () => {
     expect(r.dettaglio.numeroDnf).toBe(0);
   });
 
-  it("Chip Previsione Sicura: anche se sbagli, prendi i punti", () => {
-    const r = calcolaPuntiPrevisioni(
-      { ...emptyPrev(), safetyCar: true },
-      noEvents,
-      { chipAttivo: "sicura", chipTarget: "safetyCar" }
-    );
-    expect(r.dettaglio.safetyCar).toBe(4);
-  });
-
   it("Chip Previsione Doppia: punti x2 se indovini", () => {
     const r = calcolaPuntiPrevisioni(
       { ...emptyPrev(), redFlag: true },
@@ -228,15 +219,6 @@ describe("calcolaPuntiPrevisioni", () => {
       { chipAttivo: "doppia", chipTarget: "numeroDnf" }
     );
     expect(r.dettaglio.numeroDnf).toBe(10);
-  });
-
-  it("Chip Sicura su DNF: anche se sbagli prendi i 5", () => {
-    const r = calcolaPuntiPrevisioni(
-      { ...emptyPrev(), numeroDnf: 99 },
-      allEvents,
-      { chipAttivo: "sicura", chipTarget: "numeroDnf" }
-    );
-    expect(r.dettaglio.numeroDnf).toBe(5);
   });
 });
 
