@@ -15,6 +15,26 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.8.0",
+    date: "14 Giugno 2026",
+    summary: "Il Muretto (gestione squadra) si sposta nella Home; la pagina LIVE resta solo per il live.",
+    sections: [
+      {
+        title: "Muretto nella Home",
+        items: [
+          "Gestione Formazione e Previsioni (con i chip) e Dettaglio post-gara ora nella Home, insieme al recap lega e alla prossima gara.",
+          "A weekend iniziato i tab diventano un riassunto in sola lettura.",
+        ],
+      },
+      {
+        title: "LIVE solo live",
+        items: [
+          "La pagina LIVE contiene solo l'esperienza live (Dashboard / Classifica Gara / Classifica Generale) e il provvisorio di fine sessione. Fuori dal weekend mostra un segnaposto.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.7.0",
     date: "14 Giugno 2026",
     summary: "Tab Live ridisegnato, /gara con fascia recap e tab Muretto, più fix ai punteggi live.",

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.8.0 — 14 Giugno 2026
+
+### Muretto nella Home
+- La gestione **Formazione** e **Previsioni** (con i relativi chip) e il **Dettaglio** post-gara ora vivono nella **Home** (il "Muretto"), insieme al recap lega (posizione, punti, gare, media) e alla prossima gara. A weekend iniziato i tab diventano un riassunto in sola lettura.
+
+### LIVE solo live
+- La pagina **LIVE** (`/gara`) ora contiene **solo** l'esperienza live: durante la sessione il tab Live (Dashboard / Classifica Gara / Classifica Generale), a sessione finita il provvisorio di fine sessione. Fuori dal weekend mostra un segnaposto.
+
+---
+
 ## v1.7.0 — 14 Giugno 2026
 
 ### Tab Live ridisegnato
