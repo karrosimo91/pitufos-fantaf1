@@ -102,16 +102,38 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
             ))}
             <div className="border-t border-white/[0.08] my-1.5"></div>
             {(() => {
-              const grandTotal = breakdownSections.reduce((s, sec) => s + sec.breakdown.finalTotal, 0);
+              // I subtotali per sessione sono i punti BASE. Il moltiplicatore
+              // Capitano/Boost e i chip Halo/Scudo valgono sul totale weekend:
+              // l'aggiustamento è la differenza tra il puntiFinali autorevole
+              // (da calcolaPuntiWeekend) e la somma delle basi.
+              const baseWeekend = breakdownSections.reduce((s, sec) => s + sec.breakdown.baseTotal, 0);
+              const adjustment = p.puntiFinali - baseWeekend;
+              const adjLabel = isScudo ? "Scudo Capitano"
+                : isPrimo ? "Capitano x2"
+                : isBoosted ? "Boost x3"
+                : (chipPiloti === "halo" && p.puntiFinali === 0 && baseWeekend < 0) ? "Halo (min 0)"
+                : null;
               return (
-                <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-white/70 font-bold">Totale Weekend</span>
-                  <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                    grandTotal > 0 ? "text-green-400" : grandTotal < 0 ? "text-red-400" : "text-white/15"
-                  }`}>
-                    {grandTotal > 0 ? "+" : ""}{grandTotal}
-                  </span>
-                </div>
+                <>
+                  {adjustment !== 0 && adjLabel && (
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-amber-400/70">{adjLabel}</span>
+                      <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                        adjustment > 0 ? "text-green-400" : "text-red-400"
+                      }`}>
+                        {adjustment > 0 ? "+" : ""}{adjustment}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-[13px] mt-1">
+                    <span className="text-white/70 font-bold">Totale Weekend</span>
+                    <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
+                      p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+                    }`}>
+                      {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
+                    </span>
+                  </div>
+                </>
               );
             })()}
           </div>

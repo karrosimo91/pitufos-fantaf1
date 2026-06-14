@@ -5,6 +5,7 @@ import type { RaceWeekendResults } from "../../lib/scoring";
 import type { PlayerFormazione, PlayerPrevisioni, WeekendClassificaEntry } from "../../lib/use-weekend-classifica";
 import type { LiveSnapshot } from "../../lib/build-live-results";
 import { buildPilotaBreakdown, computePlayerWeekendDetail } from "../../lib/player-breakdown";
+import { chipLabel } from "../../lib/chip-labels";
 import { PilotaLiveRow } from "./PilotaLiveRow";
 
 export function PlayerDetailModal({
@@ -69,9 +70,6 @@ export function PlayerDetailModal({
               {detail.piloti.map((p) => {
                 const sections = buildPilotaBreakdown(
                   p.driver_number,
-                  p.driver_number === player.primo_pilota,
-                  player.chip_piloti,
-                  player.chip_piloti_target,
                   previousResults,
                   detail.liveResults,
                   sessionType,
@@ -99,7 +97,7 @@ export function PlayerDetailModal({
             <div>
               <div className="hud-label mb-2">Aggiornamento</div>
               <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                <span className="text-xs font-bold text-amber-400">{player.chip_piloti}</span>
+                <span className="text-xs font-bold text-amber-400">{chipLabel(player.chip_piloti)}</span>
               </div>
             </div>
           )}
@@ -121,7 +119,7 @@ function PrevisioniGrid({
     { label: "Virtual SC", value: previsioniRow.virtual_safety_car, happened: events.virtual_safety_car },
     { label: "Red Flag", value: previsioniRow.red_flag, happened: events.red_flag },
     { label: "Gomme Wet", value: previsioniRow.gomme_wet, happened: events.wet_tyres },
-    { label: "Pole vince", value: previsioniRow.pole_vince, happened: null },
+    { label: "Pole vince", value: previsioniRow.pole_vince, happened: events.pole_won },
   ];
 
   return (

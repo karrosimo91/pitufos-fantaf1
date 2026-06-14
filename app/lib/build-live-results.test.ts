@@ -116,6 +116,20 @@ describe("detectLiveEvents", () => {
     expect(detectLiveEvents(snap).totalDnf).toBe(1);
   });
 
+  it("DNF: numero auto letto dal testo quando driver_number è null (come OpenF1)", () => {
+    const snap: LiveSnapshot = {
+      ...emptySnap(),
+      raceControl: [
+        { message: "CAR 18 (STR) RETIRED", date: "2026-01-01" },
+        { message: "CAR 31 (OCO) OUT OF THE RACE", date: "2026-01-01" },
+      ],
+    };
+    const e = detectLiveEvents(snap);
+    expect(e.totalDnf).toBe(2);
+    expect(e.dnfDrivers.has(18)).toBe(true);
+    expect(e.dnfDrivers.has(31)).toBe(true);
+  });
+
   it("Wet tyres: rilevati da stints WET o INTERMEDIATE", () => {
     const snap1: LiveSnapshot = {
       ...emptySnap(),
@@ -217,6 +231,30 @@ describe("buildLiveWeekendResults", () => {
       ]),
     };
     const out = buildLiveWeekendResults("Race", snap, detectLiveEvents(snap), new Map(), null, 1);
+    expect(out.events.pole_won).toBe(false);
+  });
+
+  it("pole_won: dedotto dalla griglia quando qualifyingPole non è passato", () => {
+    const snap: LiveSnapshot = {
+      ...emptySnap(),
+      positions: new Map([
+        [44, { driver_number: 44, position: 1, date: "2026-01-01" }],
+      ]),
+    };
+    const grid = new Map<number, number>([[44, 1], [1, 2]]); // #44 parte in pole ed è P1
+    const out = buildLiveWeekendResults("Race", snap, detectLiveEvents(snap), grid, null);
+    expect(out.events.pole_won).toBe(true);
+  });
+
+  it("pole_won: false se il pole di griglia non è P1 (senza qualifyingPole)", () => {
+    const snap: LiveSnapshot = {
+      ...emptySnap(),
+      positions: new Map([
+        [44, { driver_number: 44, position: 3, date: "2026-01-01" }],
+      ]),
+    };
+    const grid = new Map<number, number>([[44, 1]]);
+    const out = buildLiveWeekendResults("Race", snap, detectLiveEvents(snap), grid, null);
     expect(out.events.pole_won).toBe(false);
   });
 

@@ -134,12 +134,8 @@ export default function LiveTab({
 
       <SectionHead title="I tuoi piloti" right={`${live.piloti.length} / 5`} className="mt-2" />
       {live.piloti.map((p) => {
-        const isPrimo = p.driver_number === primoPilota;
         const sections = buildPilotaBreakdown(
           p.driver_number,
-          isPrimo,
-          chipPiloti?.chipPiloti ?? null,
-          chipPiloti?.chipPilotiTarget ?? null,
           data.previousResults,
           myLiveResults,
           sessionType,

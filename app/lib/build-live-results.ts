@@ -1,6 +1,6 @@
 import type { RaceWeekendResults, DriverResult } from "./scoring";
 import type { LivePosition, LiveRaceControl, LiveStint } from "./use-live-ws";
-import { extractPenalizedDrivers } from "./penalties";
+import { extractPenalizedDrivers, carNumberFromMessage } from "./penalties";
 
 export interface LiveSnapshot {
   positions: Map<number, LivePosition>;
@@ -42,7 +42,10 @@ export function detectLiveEvents(snap: LiveSnapshot): LiveEvents {
     if (msg.includes("VIRTUAL SAFETY CAR") || msg.includes("VSC")) virtualSafetyCar = true;
     if (flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) redFlag = true;
     if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-      if (rc.driver_number) dnfDrivers.add(rc.driver_number);
+      // Come per le penalità: OpenF1 lascia spesso `driver_number` a null nei
+      // messaggi dei commissari, il numero auto è nel testo ("CAR 18 ...").
+      const num = rc.driver_number ?? carNumberFromMessage(rc.message || "");
+      if (num) dnfDrivers.add(num);
     }
   }
 
@@ -99,8 +102,17 @@ export function buildLiveWeekendResults(
 
   const liveResults = buildLiveDriverResults(snap, events, gridPositions, isMainRace);
 
-  const poleWon = isMainRace && qualifyingPole != null
-    ? snap.positions.get(qualifyingPole)?.position === 1
+  // Pole = chi parte 1° in griglia. Se non ci viene passato esplicitamente,
+  // lo deduciamo dalla griglia di partenza (disponibile live in gara). Così la
+  // previsione "Pole vince" si valuta in tempo reale: pole_won = pole è ora P1.
+  let poleDriver: number | null = qualifyingPole ?? null;
+  if (poleDriver == null) {
+    for (const [drv, gp] of gridPositions) {
+      if (gp === 1) { poleDriver = drv; break; }
+    }
+  }
+  const poleWon = isMainRace && poleDriver != null
+    ? snap.positions.get(poleDriver)?.position === 1
     : (previousResults?.events.pole_won ?? false);
 
   return {
