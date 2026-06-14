@@ -7,16 +7,13 @@ import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { getDriverByNumber } from "../lib/drivers-data";
-import { ChevronDown, X, Eye, Zap, Shield, Users, Radio } from "lucide-react";
+import { ChevronDown, X, Eye, Zap, Shield, Users } from "lucide-react";
 import { RACES_2026, getRaceByRound, isAfterDeadline, getCurrentRound } from "../lib/races";
-import { useLiveSession } from "../lib/use-live-session";
 import { useProvisionalScores } from "../lib/provisional-scores";
 import {
-  calcolaQualifica, calcolaSprintShootout, calcolaSprint, calcolaGara,
   calcolaPuntiWeekend,
   type RaceWeekendResults,
   type PilotaDettaglio,
-  type DriverResult,
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "../lib/scoring";
@@ -106,7 +103,9 @@ function ClassificaContent() {
   const [loadingPlayer, setLoadingPlayer] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  // Imposta la lega preferita come default (una sola volta al mount)
+  // Imposta la lega preferita come default (una sola volta al mount, quando le
+  // preferenze async sono caricate). Init di stato intenzionale e una-tantum.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (initialized) return;
     if (!legaPrefLoaded) return;
@@ -117,189 +116,23 @@ function ClassificaContent() {
     }
     setInitialized(true);
   }, [legaParam, legaPreferita, legaPrefLoaded, initialized]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { classifica: rawClassifica, loading } = useClassificaLega(selectedLega, selectedRound);
   const currentLega = leghe.find((l) => l.id === selectedLega);
-  const { isLive, session: liveSession } = useLiveSession();
   const currentRound = getCurrentRound();
-  const { provisional } = useProvisionalScores(isLive, currentRound);
+  // La classifica generale NON mostra il punteggio in tempo reale: durante una
+  // sessione live resta al provvisorio di fine sessione (e agli ufficiali post-gara).
+  // La classifica live in tempo reale vive nel tab Live di /gara.
+  const { provisional } = useProvisionalScores(false, currentRound);
 
-  // ─── Polling live data ogni 15 sec per aggiornare la classifica ───
-  const [livePositions, setLivePositions] = useState<Map<number, number>>(new Map());
-  const [liveDnfDrivers, setLiveDnfDrivers] = useState<Set<number>>(new Set());
-  const [liveFastestLap, setLiveFastestLap] = useState<number | null>(null);
-  const [liveFormazioni, setLiveFormazioni] = useState<{
-    user_id: string; driver_numbers: number[]; primo_pilota: number | null;
-    chip_piloti: string | null; chip_piloti_target: number | null; sesto_uomo: number | null;
-  }[]>([]);
-  const [livePreviousResults, setLivePreviousResults] = useState<RaceWeekendResults | null>(null);
-
-  // Fetch formazioni confermate per il round corrente (1 volta)
-  useEffect(() => {
-    if (!isLive || !liveSession || selectedRound || !isSupabaseConfigured) return;
-    const supabase = createClient();
-    if (!supabase) return;
-
-    (async () => {
-      // Filtra per lega
-      let memberIds: string[] | null = null;
-      if (selectedLega && selectedLega !== LEGA_GENERALE_ID) {
-        const { data: members } = await supabase.from("lega_members").select("user_id").eq("lega_id", selectedLega);
-        if (members) memberIds = members.map((m) => m.user_id);
-      }
-
-      let query = supabase.from("formazioni")
-        .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
-        .eq("round", currentRound).eq("confirmed", true);
-      if (memberIds) query = query.in("user_id", memberIds);
-
-      const { data } = await query;
-      if (data) setLiveFormazioni(data.map((f) => ({ ...f, driver_numbers: (f.driver_numbers || []).map(Number) })));
-
-      // Fetch risultati sessioni precedenti del weekend
-      const { data: wrData } = await supabase.from("weekend_results").select("data").eq("round", currentRound).maybeSingle();
-      if (wrData?.data) setLivePreviousResults(wrData.data);
-    })();
-  }, [isLive, liveSession, selectedLega, selectedRound, currentRound]);
-
-  // Polling live data ogni 15 sec
-  useEffect(() => {
-    if (!isLive || !liveSession || selectedRound) return;
-
-    const fetchLive = async () => {
-      try {
-        const res = await fetch(`/api/live-data?session_key=${liveSession.sessionKey}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-
-        // Posizioni
-        const posMap = new Map<number, number>();
-        for (const p of data.positions || []) {
-          if (p.driver_number && p.position) posMap.set(p.driver_number, p.position);
-        }
-        setLivePositions(posMap);
-
-        // DNF
-        const dnf = new Set<number>();
-        for (const rc of data.raceControl || []) {
-          const msg = (rc.message || "").toUpperCase();
-          if (msg.includes("RETIRED") || msg.includes("OUT OF THE RACE") || msg.includes("DID NOT FINISH")) {
-            if (rc.driver_number) dnf.add(rc.driver_number);
-          }
-        }
-        setLiveDnfDrivers(dnf);
-
-        // Fastest lap
-        let fastest = Infinity;
-        let fastestDriver: number | null = null;
-        for (const l of data.laps || []) {
-          if (l.lap_duration && l.lap_duration > 0 && l.lap_duration < fastest) {
-            fastest = l.lap_duration;
-            fastestDriver = l.driver_number;
-          }
-        }
-        setLiveFastestLap(fastestDriver);
-      } catch { /* skip */ }
-    };
-
-    fetchLive();
-    const interval = setInterval(fetchLive, 15_000);
-    return () => clearInterval(interval);
-  }, [isLive, liveSession, selectedRound]);
-
-  // Calcola punti live per giocatore
-  const livePointsMap = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!isLive || !liveSession || selectedRound || livePositions.size === 0) return map;
-
-    const stLower = (liveSession.sessionName || "").toLowerCase();
-    const isQual = stLower === "qualifying";
-    const isSprintQual = stLower.includes("sprint") && stLower.includes("qualifying");
-    const isSprintRace = stLower === "sprint";
-    const isMainRace = stLower === "race";
-
-    // Helper: punti sessioni precedenti per un pilota
-    function prevPts(driverNum: number): number {
-      if (!livePreviousResults) return 0;
-      let pts = 0;
-      if (!isQual) {
-        const qr = livePreviousResults.qualifying?.find((r) => r.driver_number === driverNum);
-        if (qr) pts += calcolaQualifica(qr.position, qr.dnf);
-      }
-      if (!isSprintQual) {
-        const ssr = livePreviousResults.sprint_shootout?.find((r) => r.driver_number === driverNum);
-        if (ssr) pts += calcolaSprintShootout(ssr.position, ssr.dnf);
-      }
-      if (!isSprintRace) {
-        const sr = livePreviousResults.sprint?.find((r) => r.driver_number === driverNum);
-        if (sr) pts += calcolaSprint(sr);
-      }
-      if (!isMainRace) {
-        const rr = livePreviousResults.race?.find((r) => r.driver_number === driverNum);
-        if (rr) pts += calcolaGara(rr);
-      }
-      return pts;
-    }
-
-    for (const f of liveFormazioni) {
-      let total = 0;
-
-      const fDrivers = [...f.driver_numbers];
-      if (f.chip_piloti === "sesto" && f.sesto_uomo && !fDrivers.includes(f.sesto_uomo)) {
-        fDrivers.push(f.sesto_uomo);
-      }
-
-      for (const driverNum of fDrivers) {
-        const position = livePositions.get(driverNum) ?? 22;
-        const isDnf = liveDnfDrivers.has(driverNum);
-        const isFl = liveFastestLap === driverNum;
-
-        let puntiBase = 0;
-        if (isQual) puntiBase = calcolaQualifica(position, isDnf);
-        else if (isSprintQual) puntiBase = calcolaSprintShootout(position, isDnf);
-        else if (isSprintRace) puntiBase = calcolaSprint({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl } as DriverResult);
-        else if (isMainRace) puntiBase = calcolaGara({ driver_number: driverNum, position, dnf: isDnf, fastest_lap: isFl, driver_of_the_day: false, penalty: false });
-
-        // Somma sessioni precedenti
-        puntiBase += prevPts(driverNum);
-
-        const isPrimo = driverNum === f.primo_pilota;
-        const isBoosted = f.chip_piloti === "boost" && f.chip_piloti_target === driverNum && !isPrimo;
-        const molt = isPrimo ? 2 : isBoosted ? 3 : 1;
-
-        let puntiFinali = isPrimo && f.chip_piloti === "scudo"
-          ? (puntiBase > 0 ? puntiBase * 2 : puntiBase)
-          : puntiBase * molt;
-        if (f.chip_piloti === "halo" && puntiFinali < 0) puntiFinali = 0;
-
-        total += puntiFinali;
-      }
-      map.set(f.user_id, total);
-    }
-    return map;
-  }, [isLive, liveSession, selectedRound, livePositions, liveDnfDrivers, liveFastestLap, liveFormazioni, livePreviousResults]);
-
-  // Classifica con punti live o provvisori aggiunti
-  const hasLiveData = isLive && livePointsMap.size > 0;
-  const hasProvisionalData = !isLive && !!provisional && !selectedRound;
+  // Classifica con punti provvisori (fine sessione) aggiunti
+  const hasProvisionalData = !!provisional && !selectedRound;
 
   const classifica = useMemo(() => {
     if (selectedRound) return rawClassifica;
 
-    // Punti live in tempo reale
-    // livePointsMap contiene il totale weekend cumulativo (sessioni precedenti + live)
-    // entry.last_weekend_points contiene i punti gia salvati da post-gara per questo round
-    // Il delta e: cumulativo live - gia salvato
-    if (hasLiveData) {
-      return rawClassifica.map((entry) => {
-        const liveCumulativo = livePointsMap.get(entry.user_id) || 0;
-        const giaSalvato = entry.last_weekend_points || 0;
-        const delta = liveCumulativo - giaSalvato;
-        return { ...entry, total_points: entry.total_points + delta, last_weekend_points: liveCumulativo };
-      }).sort((a, b) => b.total_points - a.total_points);
-    }
-
-    // Punti provvisori (sessione finita, risultati non ancora calcolati)
+    // Punti provvisori (ultima sessione conclusa, risultati non ancora ufficiali)
     if (hasProvisionalData && provisional) {
       const provMap = new Map<string, number>();
       for (const s of provisional.scores) provMap.set(s.userId, s.points);
@@ -311,7 +144,7 @@ function ClassificaContent() {
     }
 
     return rawClassifica;
-  }, [rawClassifica, livePointsMap, hasLiveData, hasProvisionalData, provisional, selectedRound]);
+  }, [rawClassifica, hasProvisionalData, provisional, selectedRound]);
 
   // Può vedere le squadre? Solo lega non-generale, round selezionato, dopo deadline
   const canViewSquads = (() => {
@@ -449,12 +282,6 @@ function ClassificaContent() {
             <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">
               Classifica
             </h1>
-            {hasLiveData && !selectedRound && (
-              <span className="live-pill">
-                <span className="live-pill-dot" />
-                LIVE
-              </span>
-            )}
             {hasProvisionalData && !selectedRound && (
               <span className="font-[family-name:var(--font-jetbrains)] inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-1 rounded text-[9px] font-bold tracking-[1.5px]">
                 PROVVISORIO
@@ -616,9 +443,7 @@ function ClassificaContent() {
                   ) : (
                     <div className="text-right">
                       <span className={`font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tabular-nums ${
-                        hasLiveData && livePointsMap.has(entry.user_id) ? "text-[#E8002D]"
-                        : hasProvisionalData ? "text-amber-400"
-                        : "text-white/40"
+                        hasProvisionalData ? "text-amber-400" : "text-white/40"
                       }`}>
                         +{entry.last_weekend_points}
                       </span>
