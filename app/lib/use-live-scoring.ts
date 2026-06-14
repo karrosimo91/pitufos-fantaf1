@@ -1,6 +1,7 @@
 "use client";
 import { useMemo } from "react";
-import { useLiveWebSocket, type LiveRaceControl } from "./use-live-ws";
+import type { LiveRaceControl } from "./use-live-ws";
+import type { useLiveWebSocket } from "./use-live-ws";
 import {
   calcolaPuntiWeekend,
   type RaceWeekendResults,
@@ -38,6 +39,7 @@ export interface LivePrevisioneStatus {
 // ─── Hook principale ───
 
 export function useLiveScoring(
+  ws: ReturnType<typeof useLiveWebSocket>,
   sessionKey: number | null,
   sessionType: string,
   myDriverNumbers: number[],
@@ -49,7 +51,11 @@ export function useLiveScoring(
   gridPositions?: Map<number, number>,
   previousResults?: RaceWeekendResults | null,
 ) {
-  const { positions, raceControl, fastestLap, stints, connected, mode } = useLiveWebSocket(sessionKey);
+  // Riusa la connessione WebSocket condivisa (passata dall'esterno) invece di
+  // aprirne una propria: una sola connessione per sessione evita che due client
+  // MQTT con lo stesso token si sconnettano a vicenda e garantisce che il
+  // punteggio personale e la classifica siano calcolati dallo stesso snapshot.
+  const { positions, raceControl, fastestLap, stints, connected, mode } = ws;
 
   return useMemo(() => {
     const empty = {

@@ -49,8 +49,11 @@ export default function LiveTab({
   // Hook unificato: fetch formazioni/previsioni della lega + WS + previousResults + grid
   const data = useWeekendClassifica({ round, sessionType, sessionKey, meetingKey, legaId, userId, debug });
 
-  // Punteggio personale provvisorio (riusa stesso ws sotto il cofano)
+  // Punteggio personale provvisorio: riusa la STESSA connessione WebSocket della
+  // classifica (data.ws) cosicché il punteggio in alto e la riga "me" in classifica
+  // siano sempre calcolati dallo stesso snapshot live.
   const realLive = useLiveScoring(
+    data.ws,
     debug ? null : sessionKey, sessionType, driverNumbers, primoPilota,
     chipPiloti, chipPrevisioni, previsioni, qualifyingPole, data.gridPositions,
     data.previousResults,
