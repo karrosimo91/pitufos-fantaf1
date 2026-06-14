@@ -28,29 +28,26 @@ const SESSION_LABEL: Record<string, string> = {
 };
 
 /**
- * Costruisce breakdown completo del weekend (sessioni precedenti + sessione corrente live)
- * per un singolo pilota di un giocatore. Riusa getScoreBreakdown() per ogni sessione.
+ * Costruisce il breakdown del weekend (sessioni precedenti + sessione corrente live)
+ * per un singolo pilota, una sezione per sessione.
+ *
+ * IMPORTANTE: le sezioni mostrano i punti BASE per sessione (senza moltiplicatore
+ * Capitano/Boost né Halo/Scudo). Questi chip si applicano sul TOTALE del weekend,
+ * non sulla singola sessione, quindi l'aggiustamento finale viene mostrato a valle
+ * (in PilotaLiveRow) usando il `puntiFinali` autorevole calcolato da calcolaPuntiWeekend.
  */
 export function buildPilotaBreakdown(
   driverNum: number,
-  isPrimo: boolean,
-  chipPiloti: string | null,
-  chipPilotiTarget: number | null,
   previousResults: RaceWeekendResults | null,
   liveResults: RaceWeekendResults,
   currentSessionType: string,
 ): { label: string; breakdown: ScoreBreakdown }[] {
   const sections: { label: string; breakdown: ScoreBreakdown }[] = [];
-  const isBoosted = chipPiloti === "boost" && chipPilotiTarget === driverNum && !isPrimo;
-  const chipForBreakdown = isBoosted
-    ? "boost"
-    : (isPrimo && chipPiloti === "scudo") ? "scudo"
-    : chipPiloti === "halo" ? "halo"
-    : null;
   const currentKind = classifySession(currentSessionType);
 
   const pushSection = (label: string, result: DriverResult, kind: "qualifying" | "sprint_shootout" | "sprint" | "race") => {
-    sections.push({ label, breakdown: getScoreBreakdown(result, kind, isPrimo, chipForBreakdown) });
+    // false/null → niente moltiplicatore/chip per-sessione: solo punti base.
+    sections.push({ label, breakdown: getScoreBreakdown(result, kind, false, null) });
   };
 
   // Sessioni precedenti dal DB

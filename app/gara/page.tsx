@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
-import { useSquadra, usePrevisioni, useLegaPreferita } from "../lib/store";
+import { useSquadra, usePrevisioni, useLegaPreferita, useDashboardStats } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { RACES_2026, getNextRace, getCurrentRound, getDeadline, isAfterDeadline, getRaceByRound } from "../lib/races";
@@ -68,7 +68,8 @@ function getTimeUntil(dateStr: string) {
   };
 }
 
-type Tab = "formazione" | "previsioni" | "dettaglio" | "live";
+type Tab = "muretto" | "dettaglio" | "live";
+type MurettoSub = "formazione" | "previsioni";
 
 const PREVISIONE_LABELS: Record<string, string> = {
   safetyCar: "Safety Car",
@@ -203,7 +204,9 @@ function GaraPage() {
   const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
   const { provisional } = useProvisionalScores(isLive, viewRound);
 
-  const [tab, setTab] = useState<Tab>("formazione");
+  const [tab, setTab] = useState<Tab>("muretto");
+  const [murettoSub, setMurettoSub] = useState<MurettoSub>("formazione");
+  const stats = useDashboardStats(legaId);
   const [countdown, setCountdown] = useState(getTimeUntil(deadline));
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -235,7 +238,8 @@ function GaraPage() {
   useEffect(() => {
     setWeekendResults(null);
     setMyWeekendScore(null);
-    setTab("formazione");
+    setTab("muretto");
+    setMurettoSub("formazione");
   }, [viewRound]);
 
   // Auto-switch al tab Live quando c'è sessione attiva o dati provvisori
@@ -408,6 +412,24 @@ function GaraPage() {
           </div>
         )}
 
+        {/* ═══ FASCIA RECAP (posizione · punti · media) ═══ */}
+        {mounted && stats.loaded && stats.position != null && (
+          <div className="hud-card mb-4 px-4 py-3 grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <div className="font-[family-name:var(--font-jetbrains)] text-[20px] font-extrabold leading-none tabular-nums">{stats.position}°</div>
+              <div className="hud-label mt-1.5">POSIZIONE</div>
+            </div>
+            <div className="text-center border-x border-[#1c1c26]">
+              <div className="font-[family-name:var(--font-jetbrains)] text-[20px] font-extrabold leading-none tabular-nums">{stats.totalPoints}</div>
+              <div className="hud-label mt-1.5">PUNTI</div>
+            </div>
+            <div className="text-center">
+              <div className="font-[family-name:var(--font-jetbrains)] text-[20px] font-extrabold leading-none tabular-nums">{stats.mediaPunti ?? "—"}</div>
+              <div className="hud-label mt-1.5">MEDIA</div>
+            </div>
+          </div>
+        )}
+
         {/* ═══ HEADER (HudCard) ═══ */}
         <div className="hud-card hud-card-accent mb-4">
           <div className="hud-card-head">
@@ -460,14 +482,13 @@ function GaraPage() {
 
         {/* ═══ TABS ═══ */}
         <div className="flex gap-1 mb-4">
-          {([...((isLive && isCurrentRound) || showProvisional ? ["live" as Tab] : []), "formazione", "previsioni", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = { live: "LIVE", formazione: "FORMAZIONE", previsioni: "PREVISIONI", dettaglio: "DETTAGLIO" };
+          {([...((isLive && isCurrentRound) || showProvisional ? ["live" as Tab] : []), "muretto", ...(hasResults ? ["dettaglio" as Tab] : [])] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = { live: "LIVE", muretto: "MURETTO", dettaglio: "DETTAGLIO" };
             const isActive = tab === t;
             let indicator: React.ReactNode = null;
             if (t === "live") indicator = <span className="w-1.5 h-1.5 bg-[#E8002D] rounded-full animate-live-pulse" />;
             if (t === "dettaglio" && hasResults) indicator = <Trophy size={11} className="text-[#E8002D]" />;
-            if (t === "formazione" && sq.confirmed) indicator = <Check size={11} className="text-green-400" />;
-            if (t === "previsioni" && prev.confirmed) indicator = <Check size={11} className="text-green-400" />;
+            if (t === "muretto" && sq.confirmed && prev.confirmed) indicator = <Check size={11} className="text-green-400" />;
             return (
               <button key={t} onClick={() => setTab(t)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[2px] font-bold transition-all border ${
@@ -611,8 +632,28 @@ function GaraPage() {
           />
         )}
 
-        {/* ═══ TAB FORMAZIONE ═══ */}
-        {tab === "formazione" && (
+        {/* ═══ TAB MURETTO: sotto-toggle Formazione / Previsioni ═══ */}
+        {tab === "muretto" && (
+          <div className="flex gap-1 mb-4">
+            {(["formazione", "previsioni"] as MurettoSub[]).map((s) => {
+              const subLabels: Record<MurettoSub, string> = { formazione: "FORMAZIONE", previsioni: "PREVISIONI" };
+              const active = murettoSub === s;
+              const done = s === "formazione" ? sq.confirmed : prev.confirmed;
+              return (
+                <button key={s} onClick={() => setMurettoSub(s)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1.5px] font-bold transition-all border ${
+                    active ? "bg-white/[0.06] border-white/20 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  {done && <Check size={11} className="text-green-400" />}{subLabels[s]}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ═══ MURETTO · FORMAZIONE ═══ */}
+        {tab === "muretto" && murettoSub === "formazione" && (
           <div className="space-y-4">
             <div>
               <div className="hud-label mb-2">
@@ -786,7 +827,7 @@ function GaraPage() {
 
             {/* Avviso: formazione OK ma previsioni no */}
             {sq.confirmed && !prev.confirmed && !locked && (
-              <button onClick={() => setTab("previsioni")}
+              <button onClick={() => setMurettoSub("previsioni")}
                 className="flex items-center gap-2 bg-amber-500/8 border-l-[3px] border-l-amber-500 border border-amber-500/20 rounded-r px-4 py-3 text-[12px] text-amber-400 w-full text-left hover:bg-amber-500/12 transition-colors"
               >
                 <AlertTriangle size={15} className="shrink-0" />
@@ -815,8 +856,8 @@ function GaraPage() {
           </div>
         )}
 
-        {/* ═══ TAB PREVISIONI ═══ */}
-        {tab === "previsioni" && (
+        {/* ═══ MURETTO · PREVISIONI ═══ */}
+        {tab === "muretto" && murettoSub === "previsioni" && (
           <div className="space-y-3">
             {PREVISIONI_CONFIG.map((p) => {
               const myAnswer = prev.previsioni[p.key];
@@ -991,7 +1032,7 @@ function GaraPage() {
 
             {/* Avviso: previsioni OK ma formazione no */}
             {prev.confirmed && !sq.confirmed && !locked && (
-              <button onClick={() => setTab("formazione")}
+              <button onClick={() => setMurettoSub("formazione")}
                 className="flex items-center gap-2 bg-amber-500/8 border-l-[3px] border-l-amber-500 border border-amber-500/20 rounded-r px-4 py-3 text-[12px] text-amber-400 w-full text-left hover:bg-amber-500/12 transition-colors"
               >
                 <AlertTriangle size={15} className="shrink-0" />
