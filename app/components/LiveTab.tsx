@@ -10,6 +10,7 @@ import { PilotaLiveRow } from "./live/PilotaLiveRow";
 import { PrevisioneLiveCard } from "./live/PrevisioneLiveCard";
 import { RaceControlMessage } from "./live/RaceControlMessage";
 import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
+import { ClassificaGeneraleLive } from "./live/ClassificaGeneraleLive";
 import { PlayerDetailModal } from "./live/PlayerDetailModal";
 import { buildMockLiveData, MOCK_CLASSIFICA } from "./live/mock-data";
 import { buildLiveWeekendResults, detectLiveEvents } from "../lib/build-live-results";
@@ -66,6 +67,14 @@ export default function LiveTab({
 
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
+  const [subTab, setSubTab] = useState<"dashboard" | "gara" | "generale">("dashboard");
+
+  // Punti del weekend live per giocatore (per la Classifica Generale live)
+  const liveWeekendPoints = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of classifica) m.set(c.userId, c.points);
+    return m;
+  }, [classifica]);
 
   // Salva punteggi provvisori (accumula sessioni weekend) — con throttle: al
   // massimo una scrittura ogni 30s, anche se le posizioni live cambiano di
@@ -154,40 +163,86 @@ export default function LiveTab({
         </div>
       </HudCard>
 
-      <SectionHead title="I tuoi piloti" right={`${live.piloti.length} / 5`} className="mt-2" />
-      {live.piloti.map((p) => {
-        const sections = buildPilotaBreakdown(
-          p.driver_number,
-          data.previousResults,
-          myLiveResults,
-          sessionType,
-        );
-        return (
-          <PilotaLiveRow
-            key={p.driver_number}
-            p={p}
-            primoPilota={primoPilota}
-            chipPiloti={chipPiloti?.chipPiloti ?? null}
-            breakdownSections={sections}
-            expanded={expandedDriver === p.driver_number}
-            onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
-          />
-        );
-      })}
+      {/* Sotto-tab del Live */}
+      <div className="flex gap-1 mb-4">
+        {([
+          ["dashboard", "DASHBOARD"],
+          ["gara", "CLASSIFICA GARA"],
+          ["generale", "GENERALE"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setSubTab(id)}
+            className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[1.2px] font-bold transition-all border ${
+              subTab === id
+                ? "bg-[#E8002D]/12 border-[#E8002D]/45 text-[#E8002D]"
+                : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {isRace && live.previsioniStatus.length > 0 && (
+      {/* ─── DASHBOARD: tuoi piloti + previsioni + race control ─── */}
+      {subTab === "dashboard" && (
         <>
-          <SectionHead title="Previsioni live" right={`${live.previsioniStatus.filter(p => p.correct !== null).length} / 6`} />
-          <div className="grid grid-cols-2 gap-1.5 mb-4">
-            {live.previsioniStatus.map((p) => (
-              <PrevisioneLiveCard key={p.key} p={p} />
-            ))}
-          </div>
+          <SectionHead title="I tuoi piloti" right={`${live.piloti.length} / 5`} className="mt-2" />
+          {live.piloti.map((p) => {
+            const sections = buildPilotaBreakdown(
+              p.driver_number,
+              data.previousResults,
+              myLiveResults,
+              sessionType,
+            );
+            return (
+              <PilotaLiveRow
+                key={p.driver_number}
+                p={p}
+                primoPilota={primoPilota}
+                chipPiloti={chipPiloti?.chipPiloti ?? null}
+                breakdownSections={sections}
+                expanded={expandedDriver === p.driver_number}
+                onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
+              />
+            );
+          })}
+
+          {isRace && live.previsioniStatus.length > 0 && (
+            <>
+              <SectionHead title="Previsioni live" right={`${live.previsioniStatus.filter(p => p.correct !== null).length} / 6`} />
+              <div className="grid grid-cols-2 gap-1.5 mb-4">
+                {live.previsioniStatus.map((p) => (
+                  <PrevisioneLiveCard key={p.key} p={p} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {live.raceControlFeed.length > 0 && (
+            <>
+              <SectionHead title="Race Control" right="FEED" />
+              <div className="hud-card max-h-[300px] overflow-y-auto p-1">
+                {live.raceControlFeed.slice(0, 30).map((rc, i) => (
+                  <RaceControlMessage key={i} rc={rc} />
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 
-      <ClassificaWeekendList classifica={classifica} onSelect={setSelectedPlayer} />
+      {/* ─── CLASSIFICA GARA: classifica live del weekend ─── */}
+      {subTab === "gara" && (
+        <ClassificaWeekendList classifica={classifica} onSelect={setSelectedPlayer} />
+      )}
 
+      {/* ─── CLASSIFICA GENERALE: stagione + delta live ─── */}
+      {subTab === "generale" && (
+        <ClassificaGeneraleLive legaId={legaId} liveWeekendPoints={liveWeekendPoints} userId={userId} />
+      )}
+
+      {/* Modale dettaglio giocatore (overlay, indipendente dal sotto-tab) */}
       {selectedFormazione && selectedEntry && (
         <PlayerDetailModal
           player={selectedFormazione}
@@ -199,17 +254,6 @@ export default function LiveTab({
           sessionType={sessionType}
           onClose={() => setSelectedPlayer(null)}
         />
-      )}
-
-      {live.raceControlFeed.length > 0 && (
-        <>
-          <SectionHead title="Race Control" right="FEED" />
-          <div className="hud-card max-h-[300px] overflow-y-auto p-1">
-            {live.raceControlFeed.slice(0, 30).map((rc, i) => (
-              <RaceControlMessage key={i} rc={rc} />
-            ))}
-          </div>
-        </>
       )}
     </div>
   );
