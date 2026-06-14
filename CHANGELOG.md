@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.7.0 — 14 Giugno 2026
+
+### Tab Live ridisegnato
+- **Fascia punteggio sempre in cima** al tab Live, con tre sotto-tab: **Dashboard** (i tuoi piloti live + andamento previsioni + race control), **Classifica Gara** (classifica live del weekend) e **Classifica Generale** (classifica di stagione + punti del weekend live).
+
+### /gara ridisegnata
+- **Fascia recap** in alto: posizione in classifica, punti totali, media.
+- **Formazione e Previsioni** raggruppate nel nuovo tab **Muretto** (con sotto-toggle), invece di due tab separati. Tab principali: Muretto · Live · Dettaglio.
+
+### Fix
+- **DNF live**: i ritiri ora vengono rilevati leggendo il numero auto dal testo del messaggio (CAR X), come per le penalità. Prima non venivano quasi mai conteggiati.
+- **Pole vince (live)**: calcolata in tempo reale deducendo il pole sitter dalla griglia di partenza.
+- **Breakdown Halo/Scudo**: i chip si applicano sul totale del weekend; il dettaglio per-pilota ora torna sempre col punteggio mostrato.
+- **Classifica Generale (`/classifica`)**: non mostra più il punteggio in tempo reale (che era impreciso), ma il provvisorio di fine sessione. Il live in tempo reale è nel tab Live.
+- **Etichette chip** leggibili ovunque.
+
+### Sotto il cofano
+- Salvataggio dei punteggi provvisori con throttle (max 1 scrittura/30s): meno carico sul database e niente sovrascritture tra più client.
+- Logica di punteggio live centralizzata su una sola connessione e un solo motore di calcolo.
+
+---
+
 ## v1.6.0 — 14 Giugno 2026
 
 ### Fix

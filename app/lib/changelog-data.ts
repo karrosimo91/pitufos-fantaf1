@@ -15,6 +15,43 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.7.0",
+    date: "14 Giugno 2026",
+    summary: "Tab Live ridisegnato, /gara con fascia recap e tab Muretto, più fix ai punteggi live.",
+    sections: [
+      {
+        title: "Tab Live ridisegnato",
+        items: [
+          "Fascia punteggio sempre in cima e tre sotto-tab: Dashboard (tuoi piloti + previsioni live), Classifica Gara (weekend) e Classifica Generale (stagione + punti live).",
+        ],
+      },
+      {
+        title: "/gara ridisegnata",
+        items: [
+          "Fascia recap in alto: posizione, punti totali, media.",
+          "Formazione e Previsioni raggruppate nel nuovo tab Muretto (sotto-toggle). Tab principali: Muretto · Live · Dettaglio.",
+        ],
+      },
+      {
+        title: "Fix",
+        items: [
+          "DNF live: i ritiri ora vengono rilevati leggendo il numero auto dal testo del messaggio (prima quasi mai conteggiati).",
+          "Pole vince calcolata live deducendo il pole sitter dalla griglia di partenza.",
+          "Breakdown Halo/Scudo: i chip valgono sul totale del weekend, il dettaglio pilota ora torna sempre.",
+          "Classifica generale: niente più punteggio in tempo reale impreciso, ma il provvisorio di fine sessione (il live vive nel tab Live).",
+          "Etichette chip leggibili ovunque.",
+        ],
+      },
+      {
+        title: "Sotto il cofano",
+        items: [
+          "Salvataggio provvisori con throttle (max 1 scrittura/30s): meno carico DB e niente sovrascritture tra client.",
+          "Punteggio live su una sola connessione e un solo motore di calcolo.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.6.0",
     date: "14 Giugno 2026",
     summary: "Punteggio live più stabile e affidabile, più aggiustamenti al regolamento chip.",
