@@ -15,6 +15,19 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.8.1",
+    date: "14 Giugno 2026",
+    summary: "Fix al punteggio provvisorio nel rank (doppio conteggio delle sessioni).",
+    sections: [
+      {
+        title: "Fix",
+        items: [
+          "Rank provvisorio gonfiato: nei weekend con più sessioni il provvisorio contava due volte qualifica/sprint. Ora salva il delta di ogni sessione e la classifica torna corretta.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.8.0",
     date: "14 Giugno 2026",
     summary: "Il Muretto (gestione squadra) si sposta nella Home; la pagina LIVE resta solo per il live.",

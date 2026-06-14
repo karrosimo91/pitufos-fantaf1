@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.8.1 — 14 Giugno 2026
+
+### Fix
+- **Rank provvisorio gonfiato (doppio conteggio)** — durante i weekend con più sessioni, il punteggio provvisorio sommava le sessioni anche se il dato live era già il totale cumulativo del weekend, contando due volte qualifica/sprint. Ora si salva il delta di ogni sessione: la classifica provvisoria (e quindi il rank) torna corretta. Coperto da test.
+
+---
+
 ## v1.8.0 — 14 Giugno 2026
 
 ### Muretto nella Home
