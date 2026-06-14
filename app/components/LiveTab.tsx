@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveScoring } from "../lib/use-live-scoring";
 import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import type { ChipPilotiConfig, ChipPrevisioniConfig } from "../lib/scoring";
@@ -67,32 +67,54 @@ export default function LiveTab({
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
 
-  // Salva punteggi provvisori (accumula sessioni weekend)
+  // Salva punteggi provvisori (accumula sessioni weekend) — con throttle: al
+  // massimo una scrittura ogni 30s, anche se le posizioni live cambiano di
+  // continuo. Evita di martellare Supabase (e riduce la race tra più client).
+  const lastSaveRef = useRef(0);
+  const trailingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (debug || classifica.length === 0) return;
-    saveProvisionalScores(
-      round,
-      sessionType,
-      classifica.map((c) => {
-        const f = data.formazioni.find((x) => x.user_id === c.userId);
-        return {
-          userId: c.userId,
-          scuderiaName: c.scuderiaName,
-          tpName: c.tpName,
-          points: c.points,
-          piloti: f ? (() => {
-            const dns = [...f.driver_numbers];
-            if (f.chip_piloti === "sesto" && f.sesto_uomo && !dns.includes(f.sesto_uomo)) dns.push(f.sesto_uomo);
-            return dns.map((dn) => ({
-              driver_number: dn,
-              position: data.ws.positions.get(dn)?.position ?? 22,
-              puntiFinali: 0,
-              isDnf: false,
-            }));
-          })() : [],
-        };
-      }),
-    );
+
+    const doSave = () => {
+      lastSaveRef.current = Date.now();
+      saveProvisionalScores(
+        round,
+        sessionType,
+        classifica.map((c) => {
+          const f = data.formazioni.find((x) => x.user_id === c.userId);
+          return {
+            userId: c.userId,
+            scuderiaName: c.scuderiaName,
+            tpName: c.tpName,
+            points: c.points,
+            piloti: f ? (() => {
+              const dns = [...f.driver_numbers];
+              if (f.chip_piloti === "sesto" && f.sesto_uomo && !dns.includes(f.sesto_uomo)) dns.push(f.sesto_uomo);
+              return dns.map((dn) => ({
+                driver_number: dn,
+                position: data.ws.positions.get(dn)?.position ?? 22,
+                puntiFinali: 0,
+                isDnf: false,
+              }));
+            })() : [],
+          };
+        }),
+      );
+    };
+
+    const SAVE_INTERVAL_MS = 30_000;
+    const since = Date.now() - lastSaveRef.current;
+    if (trailingTimerRef.current) clearTimeout(trailingTimerRef.current);
+    if (since >= SAVE_INTERVAL_MS) {
+      doSave();
+    } else {
+      // Rimanda alla fine della finestra di throttle, con i dati più recenti.
+      trailingTimerRef.current = setTimeout(doSave, SAVE_INTERVAL_MS - since);
+    }
+
+    return () => {
+      if (trailingTimerRef.current) clearTimeout(trailingTimerRef.current);
+    };
   }, [classifica, debug, round, sessionType, data.formazioni, data.ws.positions]);
 
   // Snapshot per il modale (evita ricalcolo)
