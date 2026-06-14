@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6.0 — 14 Giugno 2026
+
+### Fix
+- **Punteggio live che non si aggiornava senza cambiare tab** — il tab Live apriva due connessioni WebSocket separate alla stessa sessione: i due client si disconnettevano a vicenda bloccando gli aggiornamenti in tempo reale. Ora c'è una sola connessione condivisa e il punteggio si aggiorna da solo, senza dover cambiare scheda.
+- **Punteggio in alto diverso da quello in classifica** — i due valori venivano calcolati da connessioni diverse e potevano divergere. Ora usano lo stesso identico snapshot live e coincidono sempre.
+- **Live bloccato a zero** — se la connessione live si apriva ma restava silenziosa, il polling REST di riserva veniva spento e non si riattivava più. Ora un "safety-net" controlla la freschezza dei dati e, se sono fermi da oltre 15s, recupera i dati via REST automaticamente, rispegnendosi quando il live riprende.
+
+### Regolamento
+- **Chip riutilizzabili una sola volta per metà stagione** — un Aggiornamento già usato nella stessa metà di stagione non è più riselezionabile (1 uso prima della pausa estiva, 1 dopo).
+- **Rimosso il chip "Previsione Sicura"** — tolto dalla selezione previsioni e dal regolamento. Gli usi storici già salvati restano comunque visibili.
+
+---
+
 ## v1.5.0 — 7 Giugno 2026
 
 ### Fix

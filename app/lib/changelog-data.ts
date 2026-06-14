@@ -15,6 +15,28 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.6.0",
+    date: "14 Giugno 2026",
+    summary: "Punteggio live più stabile e affidabile, più aggiustamenti al regolamento chip.",
+    sections: [
+      {
+        title: "Fix",
+        items: [
+          "Punteggio live che non si aggiornava senza cambiare tab: il Live apriva due connessioni separate alla stessa sessione e i due client si disconnettevano a vicenda. Ora una sola connessione condivisa, il punteggio si aggiorna da solo.",
+          "Punteggio in alto diverso da quello in classifica: ora entrambi usano lo stesso identico snapshot live e coincidono sempre.",
+          "Live bloccato a zero: se la connessione si apriva ma restava silenziosa, il polling di riserva non si riattivava più. Ora un controllo automatico sulla freschezza dei dati recupera tutto via REST e si rispegne quando il live riprende.",
+        ],
+      },
+      {
+        title: "Regolamento",
+        items: [
+          "Ogni Aggiornamento (chip) è riutilizzabile una sola volta per metà stagione: 1 uso prima della pausa estiva, 1 dopo.",
+          "Rimosso il chip \"Previsione Sicura\". Gli usi storici già salvati restano visibili.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.5.0",
     date: "7 Giugno 2026",
     summary: "Penalità di gara finalmente conteggiate (live e post-gara).",
