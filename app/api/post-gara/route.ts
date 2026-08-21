@@ -425,7 +425,10 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     driver_number: r.driver_number,
     position: r.position,
     grid_position: gridMap.get(r.driver_number) || undefined,
-    dnf: !!(r.dnf || r.dns || r.dsq),
+    // dns (non ha preso parte) è distinto da dnf/dsq (ha corso poi si è
+    // ritirato/squalificato): solo dnf/dsq portano il malus -10, vedi scoring.ts
+    dnf: !!(r.dnf || r.dsq),
+    dns: !!r.dns,
     fastest_lap: r.driver_number === fastestLapDriver,
     driver_of_the_day: r.driver_number === dotdNumber,
     penalty: penalizedDrivers.has(r.driver_number),
@@ -461,7 +464,8 @@ async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
   return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number,
     position: r.position,
-    dnf: !!(r.dnf || r.dns || r.dsq),
+    dnf: !!(r.dnf || r.dsq),
+    dns: !!r.dns,
     fastest_lap: r.driver_number === fastestLapDriver,
   }));
 }

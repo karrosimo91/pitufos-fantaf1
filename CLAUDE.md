@@ -12,6 +12,11 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 
 ## Regolamento v1.0 — Approvato dal CDA
 
+> ⚠️ **Drift versione doc/codice:** questo documento è fermo alla v1.0.0
+> (ultima approvazione CDA), mentre il codice applicativo è già a v1.8.1
+> (vedi `CHANGELOG.md`). Le sezioni sotto vanno riletta contro l'implementazione
+> reale prima di assumerle come fonte di verità su dettagli di edge case.
+
 ### Struttura
 - Ogni giocatore si chiama "Team Principal"
 - Ogni squadra si chiama "Scuderia"
@@ -94,6 +99,10 @@ Regola: max 1 Aggiornamento Piloti + max 1 Aggiornamento Previsioni per weekend.
 ### Doppia Classifica
 1. **Classifica Somma Punti (PRINCIPALE):** somma totale di tutti i punti weekend dopo weekend. Include tutto.
 2. **Classifica Reale:** ogni weekend i giocatori vengono classificati per punteggio. Top 10 prendono punti F1 (25-18-15-12-10-8-6-4-2-1), gli altri 0.
+
+### Casi particolari (edge case)
+- **Pilota rimosso dal weekend per cause di forza maggiore** (infortunio, sostituzione sedile) → rimozione automatica dalla formazione senza consumo cambi, rimborso pari alla quotazione corrente in `driver_prices`, punteggio 0 (non DNF). Se il pilota era Primo Pilota/Sesto Uomo/target di un chip, quei campi vengono azzerati; il chip stesso viene invalidato se puntava proprio su quel pilota (es. Boost Mode). Se il pilota rimosso lasciava la scuderia sotto i 5 titolari, il vincolo "esattamente 5 piloti" per confermare formazione/previsioni viene abbassato temporaneamente a "minimo 4" per il round interessato, finché non si ricompra un sostituto.
+  - Precedente applicato: round 14 (Zandvoort 2026), Hadjar (#6) infortunato e sostituito da Lawson in Red Bull; Tsunoda torna in Racing Bulls. Implementato in `scoring.ts` (flag `dns` distinto da `dnf`: nessun malus/bonus/giro veloce/pos. guadagnate-perse), `drivers-data.ts` (lista piloti) e `store.ts` (vincolo minimo piloti round 14).
 
 ## Punti aperti (da definire col team)
 1. ~~Costruttori~~ — CHIUSO: no costruttori
