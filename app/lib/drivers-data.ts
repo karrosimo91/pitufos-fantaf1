@@ -27,6 +27,7 @@ export const DRIVERS_2026: DriverData[] = [
   { number: 27, name: "Nico Hulkenberg", team: "Audi", teamColour: "52E252", country: "DE", price: 9 },
   { number: 18, name: "Lance Stroll", team: "Aston Martin", teamColour: "229971", country: "CA", price: 10 },
   { number: 41, name: "Arvid Lindblad", team: "Racing Bulls", teamColour: "6692FF", country: "GB", price: 10 },
+  { number: 22, name: "Yuki Tsunoda", team: "Racing Bulls", teamColour: "6692FF", country: "JP", price: 9 },
   { number: 5, name: "Gabriel Bortoleto", team: "Audi", teamColour: "52E252", country: "BR", price: 9 },
   { number: 43, name: "Franco Colapinto", team: "Alpine", teamColour: "0093CC", country: "AR", price: 8 },
   { number: 11, name: "Sergio Perez", team: "Cadillac", teamColour: "FFD700", country: "MX", price: 8 },

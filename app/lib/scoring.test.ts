@@ -359,6 +359,72 @@ describe("calcolaPuntiWeekend — piloti", () => {
 });
 
 // ═══════════════════════════════════════════════════════
+// dns (Did Not Start) — pilota non iscritto al weekend
+// Caso reale: Hadjar (#6) infortunato, sostituito da Lawson, round 14.
+// Deve dare 0 punti netti: niente malus, niente bonus, niente giro veloce,
+// niente posizioni guadagnate/perse. Anche da Primo Pilota resta 0 (x2 di 0).
+// ═══════════════════════════════════════════════════════
+describe("dns — pilota non iscritto (caso Hadjar round 14)", () => {
+  // session_result non contiene affatto Hadjar per round 14: nessuna riga
+  // qualifying/race per driver_number 6 → calcolaPuntiPilotaBase già 0
+  // (comportamento invariato, copre il caso "assente dai risultati").
+  it("driver_number assente da session_result: 0 punti", () => {
+    const r = makeResults({
+      qualifying: [{ driver_number: 30, position: 5 }],
+      race: [{ driver_number: 30, position: 5 }],
+    });
+    expect(calcolaPuntiPilotaBase(6, r)).toBe(0);
+  });
+
+  // Caso in cui OpenF1 riporta comunque una riga per Hadjar con dns=true
+  // (entry list non aggiornata / dato storico): deve valere come assente,
+  // NON come dnf (-10/-5), anche se position/dnf sono "sporchi".
+  it("driver_number presente ma flaggato dns: 0 punti, non -10/-5", () => {
+    const r = makeResults({
+      qualifying: [{ driver_number: 6, position: 20, dns: true }],
+      race: [{ driver_number: 6, position: 22, dnf: true, dns: true }],
+    });
+    expect(calcolaPuntiPilotaBase(6, r)).toBe(0);
+  });
+
+  it("calcolaPuntiWeekend: dns nella rosa non genera malus per il giocatore", () => {
+    const r = makeResults({
+      qualifying: [
+        { driver_number: 30, position: 3 },   // +4
+        { driver_number: 6, position: 20, dns: true }, // 0
+      ],
+      race: [
+        { driver_number: 30, position: 5 },   // +10
+        { driver_number: 6, position: 22, dnf: true, dns: true }, // 0
+      ],
+    });
+    const calc = calcolaPuntiWeekend([30, 6], null, emptyPrev(), r);
+    const hadjar = calc.pilotiDettaglio.find((d) => d.driver_number === 6)!;
+    expect(hadjar.puntiBase).toBe(0);
+    expect(hadjar.puntiFinali).toBe(0);
+  });
+
+  it("dns sul Primo Pilota: resta 0 anche moltiplicato x2 (nessun caso speciale)", () => {
+    const r = makeResults({
+      qualifying: [{ driver_number: 6, position: 20, dns: true }],
+      race: [{ driver_number: 6, position: 22, dnf: true, dns: true }],
+    });
+    const calc = calcolaPuntiWeekend([6], 6, emptyPrev(), r);
+    const hadjar = calc.pilotiDettaglio[0];
+    expect(hadjar.puntiBase).toBe(0);
+    expect(hadjar.moltiplicatore).toBe(2); // primo pilota, ma x2 di 0 = 0
+    expect(hadjar.puntiFinali).toBe(0);
+  });
+
+  it("getScoreBreakdown: dns mostra 'Non iscritto' con finalTotal 0", () => {
+    const b = getScoreBreakdown({ driver_number: 6, position: 22, dnf: true, dns: true }, "race", true, null);
+    expect(b.items).toEqual([{ label: "Non iscritto", value: 0 }]);
+    expect(b.baseTotal).toBe(0);
+    expect(b.finalTotal).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════
 // getScoreBreakdown — UI dettaglio
 // ═══════════════════════════════════════════════════════
 describe("getScoreBreakdown", () => {

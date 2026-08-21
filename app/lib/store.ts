@@ -394,7 +394,11 @@ export function useSquadra(round: number) {
 
       return new Promise((resolve) => {
         setState((current) => {
-          if (current.driverNumbers.length !== 5) { resolve(false); return current; }
+          // Round 14: Hadjar rimosso per forza maggiore (sostituzione sedile),
+          // rimborsato in cassa. Finché non ricomprano un 5° pilota, permetti
+          // la conferma anche con 4 piloti (invece di richiederne esattamente 5).
+          const minDrivers = round === 14 ? 4 : 5;
+          if (current.driverNumbers.length < minDrivers || current.driverNumbers.length > 5) { resolve(false); return current; }
           if (!current.primoPilota) { resolve(false); return current; }
           // Limite metà stagione: blocca la conferma se il chip è già stato
           // usato in un altro round della stessa metà.

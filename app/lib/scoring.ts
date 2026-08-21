@@ -14,6 +14,12 @@ export interface DriverResult {
   position: number;
   grid_position?: number; // solo per gara
   dnf?: boolean;
+  // Did Not Start: pilota non ha preso parte alla sessione (es. sostituito
+  // per infortunio prima del weekend, entry list ritirata). Punteggio 0 netto:
+  // niente malus (a differenza di dnf), niente bonus, niente giro veloce,
+  // niente posizioni guadagnate/perse. Va tenuto distinto da `dnf` (ritiro
+  // durante la sessione), che mantiene il malus previsto dal regolamento.
+  dns?: boolean;
   fastest_lap?: boolean;
   driver_of_the_day?: boolean;
   penalty?: boolean;
@@ -151,6 +157,20 @@ export function getScoreBreakdown(
   isPrimoPilota: boolean,
   chipPiloti: string | null,
 ): ScoreBreakdown {
+  const isBoostedEarly = chipPiloti === "boost";
+  let moltiplicatoreEarly = 1;
+  if (isPrimoPilota) moltiplicatoreEarly = 2;
+  if (isBoostedEarly) moltiplicatoreEarly = 3;
+
+  if (result.dns) {
+    return {
+      items: [{ label: "Non iscritto", value: 0 }],
+      baseTotal: 0,
+      moltiplicatore: moltiplicatoreEarly,
+      finalTotal: 0,
+    };
+  }
+
   const items: { label: string; value: number }[] = [];
   let baseTotal = 0;
 
@@ -244,21 +264,24 @@ export function calcolaPuntiPilotaBase(
 ): number {
   let punti = 0;
 
+  // dns (Did Not Start): il pilota non ha preso parte alla sessione (es.
+  // sostituito per infortunio prima del weekend). Sessione ignorata: 0 punti
+  // netti, come se non fosse presente nei risultati.
   const qualResult = results.qualifying.find((r) => r.driver_number === driverNumber);
-  if (qualResult) punti += calcolaQualifica(qualResult.position, qualResult.dnf);
+  if (qualResult && !qualResult.dns) punti += calcolaQualifica(qualResult.position, qualResult.dnf);
 
   if (results.sprint_shootout) {
     const ssResult = results.sprint_shootout.find((r) => r.driver_number === driverNumber);
-    if (ssResult) punti += calcolaSprintShootout(ssResult.position, ssResult.dnf);
+    if (ssResult && !ssResult.dns) punti += calcolaSprintShootout(ssResult.position, ssResult.dnf);
   }
 
   if (results.sprint) {
     const sprintResult = results.sprint.find((r) => r.driver_number === driverNumber);
-    if (sprintResult) punti += calcolaSprint(sprintResult);
+    if (sprintResult && !sprintResult.dns) punti += calcolaSprint(sprintResult);
   }
 
   const raceResult = results.race.find((r) => r.driver_number === driverNumber);
-  if (raceResult) punti += calcolaGara(raceResult);
+  if (raceResult && !raceResult.dns) punti += calcolaGara(raceResult);
 
   return punti;
 }
