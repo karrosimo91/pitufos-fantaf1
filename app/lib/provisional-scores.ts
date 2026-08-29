@@ -2,19 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
 
-export interface ProvisionalPilotScore {
-  driver_number: number;
-  position: number;
-  puntiFinali: number;
-  isDnf: boolean;
-}
-
 export interface ProvisionalScore {
   userId: string;
   scuderiaName: string;
   tpName: string;
   points: number;
-  piloti: ProvisionalPilotScore[];
 }
 
 export interface SessionScores {

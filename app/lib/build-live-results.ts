@@ -62,6 +62,7 @@ function buildLiveDriverResults(
   events: LiveEvents,
   gridPositions: Map<number, number>,
   withGrid: boolean,
+  includeMissingDnf: boolean,
 ): DriverResult[] {
   // Penalità live da race_control (stesso rilevamento del post-gara):
   // legge il numero auto dal testo del messaggio. Rilevante solo in gara.
@@ -80,6 +81,33 @@ function buildLiveDriverResults(
     if (withGrid) dr.grid_position = gridPositions.get(driverNum);
     results.push(dr);
   }
+
+  // Un pilota ritirato può NON comparire in `positions`: il feed `v1/position`
+  // smette di emettere per quella macchina, quindi chi si collega dopo il
+  // ritiro (o chi resta senza lo snapshot REST iniziale) non lo vede mai.
+  // Senza una riga nei risultati `calcolaPuntiPilotaBase` non trova nulla e il
+  // malus sparisce in silenzio: il pilota vale 0 invece di −10, mentre
+  // `total_dnf` lo conta comunque. Aggiungiamo la riga mancante.
+  // Solo per gara e sprint, le uniche sessioni dove il ritiro ha un malus.
+  if (includeMissingDnf) {
+    let nextPos = snap.positions.size;
+    for (const driverNum of events.dnfDrivers) {
+      if (snap.positions.has(driverNum)) continue;
+      // La posizione è irrilevante: con `dnf: true` né calcolaGara né
+      // calcolaSprint la usano (niente punti posizione, niente delta griglia).
+      const dr: DriverResult = {
+        driver_number: driverNum,
+        position: ++nextPos,
+        dnf: true,
+        fastest_lap: false,
+        driver_of_the_day: false,
+        penalty: penalizedDrivers.has(driverNum),
+      };
+      if (withGrid) dr.grid_position = gridPositions.get(driverNum);
+      results.push(dr);
+    }
+  }
+
   return results;
 }
 
@@ -100,7 +128,13 @@ export function buildLiveWeekendResults(
   const kind = classifySession(sessionType);
   const isMainRace = kind === "race";
 
-  const liveResults = buildLiveDriverResults(snap, events, gridPositions, isMainRace);
+  const liveResults = buildLiveDriverResults(
+    snap,
+    events,
+    gridPositions,
+    isMainRace,
+    isMainRace || kind === "sprint",
+  );
 
   // Pole = chi parte 1° in griglia. Se non ci viene passato esplicitamente,
   // lo deduciamo dalla griglia di partenza (disponibile live in gara). Così la
