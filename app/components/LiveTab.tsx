@@ -89,25 +89,12 @@ export default function LiveTab({
       saveProvisionalScores(
         round,
         sessionType,
-        classifica.map((c) => {
-          const f = data.formazioni.find((x) => x.user_id === c.userId);
-          return {
-            userId: c.userId,
-            scuderiaName: c.scuderiaName,
-            tpName: c.tpName,
-            points: c.points,
-            piloti: f ? (() => {
-              const dns = [...f.driver_numbers];
-              if (f.chip_piloti === "sesto" && f.sesto_uomo && !dns.includes(f.sesto_uomo)) dns.push(f.sesto_uomo);
-              return dns.map((dn) => ({
-                driver_number: dn,
-                position: data.ws.positions.get(dn)?.position ?? 22,
-                puntiFinali: 0,
-                isDnf: false,
-              }));
-            })() : [],
-          };
-        }),
+        classifica.map((c) => ({
+          userId: c.userId,
+          scuderiaName: c.scuderiaName,
+          tpName: c.tpName,
+          points: c.points,
+        })),
       );
     };
 
@@ -124,7 +111,7 @@ export default function LiveTab({
     return () => {
       if (trailingTimerRef.current) clearTimeout(trailingTimerRef.current);
     };
-  }, [classifica, debug, round, sessionType, data.formazioni, data.ws.positions]);
+  }, [classifica, debug, round, sessionType]);
 
   // Snapshot per il modale (evita ricalcolo)
   const snap = useMemo(

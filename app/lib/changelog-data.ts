@@ -27,6 +27,12 @@ export const CHANGELOG: ChangelogRelease[] = [
           "Ora i ritirati assenti dalle posizioni ottengono comunque la loro riga nei risultati live (gara e sprint) e il malus arriva a tutti. Coperto da test end-to-end, incluso il raddoppio a −20 sul Primo Pilota e il comportamento dei chip Halo e Scudo Capitano.",
         ],
       },
+      {
+        title: "Sotto il cofano",
+        items: [
+          "Punteggi provvisori più leggeri: si salva solo il totale (che era ed è corretto), non più un dettaglio per pilota con valori fissi che non leggeva nessuno. Il salvataggio si ri-programma solo quando cambia la classifica, non a ogni cambio di posizione in pista.",
+        ],
+      },
     ],
   },
   {
