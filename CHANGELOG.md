@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.9.0 — 29 Agosto 2026
+
+### Statistiche e grafici
+- Nuova pagina **Statistiche** (`/statistiche`, da Altro → Statistiche), tutta centrata sui partecipanti al Fanta.
+- **Andamento campionato** round per round, in **punti cumulati** o in **posizione**, con confronto diretto contro un avversario a scelta (vista tabella inclusa).
+- **Testa a testa**: quanti weekend hai vinto contro l'avversario selezionato, i pareggi e il distacco in classifica.
+- **Rendimento** di ogni Team Principal: GP disputati, weekend vinti, podi, media a GP, miglior punteggio e punti totali.
+- **Piazzamenti weekend** (quante volte 1°, 2°, 3°, fuori dal podio) con i punti della **Classifica Reale** (25-18-15-12-10-8-6-4-2-1).
+- **Albo dei weekend**: chi ha vinto ogni round e con quanti punti.
+- **Weekend per weekend**: barre con lo split punti piloti / punti previsioni; al tocco il dettaglio con totale e penalità cambi.
+- **Previsioni**: percentuale indovinata per evento e classifica dei giocatori più precisi (DNF esatti contati a parte).
+- **Eventi della stagione**, **record della lega** (miglior/peggior weekend) e **aggiornamenti già usati** da ogni giocatore.
+- Palette dei grafici validata per daltonismo sulla superficie scura; legenda sempre presente, valori leggibili al tocco.
+
+### Dettaglio altri giocatori
+- Il modale di dettaglio di un altro Team Principal ora **scorre** correttamente su mobile: header fisso fuori dall'area scrollabile, corpo `flex-1 min-h-0` con `overscroll-contain`, e scroll della pagina sotto bloccato mentre il modale è aperto (stesso trattamento anche per il dettaglio del tab Live).
+- A gara calcolata si vede **tutto quello che ha inserito** l'avversario, non solo i punti: rosa completa con badge Primo Pilota / Boost x3 / Sesto Uomo e punti per singolo pilota, previsioni con la risposta data e l'esito (✓/✗) più i punti raccolti, aggiornamenti usati (inclusa la previsione su cui è stata applicata la Doppia).
+- In vista "Stagione completa" un suggerimento spiega che per aprire le squadre degli altri serve scegliere un round.
+
+### Fix
+- **Penalità cambi degli altri giocatori mai conteggiata** nel dettaglio da `/classifica`: `mercato_cambi` è leggibile solo dal proprietario (RLS), quindi il conteggio dei cambi tornava sempre 0 e il totale mostrato poteva essere più alto di quello ufficiale in classifica. Ora il totale viene letto da `weekend_scores` (già al netto della penalità) e la penalità è ricavata come differenza dai punti lordi.
+
+---
+
 ## v1.8.1 — 14 Giugno 2026
 
 ### Fix

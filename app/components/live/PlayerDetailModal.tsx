@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { RaceWeekendResults } from "../../lib/scoring";
 import type { PlayerFormazione, PlayerPrevisioni, WeekendClassificaEntry } from "../../lib/use-weekend-classifica";
@@ -28,6 +28,14 @@ export function PlayerDetailModal({
   onClose: () => void;
 }) {
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
+
+  // Scroll-lock della pagina sotto: su mobile lo scroll del modale altrimenti
+  // "scappa" alla pagina e sembra che il dettaglio non scorra.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const detail = useMemo(
     () => computePlayerWeekendDetail(player, previsioniRow, snap, gridPositions, previousResults, sessionType),
