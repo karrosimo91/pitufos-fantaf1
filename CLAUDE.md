@@ -181,6 +181,21 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - Membri CDA devono completare il questionario attivo per poter confermare formazione/previsioni
 - Nota: `lega_members` ha PK composita (lega_id, user_id), NO colonna `id`
 
+## RLS Supabase — stato reale vs migrazioni nel repo
+Le migrazioni in repo non riflettono tutte le policy applicate a mano in produzione.
+Stato verificato (agosto 2026):
+- `formazioni`, `previsioni`, `profiles` → hanno **anche** una policy `*_read_all` con `USING (true)`
+  (oltre alle vecchie "own row"). Per questo il live scoring e il dettaglio squadra
+  degli altri giocatori funzionano.
+- `weekend_scores`, `weekend_results`, `driver_prices` → read-all.
+- `mercato_cambi` → **leggibile solo dal proprietario**. Nessun calcolo lato client
+  può ricavare la penalità cambi di un altro giocatore: va letta da `weekend_scores`
+  (già al netto) come fa `/classifica`.
+- `classifica_totale` → `classifica_totale_read_self`, solo la propria riga; le classifiche
+  passano dalla RPC `classifica_lega`.
+Se si aggiungono feature che leggono dati di altri giocatori, verificare prima la policy
+sulla tabella: una query bloccata da RLS torna 0 righe senza errore.
+
 ## Live Scoring (attivo)
 - WebSocket MQTT via `wss://mqtt.openf1.org:8084/mqtt` (OpenF1 Sponsor, €9.90/mese)
 - Token OAuth2 generato da `/api/openf1-token` (env vars: `OPENF1_USERNAME`, `OPENF1_PASSWORD`)

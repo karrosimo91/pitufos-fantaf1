@@ -15,6 +15,35 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.9.0",
+    date: "29 Agosto 2026",
+    summary: "Nuova pagina Statistiche con grafici, e il dettaglio degli altri Team Principal finalmente completo e scorrevole.",
+    sections: [
+      {
+        title: "Statistiche e grafici",
+        items: [
+          "Nuova pagina Statistiche (Altro → Statistiche): andamento del campionato round per round, in punti cumulati o in posizione, con confronto diretto contro un avversario a scelta.",
+          "Testa a testa: quanti weekend hai vinto contro l'avversario selezionato e il distacco in classifica.",
+          "Rendimento di ogni Team Principal: GP disputati, weekend vinti, podi, media a GP, miglior punteggio e punti totali.",
+          "Piazzamenti weekend (quante volte 1°, 2°, 3°) con i punti della Classifica Reale (25-18-15-12-10-8-6-4-2-1).",
+          "Albo dei weekend: chi ha vinto ogni round e con quanti punti.",
+          "Weekend per weekend: barre con lo split punti piloti / punti previsioni e il dettaglio (penalità cambi inclusa) al tocco.",
+          "Previsioni: percentuale indovinata per evento e classifica dei giocatori più precisi, più gli eventi della stagione, i record della lega e gli aggiornamenti già usati da ognuno.",
+          "Ogni grafico ha legenda, valori leggibili al tocco e vista tabella per l'andamento stagionale.",
+        ],
+      },
+      {
+        title: "Dettaglio altri giocatori",
+        items: [
+          "Il dettaglio di un altro Team Principal ora scorre correttamente su mobile: header fisso, corpo scrollabile e blocco dello scroll della pagina sotto.",
+          "A gara calcolata si vede tutto quello che ha inserito: rosa completa con Primo Pilota / Boost / Sesto Uomo e punti per pilota, previsioni con la risposta data e l'esito, aggiornamenti usati (con la previsione su cui è stata applicata la Doppia).",
+          "Fix: la penalità cambi degli altri giocatori non era mai conteggiata nel dettaglio (mercato_cambi non è leggibile dagli altri), quindi il totale mostrato poteva essere più alto di quello ufficiale. Ora il totale arriva dal punteggio ufficiale del round.",
+          "In vista Stagione completa un suggerimento spiega che serve scegliere un round per aprire le squadre degli altri.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.8.1",
     date: "14 Giugno 2026",
     summary: "Fix al punteggio provvisorio nel rank (doppio conteggio delle sessioni).",

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
@@ -7,7 +8,7 @@ import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { createClient, isSupabaseConfigured } from "../lib/supabase";
 import { getDriverByNumber } from "../lib/drivers-data";
-import { ChevronDown, X, Eye, Zap, Shield, Users } from "lucide-react";
+import { ChevronDown, X, Eye, Shield, BarChart3 } from "lucide-react";
 import { RACES_2026, getRaceByRound, isAfterDeadline, getCurrentRound } from "../lib/races";
 import { useProvisionalScores } from "../lib/provisional-scores";
 import {
@@ -52,6 +53,8 @@ interface PlayerSquadData {
   } | null;
   chipPrevisioni: string | null;
   chipPrevisioniTarget: string | null;
+  // Esiti reali del weekend, per mostrare quali previsioni sono state azzeccate
+  events: RaceWeekendResults["events"] | null;
   // Score calcolato (se weekend_results disponibili)
   score: {
     pilotiPoints: number;
@@ -72,13 +75,15 @@ const CHIP_LABELS: Record<string, { label: string; icon: string }> = {
   doppia: { label: "Prev. Doppia", icon: "✨" },
 };
 
-const PREVISIONI_LABELS: { key: string; label: string }[] = [
-  { key: "safety_car", label: "Safety Car" },
-  { key: "virtual_safety_car", label: "Virtual SC" },
-  { key: "red_flag", label: "Red Flag" },
-  { key: "gomme_wet", label: "Gomme Wet" },
-  { key: "pole_vince", label: "Pole vince" },
-  { key: "numero_dnf", label: "N° DNF" },
+type EventKey = keyof RaceWeekendResults["events"];
+
+const PREVISIONI_LABELS: { key: string; label: string; event: EventKey | null; scoreKey: string }[] = [
+  { key: "safety_car", label: "Safety Car", event: "safety_car", scoreKey: "safetyCar" },
+  { key: "virtual_safety_car", label: "Virtual SC", event: "virtual_safety_car", scoreKey: "virtualSafetyCar" },
+  { key: "red_flag", label: "Red Flag", event: "red_flag", scoreKey: "redFlag" },
+  { key: "gomme_wet", label: "Gomme Wet", event: "wet_tyres", scoreKey: "gommeWet" },
+  { key: "pole_vince", label: "Pole vince", event: "pole_won", scoreKey: "poleVince" },
+  { key: "numero_dnf", label: "N° DNF", event: null, scoreKey: "numeroDnf" },
 ];
 
 const PREVISIONE_SCORE_LABELS: Record<string, string> = {
@@ -161,7 +166,7 @@ function ClassificaContent() {
 
     const supabase = createClient()!;
 
-    const [formRes, prevRes, wrRes, cambiRes] = await Promise.all([
+    const [formRes, prevRes, wrRes, scoreRes] = await Promise.all([
       supabase
         .from("formazioni")
         .select("driver_numbers, primo_pilota, sesto_uomo, chip_piloti, chip_piloti_target")
@@ -181,20 +186,22 @@ function ClassificaContent() {
         .select("data")
         .eq("round", selectedRound)
         .single(),
+      // La penalità cambi NON è ricalcolabile lato client: mercato_cambi è
+      // leggibile solo dal proprietario (RLS). La ricaviamo dal punteggio
+      // ufficiale già salvato dal post-gara, che è al netto della penalità.
       supabase
-        .from("mercato_cambi")
-        .select("id")
+        .from("weekend_scores")
+        .select("total_points")
         .eq("user_id", entry.user_id)
-        .eq("round", selectedRound),
+        .eq("round", selectedRound)
+        .maybeSingle(),
     ]);
 
     const form = formRes.data;
     const prev = prevRes.data;
     const weekendResults: RaceWeekendResults | null = wrRes.data?.data ?? null;
     const driverNumbers = form?.driver_numbers ? (form.driver_numbers as number[]).map(Number) : [];
-    const numCambi = (cambiRes.data || []).length;
-    const isWildcard = form?.chip_piloti === "wildcard";
-    const penalitaCambi = isWildcard ? 0 : Math.max(0, numCambi - 2) * 10;
+    const officialTotal = scoreRes.data ? Number(scoreRes.data.total_points) : null;
 
     // Calcola score se ci sono risultati e formazione
     let score: PlayerSquadData["score"] = null;
@@ -221,11 +228,13 @@ function ClassificaContent() {
         : { chipAttivo: null, chipTarget: null };
 
       const calc = calcolaPuntiWeekend(driverNumbers, form?.primo_pilota ?? null, previsioniPerCalcolo, weekendResults, chipPiloti, chipPrevisioni);
+      // Delta tra punti lordi e punteggio ufficiale = penalità cambi applicata
+      const penalitaCambi = officialTotal !== null ? Math.max(0, calc.total - officialTotal) : 0;
       score = {
         pilotiPoints: calc.pilotiPoints,
         previsioniPoints: calc.previsioniPoints,
         penalitaCambi,
-        total: calc.total - penalitaCambi,
+        total: officialTotal !== null ? officialTotal : calc.total,
         pilotiDettaglio: calc.pilotiDettaglio.map((d) => ({
           ...d,
           name: getDriverByNumber(d.driver_number)?.name || `#${d.driver_number}`,
@@ -253,11 +262,22 @@ function ClassificaContent() {
       } : null,
       chipPrevisioni: prev?.chip_attivo ?? null,
       chipPrevisioniTarget: prev?.chip_target ?? null,
+      events: weekendResults?.race.length ? weekendResults.events : null,
       score,
     });
 
     setLoadingPlayer(false);
   }, [canViewSquads, selectedRound]);
+
+  // Blocca lo scroll della pagina sotto mentre il modale è aperto: senza
+  // questo, su mobile il gesto di scroll finisce alla pagina e il contenuto
+  // del modale sembra bloccato.
+  useEffect(() => {
+    if (!playerModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [playerModal]);
 
   // Round disponibili per la lega selezionata
   const roundStart = currentLega?.round_start ?? 1;
@@ -465,13 +485,28 @@ function ClassificaContent() {
             </div>
           </>
         )}
-        {/* Hint: tap per vedere squadra */}
-        {canViewSquads && classifica.length > 0 && (
-          <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
-            <Eye size={11} />
-            Tocca un giocatore per la sua squadra
-          </div>
+        {/* Hint: come vedere le squadre degli altri */}
+        {classifica.length > 0 && (
+          canViewSquads ? (
+            <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
+              <Eye size={11} />
+              Tocca un giocatore per la sua squadra
+            </div>
+          ) : !selectedRound && currentLega && !currentLega.is_generale ? (
+            <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
+              <Eye size={11} />
+              Scegli un round per vedere le squadre degli altri
+            </div>
+          ) : null
         )}
+
+        {/* Link alle statistiche */}
+        <Link
+          href="/statistiche"
+          className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all mt-4"
+        >
+          <BarChart3 size={14} /> Statistiche e grafici
+        </Link>
       </main>
 
       {/* Loading overlay */}
@@ -483,201 +518,178 @@ function ClassificaContent() {
 
       {/* Modal squadra giocatore */}
       {playerModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4" onClick={() => setPlayerModal(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4"
+          onMouseDown={() => setPlayerModal(null)}
+          onTouchEnd={(e) => { if (e.target === e.currentTarget) setPlayerModal(null); }}
+        >
+          {/* Colonna flex: header fisso + corpo scrollabile (min-h-0 è
+              indispensabile, altrimenti il figlio non si comprime e il
+              contenuto viene tagliato invece di scorrere). */}
           <div
-            className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-[0_0_60px_rgba(0,0,0,0.5)]"
-            onClick={(e) => e.stopPropagation()}
+            className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[88vh] overflow-hidden flex flex-col shadow-[0_0_60px_rgba(0,0,0,0.5)]"
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between z-10">
-              <div>
-                <div className="font-bold text-base">{playerModal.teamPrincipalName}</div>
-                <div className="text-[11px] text-white/30">{playerModal.scuderiaName} — R{selectedRound}</div>
+            <div className="shrink-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="font-bold text-base truncate">{playerModal.teamPrincipalName}</div>
+                <div className="text-[11px] text-white/30 truncate">{playerModal.scuderiaName} — R{selectedRound}</div>
               </div>
-              <button onClick={() => setPlayerModal(null)} className="text-white/30 hover:text-white/60 transition-colors p-1">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                {playerModal.score && (
+                  <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D] tabular-nums">
+                    {playerModal.score.total}
+                  </span>
+                )}
+                <button onClick={() => setPlayerModal(null)} className="text-white/30 hover:text-white/60 transition-colors p-1">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            <div className="px-5 py-4 space-y-4">
-              {playerModal.score ? (
-                <>
-                  {/* Punteggio totale */}
-                  <div className="bg-white/[0.03] border border-[#E8002D]/20 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold">Weekend R{selectedRound}</div>
-                      <span className="font-[family-name:var(--font-jetbrains)] text-3xl font-black text-[#E8002D]">
-                        {playerModal.score.total}
-                      </span>
-                    </div>
-
-                    <div className={`grid ${playerModal.score.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-4`}>
-                      <div className="bg-black/20 rounded-lg p-3 text-center">
-                        <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{playerModal.score.pilotiPoints}</div>
-                        <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
-                      </div>
-                      <div className="bg-black/20 rounded-lg p-3 text-center">
-                        <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold">{playerModal.score.previsioniPoints}</div>
-                        <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
-                      </div>
-                      {playerModal.score.penalitaCambi > 0 && (
-                        <div className="bg-black/20 rounded-lg p-3 text-center">
-                          <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400">-{playerModal.score.penalitaCambi}</div>
-                          <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Dettaglio piloti */}
-                    <div className="hud-label mb-2">Dettaglio Piloti</div>
-                    <div className="space-y-1 mb-4">
-                      {playerModal.score.pilotiDettaglio.map((d) => {
-                        const color = getDriverByNumber(d.driver_number)?.teamColour;
-                        return (
-                          <div key={d.driver_number} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
-                            <span className="flex items-center gap-2">
-                              {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `#${color}` }} />}
-                              <span className={d.moltiplicatore === 2 ? "text-[#E8002D] font-bold" : d.moltiplicatore === 3 ? "text-amber-400 font-bold" : d.isSestoUomo ? "text-blue-400" : "text-white/70"}>
-                                {d.name}
-                              </span>
-                              {d.moltiplicatore === 2 && <span className="text-[9px] text-[#E8002D]/60">x2</span>}
-                              {d.moltiplicatore === 3 && <Zap size={11} className="text-amber-400" />}
-                              {d.isSestoUomo && <Users size={11} className="text-blue-400" />}
-                              {d.haloApplicato && <Shield size={11} className="text-green-400" />}
-                            </span>
-                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${d.puntiFinali > 0 ? "text-green-400" : d.puntiFinali < 0 ? "text-red-400" : "text-white/20"}`}>
-                              {d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Dettaglio previsioni */}
-                    <div className="hud-label mb-2">Dettaglio Previsioni</div>
-                    <div className="space-y-1">
-                      {Object.entries(playerModal.score.previsioniDettaglio).map(([key, pts]) => (
-                        <div key={key} className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2">
-                          <span className="text-white/60">{PREVISIONE_SCORE_LABELS[key] || key}</span>
-                          <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/20"}`}>
-                            {pts > 0 ? `+${pts}` : "0"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+            <div
+              className="overflow-y-auto flex-1 min-h-0 overscroll-contain px-5 py-4 space-y-5"
+              style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+            >
+              {/* Riepilogo punti (solo a risultati disponibili) */}
+              {playerModal.score && (
+                <div className={`grid ${playerModal.score.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+                  <div className="bg-black/20 rounded-lg p-3 text-center">
+                    <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold tabular-nums">{playerModal.score.pilotiPoints}</div>
+                    <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
                   </div>
-
-                  {/* Chip attivi */}
-                  {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
-                    <div className="flex flex-wrap gap-2">
-                      {playerModal.chipPiloti && (
-                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
-                          <span className="text-xs font-bold text-amber-400">
-                            {CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}
-                          </span>
-                        </div>
-                      )}
-                      {playerModal.chipPrevisioni && (
-                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
-                          <span className="text-xs font-bold text-amber-400">
-                            {CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}
-                          </span>
-                        </div>
-                      )}
+                  <div className="bg-black/20 rounded-lg p-3 text-center">
+                    <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold tabular-nums">{playerModal.score.previsioniPoints}</div>
+                    <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
+                  </div>
+                  {playerModal.score.penalitaCambi > 0 && (
+                    <div className="bg-black/20 rounded-lg p-3 text-center">
+                      <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400 tabular-nums">−{playerModal.score.penalitaCambi}</div>
+                      <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
                     </div>
                   )}
-                </>
-              ) : (
-                <>
-                  {/* Pre-gara: mostra rosa e previsioni senza punti */}
-                  <div>
-                    <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Rosa Piloti</div>
-                    <div className="space-y-2">
-                      {playerModal.driverNumbers.length > 0 ? playerModal.driverNumbers.map((num) => {
-                        const d = getDriverByNumber(num);
-                        if (!d) return null;
-                        const isPP = num === playerModal.primoPilota;
-                        const isSesto = num === playerModal.sestoUomo;
-                        const isBoostTarget = playerModal.chipPiloti === "boost" && num === playerModal.chipPilotiTarget;
-                        const color = `#${d.teamColour}`;
-                        return (
-                          <div
-                            key={num}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                              isPP ? "border-[#E8002D]/40 bg-[#E8002D]/5"
-                              : isBoostTarget ? "border-amber-400/40 bg-amber-400/5"
-                              : isSesto ? "border-blue-400/30 bg-blue-400/5"
-                              : "border-white/[0.06] bg-white/[0.02]"
-                            }`}
-                          >
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                              style={{ backgroundColor: `${color}30`, color }}>
-                              <span className="font-[family-name:var(--font-jetbrains)]">{num}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-bold text-sm truncate">{d.name}</div>
-                              <div className="text-[10px] text-white/30">{d.team}</div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {isPP && <span className="text-[8px] tracking-wider font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded">x2</span>}
-                              {isBoostTarget && <span className="text-[8px] tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">x3</span>}
-                              {isSesto && <span className="text-[8px] tracking-wider font-bold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">6°</span>}
-                            </div>
-                          </div>
-                        );
-                      }) : (
-                        <div className="text-white/20 text-sm text-center py-4">Nessuna formazione confermata</div>
-                      )}
-                    </div>
-                  </div>
+                </div>
+              )}
 
-                  {/* Previsioni pre-gara */}
-                  <div>
-                    <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-3">Previsioni</div>
-                    {playerModal.previsioni ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {PREVISIONI_LABELS.map(({ key, label }) => {
-                          const val = playerModal.previsioni![key as keyof typeof playerModal.previsioni];
-                          return (
-                            <div key={key} className="flex items-center justify-between p-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-                              <span className="text-[11px] text-white/50">{label}</span>
-                              <span className={`font-[family-name:var(--font-jetbrains)] text-xs font-bold ${
-                                key === "numero_dnf" ? "text-white"
-                                : val === true ? "text-green-400"
-                                : val === false ? "text-red-400"
-                                : "text-white/20"
-                              }`}>
-                                {key === "numero_dnf" ? (val !== null ? val : "—") : val === true ? "SÌ" : val === false ? "NO" : "—"}
-                              </span>
-                            </div>
-                          );
-                        })}
+              {/* Rosa piloti — sempre visibile, con i punti se già calcolati */}
+              <div>
+                <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Rosa Piloti</div>
+                <div className="space-y-1.5">
+                  {playerModal.driverNumbers.length > 0 ? playerModal.driverNumbers.map((num) => {
+                    const d = getDriverByNumber(num);
+                    const det = playerModal.score?.pilotiDettaglio.find((x) => x.driver_number === num);
+                    const isPP = num === playerModal.primoPilota;
+                    const isSesto = num === playerModal.sestoUomo;
+                    const isBoostTarget = playerModal.chipPiloti === "boost" && num === playerModal.chipPilotiTarget;
+                    const color = d ? `#${d.teamColour}` : "#666";
+                    return (
+                      <div
+                        key={num}
+                        className={`flex items-center gap-3 p-3 rounded-xl border ${
+                          isPP ? "border-[#E8002D]/40 bg-[#E8002D]/5"
+                          : isBoostTarget ? "border-amber-400/40 bg-amber-400/5"
+                          : isSesto ? "border-blue-400/30 bg-blue-400/5"
+                          : "border-white/[0.06] bg-white/[0.02]"
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ backgroundColor: `${color}30`, color }}>
+                          <span className="font-[family-name:var(--font-jetbrains)] tabular-nums">{num}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm truncate">{d?.name ?? `#${num}`}</div>
+                          <div className="text-[10px] text-white/30 truncate">{d?.team ?? "—"}</div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isPP && <span className="text-[8px] tracking-wider font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded">x2</span>}
+                          {isBoostTarget && <span className="text-[8px] tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">x3</span>}
+                          {isSesto && <span className="text-[8px] tracking-wider font-bold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">6°</span>}
+                          {det?.haloApplicato && <Shield size={12} className="text-green-400" />}
+                          {det && (
+                            <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm tabular-nums w-9 text-right ${
+                              det.puntiFinali > 0 ? "text-green-400" : det.puntiFinali < 0 ? "text-red-400" : "text-white/20"
+                            }`}>
+                              {det.puntiFinali > 0 ? "+" : ""}{det.puntiFinali}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-white/20 text-sm text-center py-4">Nessuna previsione confermata</div>
+                    );
+                  }) : (
+                    <div className="text-white/20 text-sm text-center py-4">Nessuna formazione confermata</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Previsioni — sempre le risposte inserite, con esito se la gara è calcolata */}
+              <div>
+                <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Previsioni</div>
+                {playerModal.previsioni ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {PREVISIONI_LABELS.map(({ key, label, event, scoreKey }) => {
+                      const val = playerModal.previsioni![key as keyof typeof playerModal.previsioni];
+                      const happened = playerModal.events && event
+                        ? (playerModal.events[event] as boolean)
+                        : null;
+                      const isDnf = key === "numero_dnf";
+                      const correct = isDnf
+                        ? playerModal.events !== null && val !== null && val === playerModal.events.total_dnf
+                        : happened !== null && val !== null && val === happened;
+                      const wrong = isDnf
+                        ? playerModal.events !== null && val !== null && val !== playerModal.events.total_dnf
+                        : happened !== null && val !== null && val !== happened;
+                      const pts = playerModal.score?.previsioniDettaglio[scoreKey];
+                      return (
+                        <div key={key} className={`rounded-lg px-3 py-2 border ${
+                          correct ? "border-green-500/30 bg-green-500/[0.06]"
+                          : wrong ? "border-red-500/15 bg-red-500/[0.04]"
+                          : "border-white/[0.06] bg-white/[0.02]"
+                        }`}>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] text-white/40 truncate">{label}</span>
+                            {pts !== undefined && pts > 0 && (
+                              <span className="font-[family-name:var(--font-jetbrains)] text-[10px] font-bold text-green-400 tabular-nums shrink-0">+{pts}</span>
+                            )}
+                          </div>
+                          <div className={`font-bold text-[13px] ${correct ? "text-green-400" : wrong ? "text-red-400" : "text-white/30"}`}>
+                            {isDnf ? (val !== null ? val : "—") : val === true ? "SÌ" : val === false ? "NO" : "—"}
+                            {correct ? " ✓" : wrong ? " ✗" : ""}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-white/20 text-sm text-center py-4">Nessuna previsione confermata</div>
+                )}
+              </div>
+
+              {/* Chip */}
+              {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
+                <div>
+                  <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Aggiornamenti</div>
+                  <div className="flex flex-wrap gap-2">
+                    {playerModal.chipPiloti && (
+                      <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                        <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
+                        <span className="text-xs font-bold text-amber-400">
+                          {CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}
+                        </span>
+                      </div>
+                    )}
+                    {playerModal.chipPrevisioni && (
+                      <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+                        <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
+                        <span className="text-xs font-bold text-amber-400">
+                          {CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}
+                          {playerModal.chipPrevisioniTarget && ` · ${PREVISIONE_SCORE_LABELS[playerModal.chipPrevisioniTarget] || playerModal.chipPrevisioniTarget}`}
+                        </span>
+                      </div>
                     )}
                   </div>
-
-                  {/* Chip */}
-                  {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
-                    <div className="flex flex-wrap gap-2">
-                      {playerModal.chipPiloti && (
-                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
-                          <span className="text-xs font-bold text-amber-400">{CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}</span>
-                        </div>
-                      )}
-                      {playerModal.chipPrevisioni && (
-                        <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                          <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
-                          <span className="text-xs font-bold text-amber-400">{CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
           </div>

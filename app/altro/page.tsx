@@ -5,12 +5,13 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
-import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock } from "lucide-react";
+import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock, BarChart3 } from "lucide-react";
 import { APP_VERSION } from "../lib/types";
 import { useCdaMembership } from "../lib/use-cda";
 import { CHANGELOG } from "../lib/changelog-data";
 
 const MENU_ITEMS = [
+  { href: "/statistiche", label: "Statistiche", desc: "Grafici e andamento del campionato", icon: BarChart3 },
   { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
   { href: "/info", label: "Info / Regolamento", desc: "Punteggi, previsioni, aggiornamenti", icon: Info },
   { href: "/profilo", label: "Profilo", desc: "Modifica nome e scuderia", icon: User },
