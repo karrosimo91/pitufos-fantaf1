@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.9.1 — 29 Agosto 2026
+
+### Fix
+- **DNF live non conteggiato quando il pilota spariva dalle posizioni** — il feed `v1/position` di OpenF1 smette di emettere per una macchina ritirata. Chi apriva il live *dopo* il ritiro (o restava senza lo snapshot REST iniziale, es. token non disponibile) non vedeva più quel pilota fra le posizioni: `calcolaPuntiPilotaBase` non trovava nessuna riga e il malus spariva in silenzio — **0 punti invece di −10** — per tutti i partecipanti che avevano quel pilota. Nel frattempo `total_dnf` lo contava lo stesso, quindi la previsione "N° DNF" e i punti piloti erano incoerenti fra loro. Ora i ritirati assenti dalle posizioni ottengono comunque la loro riga nei risultati live (gara e sprint), quindi il malus arriva a tutti.
+
+---
+
 ## v1.9.0 — 29 Agosto 2026
 
 ### Statistiche e grafici

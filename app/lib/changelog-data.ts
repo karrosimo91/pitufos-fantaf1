@@ -15,6 +15,21 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.9.1",
+    date: "29 Agosto 2026",
+    summary: "Fix al DNF live: il malus da ritiro non veniva applicato quando il pilota spariva dalle posizioni.",
+    sections: [
+      {
+        title: "Fix",
+        items: [
+          "DNF live non conteggiato: OpenF1 smette di trasmettere la posizione di una macchina ritirata, quindi chi apriva il live dopo il ritiro non vedeva più quel pilota e il malus spariva in silenzio (0 punti invece di −10) per tutti i partecipanti che lo avevano in rosa.",
+          "Il numero di DNF continuava invece a contarlo, quindi previsione \"N° DNF\" e punti piloti potevano essere incoerenti fra loro.",
+          "Ora i ritirati assenti dalle posizioni ottengono comunque la loro riga nei risultati live (gara e sprint) e il malus arriva a tutti. Coperto da test end-to-end, incluso il raddoppio a −20 sul Primo Pilota e il comportamento dei chip Halo e Scudo Capitano.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.9.0",
     date: "29 Agosto 2026",
     summary: "Nuova pagina Statistiche con grafici, e il dettaglio degli altri Team Principal finalmente completo e scorrevole.",
