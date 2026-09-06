@@ -158,9 +158,9 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 ## API OpenF1 — Endpoint che usiamo
 - `sessions` → calendario, tipo sessione
 - `session_result` → classifiche finali (qualifica, gara, sprint)
-- `starting_grid` → griglia partenza REALE, penalità in griglia incluse (per pos guadagnate/perse). Fonte primaria del delta posizioni: la posizione di qualifica è solo fallback quando l'endpoint è vuoto — vedi `lib/starting-grid.ts`
+- `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → risultati Jolpica (campo `grid`, solo a gara conclusa) → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
 - `drivers` → info piloti (nome, team, numero, foto, colore)
-- `race_control` → Safety Car, VSC, Red Flag, penalità
+- `race_control` → Safety Car, VSC, Red Flag, penalità. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
 - `stints` → compound gomme (per previsione wet)
 - `laps` → tempi al giro (per giro veloce)
 - `meetings` → info weekend
@@ -204,7 +204,7 @@ sulla tabella: una query bloccata da RLS torna 0 righe senza errore.
 - `use-live-scoring.ts`: calcolo punti provvisori in tempo reale usando `scoring.ts`
 - `LiveTab.tsx`: componente UI con posizioni piloti, previsioni live, feed race control
 - Integrato in `/gara` con badge LIVE e tab auto-switch
-- Dati push istantanei, nessun polling durante la sessione
+- Dati push istantanei via WebSocket, più due polling REST di supporto durante gara/sprint: `/api/live-grid` (griglia, finché non arriva quella vera) e `/api/live-retired` (ritiri ufficiali da `session_result`, ogni 45 sec)
 - Debug mode: `/gara?debug_live=true` per testare con dati mock
 
 ## PWA
