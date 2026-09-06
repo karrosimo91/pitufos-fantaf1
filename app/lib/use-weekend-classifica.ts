@@ -115,30 +115,54 @@ export function useWeekendClassifica(opts: {
     return () => abort.abort();
   }, [round, debug]);
 
-  // Fetch grid (solo per gara)
+  // Fetch grid (solo per gara).
+  //
+  // `/api/live-grid` risponde con `source`: "starting_grid" è la griglia vera
+  // (penalità in griglia incluse), "qualifying" è il fallback quando OpenF1 non
+  // ha ancora pubblicato la griglia. Chi apre il live presto prendeva il
+  // fallback e se lo teneva per tutta la gara, calcolando le posizioni
+  // guadagnate/perse sulla qualifica. Quindi: finché la fonte è il fallback si
+  // riprova, e la prima griglia vera che arriva sostituisce quella provvisoria.
   useEffect(() => {
     if (debug || !meetingKey) return;
     const isRaceSession = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint");
     if (!isRaceSession) return;
+
     const abort = new AbortController();
-    (async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20;      // ~20 minuti di tentativi
+    const RETRY_MS = 60_000;
+
+    const load = async () => {
+      attempts++;
       try {
         const res = await fetch(`/api/live-grid?meeting_key=${meetingKey}`, { cache: "no-store", signal: abort.signal });
         if (!res.ok) {
           console.warn("[weekend-classifica] /api/live-grid not ok", res.status);
-          return;
+        } else {
+          const { grid, source } = await res.json();
+          const gridMap = new Map<number, number>();
+          for (const [driverStr, pos] of Object.entries(grid)) {
+            gridMap.set(Number(driverStr), pos as number);
+          }
+          if (gridMap.size > 0) setGridPositions(gridMap);
+          if (source === "starting_grid") return; // griglia definitiva, stop
         }
-        const { grid } = await res.json();
-        const gridMap = new Map<number, number>();
-        for (const [driverStr, pos] of Object.entries(grid)) {
-          gridMap.set(Number(driverStr), pos as number);
-        }
-        setGridPositions(gridMap);
       } catch (err) {
-        if ((err as Error)?.name !== "AbortError") console.warn("[weekend-classifica] grid", err);
+        if ((err as Error)?.name === "AbortError") return;
+        console.warn("[weekend-classifica] grid", err);
       }
-    })();
-    return () => abort.abort();
+      if (attempts < MAX_ATTEMPTS && !abort.signal.aborted) {
+        timer = setTimeout(load, RETRY_MS);
+      }
+    };
+    load();
+
+    return () => {
+      abort.abort();
+      if (timer) clearTimeout(timer);
+    };
   }, [meetingKey, sessionType, debug]);
 
   // Fetch formazioni + previsioni + profili della lega
