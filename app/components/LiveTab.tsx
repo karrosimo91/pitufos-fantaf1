@@ -115,8 +115,8 @@ export default function LiveTab({
 
   // Snapshot per il modale (evita ricalcolo)
   const snap = useMemo(
-    () => ({ positions: data.ws.positions, raceControl: data.ws.raceControl, fastestLap: data.ws.fastestLap, stints: data.ws.stints }),
-    [data.ws.positions, data.ws.raceControl, data.ws.fastestLap, data.ws.stints],
+    () => ({ positions: data.ws.positions, raceControl: data.ws.raceControl, fastestLap: data.ws.fastestLap, stints: data.ws.stints, retiredDrivers: data.retiredDrivers }),
+    [data.ws.positions, data.ws.raceControl, data.ws.fastestLap, data.ws.stints, data.retiredDrivers],
   );
 
   // Costruisce live results per il breakdown dei miei piloti
