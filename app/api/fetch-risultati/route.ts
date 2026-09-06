@@ -3,6 +3,7 @@ import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
+import { buildGridMap } from "../../lib/starting-grid";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
@@ -76,14 +77,13 @@ export async function POST(request: NextRequest) {
       log.push(`Qualifica: ${qualifying.length} piloti`);
     }
 
-    // 4. Fetch risultati gara (usa qualifica come griglia)
+    // 4. Fetch risultati gara — griglia REALE da `starting_grid` (include le
+    // penalità in griglia), fallback sulla qualifica se non disponibile
     const raceKey = raceSession.session_key;
-    const qualGridMap = new Map<number, number>();
-    for (const q of qualifying) {
-      qualGridMap.set(q.driver_number, q.position);
-    }
-    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
-    log.push(`Gara: ${raceResults.length} piloti (con griglia da qualifica)`);
+    const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
+    const { grid: gridMap, source: gridSource } = buildGridMap(startingGrid, qualifying);
+    const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, gridMap);
+    log.push(`Gara: ${raceResults.length} piloti (griglia: ${gridSource === "starting_grid" ? "starting_grid" : gridSource === "qualifying" ? "fallback qualifica" : "assente"})`);
 
     // 5. Sprint (se presente)
     let sprint_shootout: DriverResult[] | undefined;
@@ -205,7 +205,7 @@ async function fetchSessionResults(sessionKey: number, type: string): Promise<Dr
 
 // ─── Fetch risultati gara con griglia e giro veloce ───
 
-async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGridMap?: Map<number, number>): Promise<DriverResult[]> {
+async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
   // Posizioni finali
   const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
   const lastPositions = new Map<number, any>();
@@ -213,8 +213,8 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     if (r.driver_number) lastPositions.set(r.driver_number, r);
   }
 
-  // Usa griglia da qualifica (passata come parametro)
-  const gridMap = qualGridMap ?? new Map<number, number>();
+  // Griglia di partenza (passata come parametro, già risolta da buildGridMap)
+  const gridMap = startingGridMap ?? new Map<number, number>();
 
   // Giro veloce
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);

@@ -61,8 +61,8 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 
 ### Punteggi Gara (Gran Premio)
 - P1: +25, P2: +18, P3: +15, P4: +12, P5: +10, P6: +8, P7: +6, P8: +4, P9: +2, P10: +1, P11-P22: 0
-- Posizione guadagnata vs griglia: +1 per posizione
-- Posizione persa vs griglia: -1 per posizione
+- Posizione guadagnata vs griglia di partenza (non vs qualifica): +1 per posizione
+- Posizione persa vs griglia di partenza: -1 per posizione
 - Giro veloce: +3
 - Driver of the Day: +5
 - DNF/Ritiro: -10
@@ -158,7 +158,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 ## API OpenF1 — Endpoint che usiamo
 - `sessions` → calendario, tipo sessione
 - `session_result` → classifiche finali (qualifica, gara, sprint)
-- `starting_grid` → griglia partenza (per pos guadagnate/perse)
+- `starting_grid` → griglia partenza REALE, penalità in griglia incluse (per pos guadagnate/perse). Fonte primaria del delta posizioni: la posizione di qualifica è solo fallback quando l'endpoint è vuoto — vedi `lib/starting-grid.ts`
 - `drivers` → info piloti (nome, team, numero, foto, colore)
 - `race_control` → Safety Car, VSC, Red Flag, penalità
 - `stints` → compound gomme (per previsione wet)
