@@ -3,7 +3,7 @@ import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { buildGridMap } from "../../lib/starting-grid";
+import { resolveGrid, gridFromJolpicaResults, gridFromRacePositions, type JolpicaResult } from "../../lib/starting-grid";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
@@ -81,9 +81,16 @@ export async function POST(request: NextRequest) {
     // penalità in griglia), fallback sulla qualifica se non disponibile
     const raceKey = raceSession.session_key;
     const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
-    const { grid: gridMap, source: gridSource } = buildGridMap(startingGrid, qualifying);
+    const jolpicaResults = await fetchJolpicaGrid(round);
+    const racePositions = await fetchJson(`${OPENF1}/position?session_key=${raceKey}`);
+    const { grid: gridMap, source: gridSource } = resolveGrid([
+      { name: "starting_grid", entries: startingGrid },
+      { name: "jolpica_results", entries: gridFromJolpicaResults(jolpicaResults) },
+      { name: "race_first_positions", entries: gridFromRacePositions(racePositions) },
+      { name: "qualifying", entries: qualifying },
+    ]);
     const raceResults = await fetchRaceResults(raceKey, driver_of_the_day, gridMap);
-    log.push(`Gara: ${raceResults.length} piloti (griglia: ${gridSource === "starting_grid" ? "starting_grid" : gridSource === "qualifying" ? "fallback qualifica" : "assente"})`);
+    log.push(`Gara: ${raceResults.length} piloti (griglia da: ${gridSource})`);
 
     // 5. Sprint (se presente)
     let sprint_shootout: DriverResult[] | undefined;
@@ -201,6 +208,21 @@ async function fetchSessionResults(sessionKey: number, type: string): Promise<Dr
     position: r.position,
     dnf: false, // In qualifica non c'e DNF classico
   }));
+}
+
+
+// Griglia ufficiale da Jolpica/Ergast: disponibile a gara conclusa, include le
+// penalità in griglia. Usata quando `starting_grid` di OpenF1 è vuoto.
+async function fetchJolpicaGrid(round: number): Promise<JolpicaResult[]> {
+  try {
+    const year = new Date().getFullYear();
+    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${year}/${round}/results.json`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json?.MRData?.RaceTable?.Races?.[0]?.Results ?? [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Fetch risultati gara con griglia e giro veloce ───

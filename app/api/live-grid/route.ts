@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildGridMap } from "../../lib/starting-grid";
+import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { RACES_2026 } from "../../lib/races";
 
 const OPENF1 = "https://api.openf1.org/v1";
@@ -82,21 +82,37 @@ export async function GET(request: NextRequest) {
     const raceSession = sessions.find((s: { session_name?: string }) => name(s) === "race");
     const qualiSession = sessions.find((s: { session_name?: string }) => name(s) === "qualifying");
 
-    // Fonte primaria: starting_grid della gara (penalità in griglia incluse)
+    // 1. starting_grid della gara: la griglia ufficiale, quando OpenF1 la dà
     let startingGrid: { driver_number?: number | null; position?: number | null }[] = [];
+    let startingGridStatus: number | null = null;
     if (raceSession) {
       const sgRes = await fetch(`${OPENF1}/starting_grid?session_key=${raceSession.session_key}`, opts);
+      startingGridStatus = sgRes.status;
       if (sgRes.ok) startingGrid = await sgRes.json();
     }
 
-    // Fallback: posizioni di qualifica
+    // 2. Prime posizioni della sessione gara: il feed `position` parte dallo
+    //    schieramento, quindi la prima posizione di ogni pilota è la casella di
+    //    partenza — penalità in griglia già scontate. Unica fonte utilizzabile
+    //    a gara in corso quando starting_grid è vuoto.
+    let racePositions: { driver_number?: number | null; position?: number | null; date?: string | null }[] = [];
+    if (raceSession) {
+      const rpRes = await fetch(`${OPENF1}/position?session_key=${raceSession.session_key}`, opts);
+      if (rpRes.ok) racePositions = await rpRes.json();
+    }
+
+    // 3. Ultimo fallback: posizioni di qualifica (ignora le penalità in griglia)
     let qualiPositions: { driver_number: number; position: number }[] = [];
     if (qualiSession) {
       const posRes = await fetch(`${OPENF1}/position?session_key=${qualiSession.session_key}`, opts);
       if (posRes.ok) qualiPositions = await posRes.json();
     }
 
-    const { grid: gridMap, source } = buildGridMap(startingGrid, qualiPositions);
+    const { grid: gridMap, source } = resolveGrid([
+      { name: "starting_grid", entries: startingGrid },
+      { name: "race_first_positions", entries: gridFromRacePositions(racePositions) },
+      { name: "qualifying", entries: qualiPositions },
+    ]);
     const grid: Record<number, number> = {};
     for (const [driverNumber, position] of gridMap) {
       grid[driverNumber] = position;
@@ -111,6 +127,9 @@ export async function GET(request: NextRequest) {
           race_session_key: raceSession?.session_key ?? null,
           quali_session_key: qualiSession?.session_key ?? null,
           starting_grid_rows: startingGrid.length,
+          starting_grid_status: startingGridStatus,
+          race_position_rows: racePositions.length,
+          race_first_positions: gridFromRacePositions(racePositions).length,
           quali_position_rows: qualiPositions.length,
           token: token ? "ok" : "assente",
         },
