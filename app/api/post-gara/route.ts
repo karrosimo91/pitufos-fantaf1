@@ -8,6 +8,7 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
+import { buildGridMap } from "../../lib/starting-grid";
 import { computePlayerScores } from "../../lib/score-round";
 
 const OPENF1 = "https://api.openf1.org/v1";
@@ -152,16 +153,20 @@ export async function POST(request: NextRequest) {
       }
       const raceKey = raceSession.session_key;
 
-      // Griglia di partenza = risultato qualifica (già salvato o fetch ora)
-      const qualGridMap = new Map<number, number>();
-      for (const q of qualifying) {
-        qualGridMap.set(q.driver_number, q.position);
-      }
-      if (qualGridMap.size === 0) {
-        log.push("ATTENZIONE: nessun dato qualifica trovato — posizioni guadagnate/perse non calcolate");
+      // Griglia di partenza REALE da OpenF1 (`starting_grid`): tiene conto
+      // delle penalità in griglia, che la posizione di qualifica ignora.
+      // Fallback sulla qualifica se il dato non c'è.
+      const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
+      const { grid: gridMap, source: gridSource } = buildGridMap(startingGrid, qualifying);
+      if (gridSource === "none") {
+        log.push("ATTENZIONE: nessuna griglia né qualifica trovata — posizioni guadagnate/perse non calcolate");
+      } else if (gridSource === "qualifying") {
+        log.push("ATTENZIONE: starting_grid non disponibile — uso le posizioni di qualifica (penalità in griglia ignorate)");
+      } else {
+        log.push(`Griglia di partenza: ${gridMap.size} piloti da starting_grid`);
       }
 
-      raceResults = await fetchRaceResults(raceKey, driver_of_the_day, qualGridMap);
+      raceResults = await fetchRaceResults(raceKey, driver_of_the_day, gridMap);
       log.push(`Gara: ${raceResults.length} piloti`);
 
       // Eventi (solo dalla gara)
@@ -387,7 +392,7 @@ async function fetchSessionResults(sessionKey: number): Promise<DriverResult[]> 
   }));
 }
 
-async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGridMap?: Map<number, number>): Promise<DriverResult[]> {
+async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
   // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ)
   const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
   const resultMap = new Map<number, any>();
@@ -395,7 +400,7 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, qualGri
     if (sr.driver_number) resultMap.set(sr.driver_number, sr);
   }
 
-  const gridMap = qualGridMap ?? new Map<number, number>();
+  const gridMap = startingGridMap ?? new Map<number, number>();
 
   const laps = await fetchJson(`${OPENF1}/laps?session_key=${sessionKey}`);
   let fastestLapDriver: number | null = null;

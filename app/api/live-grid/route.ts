@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildGridMap } from "../../lib/starting-grid";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
@@ -23,7 +24,9 @@ async function getToken(): Promise<string | null> {
 
 /**
  * GET /api/live-grid?meeting_key=123
- * Grid positions dalla qualifica. Autenticato con token OpenF1.
+ * Griglia di partenza reale (`starting_grid` della gara), che include le
+ * penalità in griglia. Fallback sulle posizioni di qualifica se il dato non è
+ * ancora pubblicato. Autenticato con token OpenF1.
  */
 export async function GET(request: NextRequest) {
   const meetingKey = request.nextUrl.searchParams.get("meeting_key");
@@ -40,24 +43,31 @@ export async function GET(request: NextRequest) {
     if (!sessRes.ok) return NextResponse.json({ grid: {} });
 
     const sessions = await sessRes.json();
-    const qualiSession = sessions.find((s: { session_name?: string }) =>
-      s.session_name?.toLowerCase() === "qualifying"
-    );
-    if (!qualiSession) return NextResponse.json({ grid: {} });
+    const name = (s: { session_name?: string }) => s.session_name?.toLowerCase() ?? "";
+    const raceSession = sessions.find((s: { session_name?: string }) => name(s) === "race");
+    const qualiSession = sessions.find((s: { session_name?: string }) => name(s) === "qualifying");
 
-    const posRes = await fetch(`${OPENF1}/position?session_key=${qualiSession.session_key}`, opts);
-    if (!posRes.ok) return NextResponse.json({ grid: {} });
-
-    const posData = await posRes.json();
-
-    const grid: Record<number, number> = {};
-    for (const p of posData) {
-      if (p.driver_number && p.position) {
-        grid[p.driver_number] = p.position;
-      }
+    // Fonte primaria: starting_grid della gara (penalità in griglia incluse)
+    let startingGrid: { driver_number?: number | null; position?: number | null }[] = [];
+    if (raceSession) {
+      const sgRes = await fetch(`${OPENF1}/starting_grid?session_key=${raceSession.session_key}`, opts);
+      if (sgRes.ok) startingGrid = await sgRes.json();
     }
 
-    return NextResponse.json({ grid });
+    // Fallback: posizioni di qualifica
+    let qualiPositions: { driver_number: number; position: number }[] = [];
+    if (qualiSession) {
+      const posRes = await fetch(`${OPENF1}/position?session_key=${qualiSession.session_key}`, opts);
+      if (posRes.ok) qualiPositions = await posRes.json();
+    }
+
+    const { grid: gridMap, source } = buildGridMap(startingGrid, qualiPositions);
+    const grid: Record<number, number> = {};
+    for (const [driverNumber, position] of gridMap) {
+      grid[driverNumber] = position;
+    }
+
+    return NextResponse.json({ grid, source });
   } catch {
     return NextResponse.json({ grid: {} });
   }
