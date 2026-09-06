@@ -33,6 +33,20 @@ const EMPTY_PREVISIONI: Previsioni = {
  * Le previsioni e la penalità cambi vengono considerate solo se `isPostRace`.
  * Restituisce la lista ordinata per punteggio weekend (desc).
  */
+/**
+ * Dati di un round già letti dal DB. Separarli dal calcolo permette di
+ * valutare lo stesso round con risultati diversi (es. confronto fra due
+ * griglie di partenza) senza rifare le query, e di leggere più round in
+ * blocco invece che uno alla volta.
+ */
+export interface RoundScoringInputs {
+  formazioni: any[];
+  profiles: any[];
+  previsioni: any[] | null;
+  /** user_id → numero di cambi fatti nel round (per la penalità dal 3° in poi) */
+  cambiPerUser: Map<string, number>;
+}
+
 export async function computePlayerScores(
   supabase: any,
   round: number,
@@ -59,6 +73,33 @@ export async function computePlayerScores(
     previsioniData = data;
   }
 
+  const cambiPerUser = new Map<string, number>();
+  if (isPostRace) {
+    for (const f of formazioni || []) {
+      if (f.chip_piloti === "wildcard") continue;
+      const { data: cambiData } = await supabase
+        .from("mercato_cambi")
+        .select("id")
+        .eq("user_id", f.user_id)
+        .eq("round", round);
+      cambiPerUser.set(f.user_id, (cambiData || []).length);
+    }
+  }
+
+  return computePlayerScoresFrom(
+    { formazioni: formazioni || [], profiles: profiles || [], previsioni: previsioniData, cambiPerUser },
+    weekendResults,
+    isPostRace,
+  );
+}
+
+/** Calcolo puro: stessi punteggi, ma su dati già caricati. */
+export function computePlayerScoresFrom(
+  inputs: RoundScoringInputs,
+  weekendResults: RaceWeekendResults,
+  isPostRace: boolean,
+): PlayerScore[] {
+  const { formazioni, profiles, previsioni: previsioniData, cambiPerUser } = inputs;
   const playerScores: PlayerScore[] = [];
 
   for (const formazione of formazioni || []) {
@@ -105,12 +146,7 @@ export async function computePlayerScores(
     // Penalità cambi: solo post-race, e mai con chip wildcard
     let penalitaCambi = 0;
     if (isPostRace && formazione.chip_piloti !== "wildcard") {
-      const { data: cambiData } = await supabase
-        .from("mercato_cambi")
-        .select("id")
-        .eq("user_id", formazione.user_id)
-        .eq("round", round);
-      const numCambi = (cambiData || []).length;
+      const numCambi = cambiPerUser.get(formazione.user_id) ?? 0;
       penalitaCambi = Math.max(0, numCambi - 2) * 10;
     }
 
