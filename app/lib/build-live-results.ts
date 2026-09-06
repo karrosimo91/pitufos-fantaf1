@@ -7,6 +7,11 @@ export interface LiveSnapshot {
   raceControl: LiveRaceControl[];
   fastestLap: { driver_number: number; duration: number } | null;
   stints: LiveStint[];
+  // Ritirati secondo `session_result` di OpenF1 (flag dnf/dsq), via
+  // /api/live-retired. I messaggi race_control non coprono tutti i ritiri:
+  // OpenF1 non ne emette uno per ogni macchina che si ferma, quindi senza
+  // questa fonte il malus −10 non arriva mai per quei piloti.
+  retiredDrivers?: Set<number>;
 }
 
 export interface LiveEvents {
@@ -48,6 +53,11 @@ export function detectLiveEvents(snap: LiveSnapshot): LiveEvents {
       if (num) dnfDrivers.add(num);
     }
   }
+
+  // Ritiri ufficiali da session_result: si sommano a quelli dedotti dai
+  // messaggi, non li sostituiscono (una fonte può vedere ciò che l'altra
+  // manca).
+  for (const num of snap.retiredDrivers ?? []) dnfDrivers.add(num);
 
   const wetTyres = snap.stints.some((s) => {
     const c = (s.compound || "").toUpperCase();

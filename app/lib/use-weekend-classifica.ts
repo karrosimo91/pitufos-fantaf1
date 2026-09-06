@@ -86,6 +86,7 @@ export function useWeekendClassifica(opts: {
 
   const [previousResults, setPreviousResults] = useState<RaceWeekendResults | null>(null);
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
+  const [retiredDrivers, setRetiredDrivers] = useState<Set<number>>(new Set());
   const [formazioni, setFormazioni] = useState<PlayerFormazione[]>([]);
   const [previsioni, setPrevisioni] = useState<Map<string, PlayerPrevisioni>>(new Map());
 
@@ -164,6 +165,52 @@ export function useWeekendClassifica(opts: {
       if (timer) clearTimeout(timer);
     };
   }, [meetingKey, sessionType, debug]);
+
+  // Ritirati ufficiali da session_result (gara e sprint).
+  //
+  // I DNF live venivano dedotti solo dai messaggi race_control, ma OpenF1 non
+  // emette un messaggio per ogni ritiro: quelli silenziosi non prendevano il
+  // malus −10. `session_result` porta i flag dnf/dsq ufficiali ed è aggiornato
+  // durante la sessione, quindi lo interroghiamo ogni 45 secondi mentre si
+  // corre.
+  useEffect(() => {
+    if (debug || !sessionKey) return;
+    const kind = classifySession(sessionType);
+    if (kind !== "race" && kind !== "sprint") return;
+
+    const abort = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/live-retired?session_key=${sessionKey}`, { cache: "no-store", signal: abort.signal });
+        if (res.ok) {
+          const { retired } = await res.json();
+          if (Array.isArray(retired)) {
+            setRetiredDrivers((prev) => {
+              // Un ritiro non si annulla: uniamo sempre, così una risposta
+              // parziale o un errore momentaneo non fa "resuscitare" nessuno.
+              const next = new Set(prev);
+              let changed = false;
+              for (const n of retired) {
+                if (typeof n === "number" && !next.has(n)) { next.add(n); changed = true; }
+              }
+              return changed ? next : prev;
+            });
+          }
+        }
+      } catch (err) {
+        if ((err as Error)?.name !== "AbortError") console.warn("[weekend-classifica] retired", err);
+      }
+      if (!abort.signal.aborted) timer = setTimeout(load, 45_000);
+    };
+    load();
+
+    return () => {
+      abort.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [sessionKey, sessionType, debug]);
 
   // Fetch formazioni + previsioni + profili della lega
   useEffect(() => {
@@ -259,7 +306,7 @@ export function useWeekendClassifica(opts: {
     if (formazioni.length === 0) return [];
     if (!debug && ws.positions.size === 0) return [];
 
-    const snap = { positions: ws.positions, raceControl: ws.raceControl, fastestLap: ws.fastestLap, stints: ws.stints };
+    const snap = { positions: ws.positions, raceControl: ws.raceControl, fastestLap: ws.fastestLap, stints: ws.stints, retiredDrivers };
     const events = detectLiveEvents(snap);
     const virtualResults = buildLiveWeekendResults(
       sessionType,
@@ -296,7 +343,7 @@ export function useWeekendClassifica(opts: {
 
     entries.sort((a, b) => b.points - a.points);
     return entries;
-  }, [formazioni, previsioni, ws.positions, ws.raceControl, ws.fastestLap, ws.stints, sessionType, gridPositions, previousResults, userId, debug]);
+  }, [formazioni, previsioni, ws.positions, ws.raceControl, ws.fastestLap, ws.stints, sessionType, gridPositions, retiredDrivers, previousResults, userId, debug]);
 
   return {
     classifica,
@@ -304,6 +351,7 @@ export function useWeekendClassifica(opts: {
     previsioniByUser: previsioni,
     previousResults,
     gridPositions,
+    retiredDrivers,
     ws,
   };
 }

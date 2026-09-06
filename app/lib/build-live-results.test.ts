@@ -420,3 +420,36 @@ describe("DNF live → punteggio dei partecipanti", () => {
     expect(results.qualifying.length).toBe(2);
   });
 });
+
+describe("ritirati da session_result", () => {
+  const baseSnap = () => ({
+    positions: new Map([[44, { driver_number: 44, position: 12 }]]),
+    raceControl: [],
+    fastestLap: null,
+    stints: [],
+  });
+
+  it("un ritiro senza messaggio race_control viene comunque contato", () => {
+    const snap = { ...baseSnap(), retiredDrivers: new Set([44]) };
+    const events = detectLiveEvents(snap as never);
+    expect(events.dnfDrivers.has(44)).toBe(true);
+    expect(events.totalDnf).toBe(1);
+  });
+
+  it("le due fonti si sommano senza duplicare", () => {
+    const snap = {
+      ...baseSnap(),
+      raceControl: [{ message: "CAR 44 (HAM) RETIRED", driver_number: null }],
+      retiredDrivers: new Set([44, 16]),
+    };
+    const events = detectLiveEvents(snap as never);
+    expect(events.dnfDrivers.has(44)).toBe(true);
+    expect(events.dnfDrivers.has(16)).toBe(true);
+    expect(events.totalDnf).toBe(2);
+  });
+
+  it("senza la nuova fonte il comportamento non cambia", () => {
+    const events = detectLiveEvents(baseSnap() as never);
+    expect(events.totalDnf).toBe(0);
+  });
+});
