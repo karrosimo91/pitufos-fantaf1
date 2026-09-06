@@ -5,6 +5,7 @@
 ### Fix
 - **Posizioni guadagnate/perse calcolate dalla qualifica invece che dalla griglia** — il delta +1/−1 per posizione usava la posizione di **qualifica** come riferimento, ignorando le penalità in griglia (cambio motore/cambio, impeding). Un pilota che qualificava P7, partiva P20 per penalità e chiudeva P8 risultava **−1 posizione persa** invece di **+12 guadagnate**: 13 punti in meno, 26 se Primo Pilota. Ora la griglia arriva dall'endpoint OpenF1 `starting_grid` (griglia reale, penalità incluse) in tutti e tre i percorsi: `/api/post-gara`, `/api/fetch-risultati` e `/api/live-grid` (live scoring). Se `starting_grid` non è ancora pubblicato si ricade sulle posizioni di qualifica come prima, e il log del post-gara lo segnala.
 - Invariato per scelta il trattamento della penalità in griglia sui punti qualifica: restano i punti del piazzamento in qualifica, la penalità griglia non genera il −5 di gara.
+- **`starting_grid` di OpenF1 è vuoto** (verificato a Monza 2026: HTTP 200 con array vuoto, token valido), quindi la griglia viene risolta a cascata su più fonti: `starting_grid` → risultati ufficiali Jolpica (campo `grid`, solo a gara conclusa) → prime posizioni registrate nel feed `position` della gara (lo schieramento, unica fonte utile a gara in corso) → posizioni di qualifica come ultimo fallback. `/api/live-grid` espone la fonte usata in `source`, il post-gara la scrive nel log.
 
 ---
 

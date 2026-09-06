@@ -8,7 +8,7 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { buildGridMap } from "../../lib/starting-grid";
+import { resolveGrid, gridFromJolpicaResults, gridFromRacePositions, type JolpicaResult } from "../../lib/starting-grid";
 import { computePlayerScores } from "../../lib/score-round";
 
 const OPENF1 = "https://api.openf1.org/v1";
@@ -157,13 +157,20 @@ export async function POST(request: NextRequest) {
       // delle penalità in griglia, che la posizione di qualifica ignora.
       // Fallback sulla qualifica se il dato non c'è.
       const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
-      const { grid: gridMap, source: gridSource } = buildGridMap(startingGrid, qualifying);
+      const jolpicaResults = await fetchJolpicaGrid(round);
+      const racePositions = await fetchJson(`${OPENF1}/position?session_key=${raceKey}`);
+      const { grid: gridMap, source: gridSource } = resolveGrid([
+        { name: "starting_grid", entries: startingGrid },
+        { name: "jolpica_results", entries: gridFromJolpicaResults(jolpicaResults) },
+        { name: "race_first_positions", entries: gridFromRacePositions(racePositions) },
+        { name: "qualifying", entries: qualifying },
+      ]);
       if (gridSource === "none") {
-        log.push("ATTENZIONE: nessuna griglia né qualifica trovata — posizioni guadagnate/perse non calcolate");
+        log.push("ATTENZIONE: nessuna griglia trovata — posizioni guadagnate/perse non calcolate");
       } else if (gridSource === "qualifying") {
-        log.push("ATTENZIONE: starting_grid non disponibile — uso le posizioni di qualifica (penalità in griglia ignorate)");
+        log.push("ATTENZIONE: nessuna fonte per la griglia reale — uso le posizioni di qualifica (penalità in griglia ignorate)");
       } else {
-        log.push(`Griglia di partenza: ${gridMap.size} piloti da starting_grid`);
+        log.push(`Griglia di partenza: ${gridMap.size} piloti da ${gridSource}`);
       }
 
       raceResults = await fetchRaceResults(raceKey, driver_of_the_day, gridMap);
@@ -390,6 +397,21 @@ async function fetchSessionResults(sessionKey: number): Promise<DriverResult[]> 
     position: r.position,
     dnf: false,
   }));
+}
+
+
+// Griglia ufficiale da Jolpica/Ergast: disponibile a gara conclusa, include le
+// penalità in griglia. Usata quando `starting_grid` di OpenF1 è vuoto.
+async function fetchJolpicaGrid(round: number): Promise<JolpicaResult[]> {
+  try {
+    const year = new Date().getFullYear();
+    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${year}/${round}/results.json`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json?.MRData?.RaceTable?.Races?.[0]?.Results ?? [];
+  } catch {
+    return [];
+  }
 }
 
 async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
