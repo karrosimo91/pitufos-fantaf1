@@ -41,6 +41,13 @@ export interface ReadinessInput {
   rows: OfficialRow[];
   /** Piloti attesi (da `/drivers`); 0 o assente = sconosciuto */
   expectedDrivers?: number;
+  /**
+   * Qualifica e shootout: chi non gira non compare nella classifica OpenF1,
+   * quindi una lista più corta degli iscritti è normale (gli assenti valgono
+   * -5, vedi addAbsentAsNoTime). Resta la soglia minima contro le
+   * pubblicazioni a metà.
+   */
+  allowMissingDrivers?: boolean;
   /** Iniettabile nei test */
   now?: number;
 }
@@ -77,7 +84,9 @@ export function checkResultsReady(input: ReadinessInput): ReadinessResult {
 
   // 3. E devono essere completi: una pubblicazione a metà darebbe classifica
   //    e ritiri parziali, cioè di nuovo punteggi sbagliati.
-  const attesi = input.expectedDrivers && input.expectedDrivers > 0 ? input.expectedDrivers : MIN_DRIVERS_ATTESI;
+  const attesi = input.allowMissingDrivers
+    ? MIN_DRIVERS_ATTESI
+    : (input.expectedDrivers && input.expectedDrivers > 0 ? input.expectedDrivers : MIN_DRIVERS_ATTESI);
   if (presenti < attesi) {
     return {
       ok: false,
@@ -112,40 +121,47 @@ export function hasNoTime(row: OfficialRow): boolean {
   return d == null || d <= 0;
 }
 
-export interface QualifyingMapOptions {
-  /**
-   * Piloti con penalità in griglia "a priori" (cambio motore, pit lane...):
-   * per loro il "senza tempo" NON vale -5, restano i punti del piazzamento.
-   */
-  esenti?: Set<number>;
-}
-
 /**
  * Qualifica e Sprint Shootout.
  * `dnf` qui vale "NC / squalificato / senza tempo": -5 in qualifica, -3 in
- * sprint shootout (vedi scoring.ts). `dns` resta distinto: 0 punti.
- * Il "senza tempo" scatta solo se il pilota non è esente (regola 4).
+ * sprint shootout (vedi scoring.ts), e basta: nessun altro punto tolto o
+ * dato. `dns` resta distinto: 0 punti (forza maggiore, pilota rimosso dal
+ * weekend).
  */
-export function mapQualifyingResults(rows: OfficialRow[], opts: QualifyingMapOptions = {}): DriverResult[] {
-  const esenti = opts.esenti ?? new Set<number>();
+export function mapQualifyingResults(rows: OfficialRow[]): DriverResult[] {
   return byDriver(rows).map((r) => {
     const num = r.driver_number as number;
     const noTime = hasNoTime(r);
-    const esente = noTime && esenti.has(num);
     // Senza posizione e senza essere DNS = non classificato (tempi cancellati,
     // esclusione dalla qualifica): è l'NC del regolamento, -5. Trovato a
-    // Miami 2026: Hadjar con position null in session_result, in archivio P9.
+    // Miami e Spa 2026: Hadjar con position null in session_result.
     const nonClassificato = r.position == null && !r.dns;
     const out: DriverResult = {
       driver_number: num,
       position: r.position as number,
-      dnf: !!(r.dnf || r.dsq || nonClassificato || (noTime && !esente)),
+      dnf: !!(r.dnf || r.dsq || nonClassificato || noTime),
       dns: !!r.dns,
     };
     if (noTime) out.no_time = true;
-    if (esente) out.esente_penalita = true;
     return out;
   });
+}
+
+/**
+ * Chi non fa la qualifica OpenF1 non lo elenca proprio in `session_result`
+ * (Madrid 2026: 20 righe su 22, Bearman assente). Regola: se non fai la Q
+ * prendi -5, quindi gli iscritti al weekend assenti dalla classifica vanno
+ * aggiunti come "senza tempo". `iscritti` = piloti della stagione presenti
+ * nel weekend (lista OpenF1 `drivers` del meeting ∩ rosa dell'app).
+ */
+export function addAbsentAsNoTime(rows: DriverResult[], iscritti: Iterable<number>): DriverResult[] {
+  const presenti = new Set(rows.map((r) => r.driver_number));
+  const out = [...rows];
+  for (const num of iscritti) {
+    if (presenti.has(num)) continue;
+    out.push({ driver_number: num, position: undefined as unknown as number, dnf: true, no_time: true });
+  }
+  return out;
 }
 
 /**

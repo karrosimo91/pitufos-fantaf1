@@ -6,8 +6,7 @@ import { computePlayerScoresFrom, type RoundScoringInputs, type PlayerScore } fr
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { findRaceSessionForRound, findSessionInMeeting, type OpenF1Session } from "../../lib/openf1-sessions";
-import { extractGridPenalizedDrivers } from "../../lib/penalties";
-import { mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } from "../../lib/official-results";
+import { addAbsentAsNoTime, mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } from "../../lib/official-results";
 import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
 
 /**
@@ -21,8 +20,8 @@ import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
  *   B. + regola 3: posizioni guadagnate/perse dalla griglia REALE (i round
  *      2-14 in archivio hanno come griglia la posizione di qualifica)
  *   C. + regola 1: "pole vince" = chi PARTE primo in griglia
- *   D. + regole 2 e 4: qualifica dai risultati ufficiali, "senza tempo" = -5
- *      salvo penalità in griglia a priori (stesso per la sprint shootout, -3)
+ *   D. + regola 2: qualifica dai risultati ufficiali, "senza tempo" o assente
+ *      dalla classifica = -5 e basta (stesso per la sprint shootout, -3)
  *
  * Il report è per round e per giocatore, con i piloti che fanno scattare
  * ogni regola, così il CDA decide con i numeri in mano. Nessuna scrittura.
@@ -32,8 +31,6 @@ import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
 // Vercel Hobby taglia a 60 secondi: con 13 round e il retry sui 429 conviene
 // chiamare a blocchi (es. from=2&to=6, poi 7&to=11...), i totali si sommano.
 export const maxDuration = 60;
-
-type Rc = { message?: string | null; driver_number?: number | null };
 
 function driverName(num: number): string {
   return DRIVERS_2026.find((d) => d.number === num)?.name ?? `#${num}`;
@@ -128,21 +125,13 @@ export async function GET(request: NextRequest) {
     const C: RaceWeekendResults = { ...B, events: { ...B.events, pole_won: poleWon(B.race, B.qualifying) } };
 
     // ── Regole 2 e 4: qualifica ufficiale, senza tempo, esenzioni
-    // I messaggi di penalità in griglia stanno nelle sessioni di qualifica e
-    // gara (le libere non servono): meno chiamate, meno 429.
     const qualiSession = findSessionInMeeting(sessions, meetingKey, "qualifying");
     const ssSession = findSessionInMeeting(sessions, meetingKey, "sprint_shootout");
-    const rcAll: Rc[] = [];
-    for (const s of [qualiSession, ssSession, match.session]) {
-      if (!s) continue;
-      const r = await fetchOpenF1<Rc>(`${OPENF1}/race_control?session_key=${s.session_key}`); esito(`race_control_${s.session_key}`, r);
-      rcAll.push(...r.data);
-    }
-    const esenti = extractGridPenalizedDrivers(rcAll);
-    // Testo grezzo dei messaggi che parlano di griglia: serve a verificare
-    // come i commissari scrivono davvero le penalità, prima di fidarsi
-    // dell'esenzione della regola 4.
-    const messaggiGrid = [...new Set(rcAll.map((m) => (m.message || "").trim()).filter((t) => t.toUpperCase().includes("GRID")))].slice(0, 30);
+    // Iscritti al weekend (rosa dell'app ∩ drivers del meeting): chi manca
+    // dalla classifica di qualifica non ha girato → -5
+    const drRes = await fetchOpenF1(`${OPENF1}/drivers?meeting_key=${meetingKey}`); esito("drivers_meeting", drRes);
+    const rosa = new Set(DRIVERS_2026.map((d) => d.number));
+    const iscritti = new Set<number>(drRes.data.map((d: any) => d?.driver_number).filter((n: number) => n && rosa.has(n)));
 
     let qualiRows: OfficialRow[] = [];
     if (qualiSession) {
@@ -158,15 +147,14 @@ export async function GET(request: NextRequest) {
 
     let qualiNuova: DriverResult[] = C.qualifying;
     let ssNuova: DriverResult[] | undefined = C.sprint_shootout;
-    if (qualiRows.length >= 15) qualiNuova = mapQualifyingResults(qualiRows, { esenti });
+    if (qualiRows.length >= 15) qualiNuova = addAbsentAsNoTime(mapQualifyingResults(qualiRows), iscritti);
     else note.push(`qualifica ufficiale non disponibile (${chiamate.session_result_qualifica ?? "sessione non trovata"}): regole 2 e 4 non valutate`);
-    if (ssSession && ssRows.length >= 15) ssNuova = mapQualifyingResults(ssRows, { esenti });
+    if (ssSession && ssRows.length >= 15) ssNuova = addAbsentAsNoTime(mapQualifyingResults(ssRows), iscritti);
 
     const D: RaceWeekendResults = { ...C, qualifying: qualiNuova, sprint_shootout: ssNuova };
 
     const descQ = (rows: DriverResult[]) => ({
-      senza_tempo_meno5: rows.filter((r) => r.no_time && !r.esente_penalita).map((r) => driverName(r.driver_number)),
-      senza_tempo_esenti: rows.filter((r) => r.esente_penalita).map((r) => driverName(r.driver_number)),
+      senza_tempo_o_assenti_meno5: rows.filter((r) => r.no_time).map((r) => driverName(r.driver_number)),
       nc_o_squalificati: rows.filter((r) => r.dnf && !r.no_time).map((r) => driverName(r.driver_number)),
       dns_zero_punti: rows.filter((r) => r.dns).map((r) => driverName(r.driver_number)),
     });
@@ -218,7 +206,7 @@ export async function GET(request: NextRequest) {
       chiamate_openf1: chiamate,
       griglia: { fonte: fonteGriglia, piloti_diversi_dall_archivio: diffGriglia.length, dettaglio: diffGriglia },
       pole: { qualifica: poleQuali && driverName(poleQuali), griglia: poleGriglia && driverName(poleGriglia), pole_won_archivio: results.events.pole_won, pole_won_nuovo: C.events.pole_won },
-      qualifica: { ...descQ(qualiNuova), posizioni_diverse_dall_archivio: posDiverse, penalita_griglia_a_priori_rilevate: [...esenti].map(driverName), messaggi_race_control_con_grid: messaggiGrid },
+      qualifica: { ...descQ(qualiNuova), posizioni_diverse_dall_archivio: posDiverse, iscritti_weekend: iscritti.size },
       sprint_shootout: ssSession ? descQ(ssNuova ?? []) : undefined,
       giocatori,
     });

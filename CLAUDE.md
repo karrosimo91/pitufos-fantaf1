@@ -197,11 +197,16 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    in CDA.
 6. Driver of the Day è manuale: un rilancio senza DOTD mantiene quello salvato.
 7. **Qualifica e "pole vince"** (decisioni 13/09/2026): la pole è chi PARTE primo in griglia
-   (`poleWon` in `official-results.ts`, anche live); "senza tempo" in qualifica = -5 (-3 in
-   shootout) da `duration` di `session_result`; esente chi ha una penalità in griglia a priori
-   (messaggi race_control del weekend, `extractGridPenalizedDrivers`), flag `no_time` e
-   `esente_penalita` sulla riga. Le penalità in griglia in sé valgono 0 in qualifica e si
-   pagano con la griglia in gara.
+   (`poleWon` in `official-results.ts`, anche live). Se non fai la Q prendi -5 e basta (-3 in
+   shootout), nessun altro punto tolto: vale per "senza tempo" (`duration` tutta nulla), per
+   chi è escluso/non classificato (position null) e per chi OpenF1 non elenca proprio nella
+   classifica (`addAbsentAsNoTime`, iscritti = drivers del meeting ∩ rosa; Madrid 2026: Bearman).
+   Per questo la guardia sui dati completi per qualifica e shootout accetta liste corte
+   (`allowMissingDrivers`, soglia minima 15). Nessuna esenzione per penalità in griglia: quelle
+   valgono 0 in qualifica e si pagano con la griglia in gara. DNS (forza maggiore, pilota
+   rimosso dal weekend) resta 0.
+9. **Quotazioni solo sul round più recente**: rilanciare una gara passata ricalcola i punti,
+   non i prezzi (il cleanup delle quotazioni future cancellerebbe quelle dei round dopo).
 8. **Audit prima di ricalcolare**: `/api/audit-regole?from=&to=` (sola lettura, cookie admin o `admin_key`)
    mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
    qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
