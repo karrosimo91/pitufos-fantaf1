@@ -19,6 +19,11 @@
 - **Coerenza interna prima del salvataggio** — eventi e righe piloti devono raccontare la stessa storia (numero ritiri, posizioni univoche, un vincitore): se no il salvataggio si ferma con 422. Trovato e corretto in archivio il round 2 (Cina): 7 ritiri nelle righe piloti ma `total_dnf` 0 (senza impatto sui punti, nessuno aveva previsto 7).
 - **Qualifica dai risultati ufficiali** — la classifica di qualifica e sprint shootout arrivava dal feed `position`, che non conosce NC e squalifiche: il −5 (−3 in shootout) non scattava mai. Ora arriva da `session_result`.
 
+### Fix (13/09, sera)
+- **OpenF1 risponde 429 sotto carico e il codice lo leggeva come "nessun dato"** — nel primo audit sei round su tredici risultavano senza griglia e senza qualifica solo per questo. Ora ogni chiamata OpenF1 riprova su 429/5xx con attesa crescente (1s, 2s, 4s) e l'audit riporta esito HTTP e righe di ogni chiamata (`chiamate_openf1`), così "non disponibile" dice il perché.
+- **Non classificato in qualifica** — un pilota senza posizione in `session_result` (tempi cancellati, esclusione) non è più trattato come un P17-22 da -1: è l'NC del regolamento, -5. Trovato a Miami 2026 (Hadjar, in archivio P9 con +2). L'audit elenca a parte anche i DNS di qualifica (0 punti).
+- Audit più leggero (race_control solo di qualifica, shootout e gara) e limitato a 60 s: su Vercel Hobby va lanciato a blocchi di round.
+
 ### Sotto il cofano
 - **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.
 - **Ritirate le route doppione** `/api/fetch-risultati`, `/api/ricalcola-round`, `/api/calcola-risultati` (410): copie con logica divergente e senza controlli, non chiamate da nessuna parte. Il calcolo passa solo da `/api/post-gara`, il ricalcolo penalità da `/api/recalc-penalties`, l'azzeramento da `/api/reset-round`.
