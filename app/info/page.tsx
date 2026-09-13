@@ -85,8 +85,8 @@ export default function InfoPage() {
               ["P6 - P10 (Q3)", "+2"],
               ["P11 - P16 (Q2)", "+1"],
               ["P17 - P22 (Q1)", "-1"],
-              ["NC / DSQ / No tempo", "-5"],
-              ["Penalita in griglia", "0"],
+              ["Non fa la Q / escluso / senza tempo", "-5 e basta"],
+              ["Penalita in griglia", "0 (si paga in gara)"],
             ]} />
           </Accordion>
 
@@ -133,8 +133,8 @@ export default function InfoPage() {
               ["P9", "+2"],
               ["P10", "+1"],
               ["P11 - P22", "0"],
-              ["Posizione guadagnata vs griglia", "+1 /pos"],
-              ["Posizione persa vs griglia", "-1 /pos"],
+              ["Posizione guadagnata vs griglia di partenza reale", "+1 /pos"],
+              ["Posizione persa vs griglia di partenza reale", "-1 /pos"],
               ["Giro veloce", "+3"],
               ["Driver of the Day", "+5"],
               ["DNF / Ritiro", "-10"],
@@ -154,8 +154,8 @@ export default function InfoPage() {
               ["Red Flag: NO", "+3"],
               ["Gomme wet: SI", "+8"],
               ["Gomme wet: NO", "+2"],
-              ["Pole vince: SI", "+4"],
-              ["Pole vince: NO", "+7"],
+              ["Pole vince (chi parte 1° in griglia): SI", "+4"],
+              ["Pole vince (chi parte 1° in griglia): NO", "+7"],
               ["Numero DNF esatto", "+5"],
             ]} />
             <p className="text-xs text-white/30">Previsione sbagliata = 0 punti.</p>

@@ -42,8 +42,8 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - P6-P10 (resto Q3): +2
 - P11-P16 (Q2): +1
 - P17-P22 (Q1): -1
-- NC/DSQ/No tempo: -5
-- Penalità in griglia: 0 punti
+- Non fa la Q / escluso / NC / senza tempo: -5 e basta, nessun altro punto (decisione 13/09/2026; vale anche per chi OpenF1 non elenca nella classifica)
+- Penalità in griglia (a monte o per colpa in Q): 0 punti in qualifica, si paga in gara con la griglia reale
 
 ### Punteggi Sprint Shootout (Qualifica Sprint)
 - Pole sprint: +4
@@ -75,7 +75,7 @@ Punti differenziati SI vs NO (evento raro premia di più):
 - Virtual Safety Car: SI +5 / NO +5 / Sbagliata 0
 - Red Flag: SI +7 / NO +3 / Sbagliata 0
 - Gomme wet usate: SI +8 / NO +2 / Sbagliata 0
-- Pole vince la gara: SI +4 / NO +7 / Sbagliata 0
+- Pole vince la gara: SI +4 / NO +7 / Sbagliata 0 (pole = chi PARTE primo in griglia, decisione 13/09/2026)
 - Numero DNF esatto: +5 se indovini / 0 se sbagli
 
 ### Aggiornamenti (Chip) — dalla fabbrica
@@ -222,7 +222,9 @@ pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su ne
   `ADMIN_API_KEY`, 12 ore. GET verifica la sessione, DELETE fa logout.
 - Ogni route admin usa `isAdminRequest(request, admin_key)` (`lib/admin-auth.ts`): cookie valido
   oppure `admin_key` uguale a `ADMIN_API_KEY` (per curl/script). Nuove route admin: stessa funzione.
-- `/admin` ha il pannello "Audit regole" che chiama `/api/audit-regole` col cookie.
+- `/admin` ha il pannello "Audit regole" (`/api/audit-regole`), "Ricalcola round" e "Ricalcola
+  stagione" (`/api/admin/rounds` elenca i round in archivio; si rilanciano solo quelli, mai il
+  round 1 o i cancellati).
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)

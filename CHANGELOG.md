@@ -27,6 +27,7 @@
 
 ### Sicurezza
 - **Credenziali admin fuori dal client** — utente, password e `ADMIN_API_KEY` erano scritti nel codice della pagina `/admin`, quindi nel JavaScript scaricato da ogni giocatore. Ora il login passa da `/api/admin-login`, confronta con `ADMIN_USER` / `ADMIN_PASS` (variabili Vercel) e rilascia un cookie httpOnly firmato, valido 12 ore; tutte le route admin accettano il cookie (o `admin_key` nel body per gli script). Da fare su Vercel: impostare `ADMIN_USER` e `ADMIN_PASS`, ruotare `ADMIN_API_KEY`.
+- Bottone **Ricalcola stagione** in `/admin`: rilancia in sequenza tutte le sessioni di tutti i round già in archivio (mai round mai giocati o cancellati), con log e stop al primo errore. Regolamento pubblico (`/info`) aggiornato: pole = chi parte primo, non fai la Q = -5 e basta, posizioni dalla griglia reale.
 - Bottone **Ricalcola round** in `/admin`: rilancia in sequenza tutte le sessioni del round (Shootout, Sprint, Qualifica, Gara) con log, sfruttando i ricalcoli idempotenti.
 - Pannello **Audit regole** in `/admin`: lancia l'audit a blocchi di round e mostra la tabella dei totali, le note e il JSON completo, senza chiavi negli URL.
 
