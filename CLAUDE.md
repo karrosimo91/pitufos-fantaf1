@@ -9,6 +9,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - **API dati F1:** OpenF1 (api.openf1.org) per dati live e storici + Jolpica (api.jolpi.ca/ergast/f1) per classifiche e calendario
 - **Dati live:** OpenF1 abbonamento €9.90/mese, connessione WebSocket per real-time durante le gare
 - **Repo:** github.com/karrosimo91/pitufos-fantaf1
+- **Sito in produzione:** https://pitufos-fantaf1.vercel.app/
 
 ## Regolamento v1.0 — Approvato dal CDA
 
