@@ -2,6 +2,19 @@
 
 ## v1.10.0 — 13 Settembre 2026
 
+### Ricalcolo stagione (round 2-16), chiuso il 13/09 sera
+Applicate le regole sotto a tutti i round in archivio con "Ricalcola stagione"; audit finale a delta zero su entrambi i blocchi.
+
+| Team Principal | Prima | Dopo | Delta |
+|---|---|---|---|
+| karrosimo91 | 1463 | 1475 | +12 |
+| Brasseur | 1414 | 1426 | +12 |
+| Claudio Vasseur | 1349 | 1347 | -2 |
+| Alessandro | 1186 | 1192 | +6 |
+| Monfry | 164 | 166 | +2 |
+
+Classifica invariata. Cause: griglia reale (Budapest, Spa, Cina, Miami), Hadjar escluso dalla qualifica a Miami e Spa (-5), Bearman senza qualifica a Madrid (-5), giro veloce sprint di Leclerc in Cina e Lindblad a Barcellona dai dati ufficiali. Monaco resta alla classifica della Corte d'Appello (override), i non partiti di Cina, Miami e Montréal valgono -10/-5.
+
 ### Regolamento (decisioni 13/09/2026, in attesa di ricalcolo retroattivo)
 - **"Pole vince la gara" si valuta sulla griglia di partenza** — la pole è chi parte primo, non chi ha fatto il miglior tempo in qualifica: se il poleman ha una penalità in griglia, la pole di fatto passa a chi parte davanti. Vale nel post-gara e nel live; senza griglia si ricade sulla qualifica.
 - **"Senza tempo" in qualifica vale -5** (-3 in sprint shootout) — rilevato dai risultati ufficiali (`duration` di `session_result` senza alcun tempo in Q1/Q2/Q3). Prima non scattava mai.
