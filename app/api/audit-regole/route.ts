@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequest } from "../../lib/admin-auth";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { computePlayerScoresFrom, type RoundScoringInputs, type PlayerScore } from "../../lib/score-round";
@@ -10,7 +11,7 @@ import { mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } fro
 import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
 
 /**
- * GET /api/audit-regole?admin_key=...&from=2&to=16[&raw=1]
+ * GET /api/audit-regole?from=2&to=16[&raw=1]  (cookie admin, oppure &admin_key=...)
  *
  * SOLA LETTURA. Per ogni round con gara in archivio ricalcola i punteggi di
  * tutti i giocatori applicando, una alla volta, le regole decise il 13/09/2026
@@ -44,8 +45,7 @@ function scoreMap(list: PlayerScore[]): Map<string, PlayerScore> {
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const expectedKey = process.env.ADMIN_API_KEY;
-  if (!expectedKey || params.get("admin_key") !== expectedKey) {
+  if (!isAdminRequest(request, params.get("admin_key") ?? undefined)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
@@ -139,6 +139,10 @@ export async function GET(request: NextRequest) {
       rcAll.push(...r.data);
     }
     const esenti = extractGridPenalizedDrivers(rcAll);
+    // Testo grezzo dei messaggi che parlano di griglia: serve a verificare
+    // come i commissari scrivono davvero le penalità, prima di fidarsi
+    // dell'esenzione della regola 4.
+    const messaggiGrid = [...new Set(rcAll.map((m) => (m.message || "").trim()).filter((t) => t.toUpperCase().includes("GRID")))].slice(0, 30);
 
     let qualiRows: OfficialRow[] = [];
     if (qualiSession) {
@@ -214,7 +218,7 @@ export async function GET(request: NextRequest) {
       chiamate_openf1: chiamate,
       griglia: { fonte: fonteGriglia, piloti_diversi_dall_archivio: diffGriglia.length, dettaglio: diffGriglia },
       pole: { qualifica: poleQuali && driverName(poleQuali), griglia: poleGriglia && driverName(poleGriglia), pole_won_archivio: results.events.pole_won, pole_won_nuovo: C.events.pole_won },
-      qualifica: { ...descQ(qualiNuova), posizioni_diverse_dall_archivio: posDiverse, penalita_griglia_a_priori_rilevate: [...esenti].map(driverName) },
+      qualifica: { ...descQ(qualiNuova), posizioni_diverse_dall_archivio: posDiverse, penalita_griglia_a_priori_rilevate: [...esenti].map(driverName), messaggi_race_control_con_grid: messaggiGrid },
       sprint_shootout: ssSession ? descQ(ssNuova ?? []) : undefined,
       giocatori,
     });

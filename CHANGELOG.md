@@ -24,6 +24,11 @@
 - **Non classificato in qualifica** — un pilota senza posizione in `session_result` (tempi cancellati, esclusione) non è più trattato come un P17-22 da -1: è l'NC del regolamento, -5. Trovato a Miami 2026 (Hadjar, in archivio P9 con +2). L'audit elenca a parte anche i DNS di qualifica (0 punti).
 - Audit più leggero (race_control solo di qualifica, shootout e gara) e limitato a 60 s: su Vercel Hobby va lanciato a blocchi di round.
 
+### Sicurezza
+- **Credenziali admin fuori dal client** — utente, password e `ADMIN_API_KEY` erano scritti nel codice della pagina `/admin`, quindi nel JavaScript scaricato da ogni giocatore. Ora il login passa da `/api/admin-login`, confronta con `ADMIN_USER` / `ADMIN_PASS` (variabili Vercel) e rilascia un cookie httpOnly firmato, valido 12 ore; tutte le route admin accettano il cookie (o `admin_key` nel body per gli script). Da fare su Vercel: impostare `ADMIN_USER` e `ADMIN_PASS`, ruotare `ADMIN_API_KEY`.
+- Pannello **Audit regole** in `/admin`: lancia l'audit a blocchi di round e mostra la tabella dei totali, le note e il JSON completo, senza chiavi negli URL.
+- L'audit stampa anche i messaggi `race_control` che contengono "GRID", per verificare sul testo reale il riconoscimento delle penalità in griglia (regola 4).
+
 ### Sotto il cofano
 - **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.
 - **Ritirate le route doppione** `/api/fetch-risultati`, `/api/ricalcola-round`, `/api/calcola-risultati` (410): copie con logica divergente e senza controlli, non chiamate da nessuna parte. Il calcolo passa solo da `/api/post-gara`, il ricalcolo penalità da `/api/recalc-penalties`, l'azzeramento da `/api/reset-round`.

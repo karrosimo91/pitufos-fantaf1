@@ -202,13 +202,22 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    (messaggi race_control del weekend, `extractGridPenalizedDrivers`), flag `no_time` e
    `esente_penalita` sulla riga. Le penalità in griglia in sé valgono 0 in qualifica e si
    pagano con la griglia in gara.
-8. **Audit prima di ricalcolare**: `/api/audit-regole?admin_key=&from=&to=` (sola lettura)
+8. **Audit prima di ricalcolare**: `/api/audit-regole?from=&to=` (sola lettura, cookie admin o `admin_key`)
    mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
    qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
 
 Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti del singolo
 pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su nessun round
 (nessun `dns: true` in archivio), ma la regola va decisa: proposta, escludere il DNS.
+
+## Admin — autenticazione
+- Credenziali SOLO lato server: `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_API_KEY` (variabili Vercel). Mai
+  costanti nel client: il bundle è pubblico.
+- `/api/admin-login` (POST) rilascia il cookie httpOnly `pitufos_admin`, firmato HMAC con
+  `ADMIN_API_KEY`, 12 ore. GET verifica la sessione, DELETE fa logout.
+- Ogni route admin usa `isAdminRequest(request, admin_key)` (`lib/admin-auth.ts`): cookie valido
+  oppure `admin_key` uguale a `ADMIN_API_KEY` (per curl/script). Nuove route admin: stessa funzione.
+- `/admin` ha il pannello "Audit regole" che chiama `/api/audit-regole` col cookie.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)
