@@ -209,3 +209,17 @@ describe("pole vince la gara dalla griglia (regola 1)", () => {
     expect(poleWon(race, quali)).toBe(false);
   });
 });
+
+describe("qualifica: non classificato", () => {
+  it("posizione nulla senza DNS è NC → -5 (caso Hadjar Miami 2026)", () => {
+    const out = mapQualifyingResults([{ driver_number: 6, position: null, dnf: false, dsq: false, dns: false, duration: [88.1, null, null] }]);
+    expect(out[0].dnf).toBe(true);
+    expect(out[0].no_time).toBeUndefined();
+  });
+
+  it("posizione nulla con DNS resta DNS (0 punti)", () => {
+    const out = mapQualifyingResults([{ driver_number: 6, position: null, dns: true, duration: [null, null, null] }]);
+    expect(out[0].dnf).toBe(false);
+    expect(out[0].dns).toBe(true);
+  });
+});

@@ -132,10 +132,14 @@ export function mapQualifyingResults(rows: OfficialRow[], opts: QualifyingMapOpt
     const num = r.driver_number as number;
     const noTime = hasNoTime(r);
     const esente = noTime && esenti.has(num);
+    // Senza posizione e senza essere DNS = non classificato (tempi cancellati,
+    // esclusione dalla qualifica): è l'NC del regolamento, -5. Trovato a
+    // Miami 2026: Hadjar con position null in session_result, in archivio P9.
+    const nonClassificato = r.position == null && !r.dns;
     const out: DriverResult = {
       driver_number: num,
       position: r.position as number,
-      dnf: !!(r.dnf || r.dsq || (noTime && !esente)),
+      dnf: !!(r.dnf || r.dsq || nonClassificato || (noTime && !esente)),
       dns: !!r.dns,
     };
     if (noTime) out.no_time = true;

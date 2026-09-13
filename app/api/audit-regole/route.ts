@@ -7,7 +7,7 @@ import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { findRaceSessionForRound, findSessionInMeeting, type OpenF1Session } from "../../lib/openf1-sessions";
 import { extractGridPenalizedDrivers } from "../../lib/penalties";
 import { mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } from "../../lib/official-results";
-import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
+import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
 
 /**
  * GET /api/audit-regole?admin_key=...&from=2&to=16[&raw=1]
@@ -28,7 +28,9 @@ import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
  * `raw=1` allega la prima riga grezza di session_result della qualifica, per
  * verificare la forma del campo `duration` su cui si basa il "senza tempo".
  */
-export const maxDuration = 300;
+// Vercel Hobby taglia a 60 secondi: con 13 round e il retry sui 429 conviene
+// chiamare a blocchi (es. from=2&to=6, poi 7&to=11...), i totali si sommano.
+export const maxDuration = 60;
 
 type Rc = { message?: string | null; driver_number?: number | null };
 
@@ -93,14 +95,23 @@ export async function GET(request: NextRequest) {
     const meetingKey = match.session.meeting_key;
     const note: string[] = [];
 
-    // ── Regola 3: griglia reale
-    const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
-    const racePositions = startingGrid.length === 0 ? await fetchJson(`${OPENF1}/position?session_key=${raceKey}`) : [];
+    // ── Regola 3: griglia reale (con esito delle chiamate: un 429 non è "nessun dato")
+    const chiamate: Record<string, string> = {};
+    const esito = (nome: string, r: { ok: boolean; status: number; data: unknown[]; retries: number }) => {
+      chiamate[nome] = `${r.ok ? "ok" : "ERRORE"} HTTP ${r.status}, ${r.data.length} righe${r.retries ? `, ${r.retries} tentativi` : ""}`;
+    };
+    const sgRes = await fetchOpenF1(`${OPENF1}/starting_grid?session_key=${raceKey}`); esito("starting_grid", sgRes);
+    const startingGrid = sgRes.data;
+    let racePositions: any[] = [];
+    if (startingGrid.length === 0) {
+      const rpRes = await fetchOpenF1(`${OPENF1}/position?session_key=${raceKey}`); esito("position_gara", rpRes);
+      racePositions = rpRes.data;
+    }
     const { grid: gridReale, source: fonteGriglia } = resolveGrid([
       { name: "starting_grid", entries: startingGrid },
       { name: "race_first_positions", entries: gridFromRacePositions(racePositions) },
     ]);
-    if (gridReale.size === 0) note.push("griglia reale non disponibile: regole 3 e 1 valutate sulla griglia in archivio");
+    if (gridReale.size === 0) note.push(`griglia reale non disponibile (${chiamate.position_gara ?? chiamate.starting_grid}): regole 3 e 1 valutate sulla griglia in archivio`);
 
     const diffGriglia = results.race
       .filter((r) => gridReale.has(r.driver_number) && gridReale.get(r.driver_number) !== r.grid_position)
@@ -117,21 +128,34 @@ export async function GET(request: NextRequest) {
     const C: RaceWeekendResults = { ...B, events: { ...B.events, pole_won: poleWon(B.race, B.qualifying) } };
 
     // ── Regole 2 e 4: qualifica ufficiale, senza tempo, esenzioni
-    const meetingSessions = sessions.filter((s) => s.meeting_key === meetingKey);
-    const rcAll: Rc[] = [];
-    for (const s of meetingSessions) rcAll.push(...(await fetchJson(`${OPENF1}/race_control?session_key=${s.session_key}`)));
-    const esenti = extractGridPenalizedDrivers(rcAll);
-
+    // I messaggi di penalità in griglia stanno nelle sessioni di qualifica e
+    // gara (le libere non servono): meno chiamate, meno 429.
     const qualiSession = findSessionInMeeting(sessions, meetingKey, "qualifying");
     const ssSession = findSessionInMeeting(sessions, meetingKey, "sprint_shootout");
-    const qualiRows = qualiSession ? (await fetchOpenF1<OfficialRow>(`${OPENF1}/session_result?session_key=${qualiSession.session_key}`)).data : [];
-    const ssRows = ssSession ? (await fetchOpenF1<OfficialRow>(`${OPENF1}/session_result?session_key=${ssSession.session_key}`)).data : [];
+    const rcAll: Rc[] = [];
+    for (const s of [qualiSession, ssSession, match.session]) {
+      if (!s) continue;
+      const r = await fetchOpenF1<Rc>(`${OPENF1}/race_control?session_key=${s.session_key}`); esito(`race_control_${s.session_key}`, r);
+      rcAll.push(...r.data);
+    }
+    const esenti = extractGridPenalizedDrivers(rcAll);
+
+    let qualiRows: OfficialRow[] = [];
+    if (qualiSession) {
+      const r = await fetchOpenF1<OfficialRow>(`${OPENF1}/session_result?session_key=${qualiSession.session_key}`); esito("session_result_qualifica", r);
+      qualiRows = r.data;
+    }
+    let ssRows: OfficialRow[] = [];
+    if (ssSession) {
+      const r = await fetchOpenF1<OfficialRow>(`${OPENF1}/session_result?session_key=${ssSession.session_key}`); esito("session_result_shootout", r);
+      ssRows = r.data;
+    }
     if (raw && !rawQualiRow && qualiRows.length) rawQualiRow = { round, riga: qualiRows[0] };
 
     let qualiNuova: DriverResult[] = C.qualifying;
     let ssNuova: DriverResult[] | undefined = C.sprint_shootout;
     if (qualiRows.length >= 15) qualiNuova = mapQualifyingResults(qualiRows, { esenti });
-    else note.push(`qualifica ufficiale non disponibile (${qualiRows.length} righe): regole 2 e 4 non valutate`);
+    else note.push(`qualifica ufficiale non disponibile (${chiamate.session_result_qualifica ?? "sessione non trovata"}): regole 2 e 4 non valutate`);
     if (ssSession && ssRows.length >= 15) ssNuova = mapQualifyingResults(ssRows, { esenti });
 
     const D: RaceWeekendResults = { ...C, qualifying: qualiNuova, sprint_shootout: ssNuova };
@@ -140,6 +164,7 @@ export async function GET(request: NextRequest) {
       senza_tempo_meno5: rows.filter((r) => r.no_time && !r.esente_penalita).map((r) => driverName(r.driver_number)),
       senza_tempo_esenti: rows.filter((r) => r.esente_penalita).map((r) => driverName(r.driver_number)),
       nc_o_squalificati: rows.filter((r) => r.dnf && !r.no_time).map((r) => driverName(r.driver_number)),
+      dns_zero_punti: rows.filter((r) => r.dns).map((r) => driverName(r.driver_number)),
     });
     const posDiverse = qualiNuova
       .filter((q) => { const a = results.qualifying.find((x) => x.driver_number === q.driver_number); return a && a.position !== q.position; })
@@ -186,6 +211,7 @@ export async function GET(request: NextRequest) {
       round,
       gara: match.session.location,
       note,
+      chiamate_openf1: chiamate,
       griglia: { fonte: fonteGriglia, piloti_diversi_dall_archivio: diffGriglia.length, dettaglio: diffGriglia },
       pole: { qualifica: poleQuali && driverName(poleQuali), griglia: poleGriglia && driverName(poleGriglia), pole_won_archivio: results.events.pole_won, pole_won_nuovo: C.events.pole_won },
       qualifica: { ...descQ(qualiNuova), posizioni_diverse_dall_archivio: posDiverse, penalita_griglia_a_priori_rilevate: [...esenti].map(driverName) },
