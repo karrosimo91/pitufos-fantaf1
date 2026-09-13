@@ -6,7 +6,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ## Stack
 - **Frontend:** Next.js + Tailwind CSS
 - **Hosting:** Vercel (deploy automatico da GitHub)
-- **API dati F1:** OpenF1 (api.openf1.org) per dati live e storici + Jolpica (api.jolpi.ca/ergast/f1) per classifiche e calendario
+- **API dati F1:** solo OpenF1 (api.openf1.org), per dati live e storici. Jolpica/Ergast NON si usa: numera i round saltando le gare cancellate (nel 2026 Bahrain e Jeddah), quindi col nostro numero di round risponde con un'altra gara
 - **Dati live:** OpenF1 abbonamento €9.90/mese, connessione WebSocket per real-time durante le gare
 - **Repo:** github.com/karrosimo91/pitufos-fantaf1
 - **Sito in produzione:** https://pitufos-fantaf1.vercel.app/
@@ -159,7 +159,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 ## API OpenF1 — Endpoint che usiamo
 - `sessions` → calendario, tipo sessione
 - `session_result` → classifiche finali (qualifica, gara, sprint)
-- `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → risultati Jolpica (campo `grid`, solo a gara conclusa) → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
+- `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
 - `drivers` → info piloti (nome, team, numero, foto, colore)
 - `race_control` → Safety Car, VSC, Red Flag, penalità. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
 - `stints` → compound gomme (per previsione wet)
@@ -170,10 +170,31 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 
 **Dati manuali:** Driver of the Day, quotazioni iniziali, variazione quotazioni
 
-## API Jolpica — Endpoint che usiamo
-- `/current.json` → calendario completo con orari FP, quali, sprint, gara
-- `/current/driverstandings.json` → classifica piloti
-- `/current/constructorstandings.json` → classifica costruttori
+## Guardia sui dati ufficiali (post-gara)
+`/api/post-gara` non salva e non calcola niente finché OpenF1 non ha pubblicato
+risultati ufficiali completi. I controlli sono in `lib/official-results.ts`
+(`checkResultsReady`, testata) e valgono per qualifica, sprint shootout, sprint e gara:
+1. la sessione deve essere conclusa (`date_end` passata);
+2. `session_result` deve avere righe;
+3. devono esserci tutti i piloti attesi secondo `/drivers`.
+Se un controllo fallisce la route risponde 409 col motivo, senza scrivere nulla.
+
+Perché: prima, con `session_result` vuoto, il codice ripiegava sul feed `position`,
+che NON porta i flag dnf/dsq/dns. Succedeva davvero — Madrid 2026 (round 16),
+salvato alle 15:21 UTC subito dopo la bandiera a scacchi: 22 piloti tutti
+"classificati", zero DNF, punteggi sbagliati e nessun errore visibile.
+Riconoscere il caso in archivio: se in `weekend_results` NESSUNA riga gara ha
+`position` null, il dato viene dal feed `position`, non dai risultati ufficiali
+(i ritirati veri hanno `position` null).
+
+`/api/fetch-risultati` era un secondo percorso di scrittura più debole (qualifica
+dal feed `position`, DNF dai soli messaggi `race_control`, griglia da Jolpica,
+nessuna guardia) e non era chiamata da nessuna parte: ora risponde 410, si passa
+solo da `/api/post-gara`.
+
+Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti
+del singolo pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Correggerlo
+cambia punti già assegnati, quindi prima serve il CDA.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)

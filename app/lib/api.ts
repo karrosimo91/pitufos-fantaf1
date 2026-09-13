@@ -1,7 +1,9 @@
 import type { Driver } from "./types";
 
+// Fonte dati unica: OpenF1. Jolpica/Ergast non si usa — numera i round
+// saltando le gare cancellate, quindi col nostro numero di round risponde con
+// un'altra gara (2026: le due gare cancellate ci sfasano di due).
 const OPENF1_BASE = "https://api.openf1.org/v1";
-const JOLPICA_BASE = "https://api.jolpi.ca/ergast/f1";
 
 // ─── OpenF1 ───
 
@@ -22,27 +24,4 @@ export async function getMeetings(year = 2025) {
   const res = await fetch(`${OPENF1_BASE}/meetings?year=${year}`, { next: { revalidate: 3600 } });
   if (!res.ok) return [];
   return res.json();
-}
-
-// ─── Jolpica ───
-
-export async function getCalendar() {
-  const res = await fetch(`${JOLPICA_BASE}/current.json`, { next: { revalidate: 86400 } });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.MRData?.RaceTable?.Races || [];
-}
-
-export async function getDriverStandings() {
-  const res = await fetch(`${JOLPICA_BASE}/current/driverstandings.json`, { next: { revalidate: 3600 } });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings || [];
-}
-
-export async function getConstructorStandings() {
-  const res = await fetch(`${JOLPICA_BASE}/current/constructorstandings.json`, { next: { revalidate: 3600 } });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings || [];
 }

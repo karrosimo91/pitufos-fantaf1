@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "../../lib/supabase-server";
 import { computePlayerScoresFrom, type RoundScoringInputs } from "../../lib/score-round";
-import { resolveGrid, gridFromJolpicaResults, gridFromRacePositions, type JolpicaResult } from "../../lib/starting-grid";
+import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import type { RaceWeekendResults } from "../../lib/scoring";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 
@@ -15,12 +15,12 @@ import { DRIVERS_2026 } from "../../lib/drivers-data";
  * la griglia di partenza reale. Serve a sapere quali round cambierebbero, per
  * chi e di quanto, prima di decidere se ricalcolare la stagione.
  *
- * Le fonti della griglia sono le stesse del post-gara, nello stesso ordine:
- * `starting_grid` di OpenF1 (oggi vuoto, ma se lo popolano viene usato),
- * risultati ufficiali Jolpica, prime posizioni del feed `position` della gara
- * su OpenF1. Il report dice quale fonte ha risposto per ogni round: se due
- * fonti indipendenti concordano, il risultato è molto più difendibile davanti
- * al CDA di una sola.
+ * Le fonti della griglia sono le stesse del post-gara, nello stesso ordine e
+ * tutte da OpenF1: `starting_grid` (oggi spesso vuoto, ma se lo popolano viene
+ * usato) e prime posizioni del feed `position` della gara. Il report dice
+ * quale fonte ha risposto per ogni round e, quando ci sono entrambe, se
+ * concordano: davanti al CDA due fonti che dicono la stessa cosa valgono più
+ * di una.
  */
 
 const OPENF1 = "https://api.openf1.org/v1";
@@ -57,17 +57,6 @@ function driverName(num: number): string {
   return DRIVERS_2026.find((d) => d.number === num)?.name ?? `#${num}`;
 }
 
-async function fetchJolpicaResults(year: number, round: number): Promise<JolpicaResult[]> {
-  try {
-    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${year}/${round}/results.json`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json?.MRData?.RaceTable?.Races?.[0]?.Results ?? [];
-  } catch {
-    return [];
-  }
-}
-
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
@@ -100,9 +89,6 @@ export async function GET(request: NextRequest) {
   const year = new Date().getFullYear();
   const rounds = (allResults || []).map((r: { round: number }) => r.round).sort((a: number, b: number) => a - b);
 
-  const jolpicaByRound = new Map<number, JolpicaResult[]>();
-  await Promise.all(rounds.map(async (r: number) => jolpicaByRound.set(r, await fetchJolpicaResults(year, r))));
-
   // OpenF1: risolve round → session_key della gara, come fa /api/fetch-risultati
   const token = await openf1Token();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -131,15 +117,13 @@ export async function GET(request: NextRequest) {
 
     const sessionKey = raceSessionKeyByRound.get(round);
     const startingGrid = sessionKey ? await openf1Json(`${OPENF1}/starting_grid?session_key=${sessionKey}`, headers) : [];
-    const jolpicaGrid = gridFromJolpicaResults(jolpicaByRound.get(round) ?? []);
     // Il feed `position` è pesante: lo interroghiamo solo se serve davvero
-    const racePositions = startingGrid.length === 0 && jolpicaGrid.length === 0 && sessionKey
+    const racePositions = startingGrid.length === 0 && sessionKey
       ? await openf1Json(`${OPENF1}/position?session_key=${sessionKey}`, headers)
       : [];
 
     const { grid: gridReale, source: fonte } = resolveGrid([
       { name: "starting_grid", entries: startingGrid as { driver_number?: number | null; position?: number | null }[] },
-      { name: "jolpica_results", entries: jolpicaGrid },
       { name: "race_first_positions", entries: gridFromRacePositions(racePositions as { driver_number?: number | null; position?: number | null; date?: string | null }[]) },
     ]);
     if (gridReale.size === 0) {
@@ -147,12 +131,13 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
-    // Controprova: quando ci sono due fonti, devono dire la stessa cosa
+    // Controprova: quando la griglia ufficiale c'è, il feed `position` deve
+    // raccontare la stessa cosa (è la fonte che usiamo live)
     const controprova = gridFromRacePositions(racePositions as { driver_number?: number | null; position?: number | null; date?: string | null }[]);
     let concordanza: string | null = null;
-    if (fonte === "jolpica_results" && controprova.length > 0) {
+    if (fonte === "starting_grid" && controprova.length > 0) {
       const diverse = controprova.filter((c) => c.driver_number && gridReale.get(c.driver_number) !== c.position).length;
-      concordanza = diverse === 0 ? "Jolpica e OpenF1 concordano" : `${diverse} piloti in disaccordo fra Jolpica e OpenF1`;
+      concordanza = diverse === 0 ? "starting_grid e feed position concordano" : `${diverse} piloti in disaccordo fra starting_grid e feed position`;
     }
 
     // Differenze di griglia rispetto a quanto salvato

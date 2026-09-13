@@ -8,8 +8,14 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { resolveGrid, gridFromJolpicaResults, gridFromRacePositions, type JolpicaResult } from "../../lib/starting-grid";
+import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores } from "../../lib/score-round";
+import {
+  checkResultsReady,
+  countDnf,
+  mapQualifyingResults,
+  type OfficialRow,
+} from "../../lib/official-results";
 
 const OPENF1 = "https://api.openf1.org/v1";
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -123,7 +129,12 @@ export async function POST(request: NextRequest) {
       if (!ssSession) {
         return NextResponse.json({ error: "Sessione Sprint Shootout non trovata", log }, { status: 404 });
       }
-      sprint_shootout = await fetchSessionResults(ssSession.session_key);
+      const ss = await loadOfficialResults(ssSession);
+      if (!ss.ok) {
+        log.push(ss.error);
+        return NextResponse.json({ error: ss.error, log }, { status: 409 });
+      }
+      sprint_shootout = mapQualifyingResults(ss.rows);
       log.push(`Sprint Shootout (key: ${ssSession.session_key}): ${sprint_shootout.length} piloti`);
 
     } else if (mode === "sprint") {
@@ -133,7 +144,12 @@ export async function POST(request: NextRequest) {
       if (!spSession) {
         return NextResponse.json({ error: "Sessione Sprint non trovata", log }, { status: 404 });
       }
-      sprint = await fetchSprintResults(spSession.session_key);
+      const sp = await loadOfficialResults(spSession);
+      if (!sp.ok) {
+        log.push(sp.error);
+        return NextResponse.json({ error: sp.error, log }, { status: 409 });
+      }
+      sprint = await fetchSprintResults(spSession.session_key, sp.rows);
       log.push(`Sprint (key: ${spSession.session_key}): ${sprint.length} piloti`);
 
     } else if (mode === "qualifying") {
@@ -143,7 +159,12 @@ export async function POST(request: NextRequest) {
       if (!qualSession) {
         return NextResponse.json({ error: "Sessione Qualifica non trovata", log }, { status: 404 });
       }
-      qualifying = await fetchSessionResults(qualSession.session_key);
+      const q = await loadOfficialResults(qualSession);
+      if (!q.ok) {
+        log.push(q.error);
+        return NextResponse.json({ error: q.error, log }, { status: 409 });
+      }
+      qualifying = mapQualifyingResults(q.rows);
       log.push(`Qualifica (key: ${qualSession.session_key}): ${qualifying.length} piloti`);
 
     } else if (mode === "race") {
@@ -153,15 +174,21 @@ export async function POST(request: NextRequest) {
       }
       const raceKey = raceSession.session_key;
 
+      // Prima di toccare qualsiasi cosa: i risultati ufficiali devono esserci
+      // ed essere completi, altrimenti non si salva e non si calcola niente.
+      const gara = await loadOfficialResults(raceSession);
+      if (!gara.ok) {
+        log.push(gara.error);
+        return NextResponse.json({ error: gara.error, log }, { status: 409 });
+      }
+
       // Griglia di partenza REALE da OpenF1 (`starting_grid`): tiene conto
       // delle penalità in griglia, che la posizione di qualifica ignora.
       // Fallback sulla qualifica se il dato non c'è.
       const startingGrid = await fetchJson(`${OPENF1}/starting_grid?session_key=${raceKey}`);
-      const jolpicaResults = await fetchJolpicaGrid(round);
       const racePositions = await fetchJson(`${OPENF1}/position?session_key=${raceKey}`);
       const { grid: gridMap, source: gridSource } = resolveGrid([
         { name: "starting_grid", entries: startingGrid },
-        { name: "jolpica_results", entries: gridFromJolpicaResults(jolpicaResults) },
         { name: "race_first_positions", entries: gridFromRacePositions(racePositions) },
         { name: "qualifying", entries: qualifying },
       ]);
@@ -173,11 +200,11 @@ export async function POST(request: NextRequest) {
         log.push(`Griglia di partenza: ${gridMap.size} piloti da ${gridSource}`);
       }
 
-      raceResults = await fetchRaceResults(raceKey, driver_of_the_day, gridMap);
+      raceResults = await fetchRaceResults(raceKey, gara.rows, driver_of_the_day, gridMap);
       log.push(`Gara: ${raceResults.length} piloti`);
 
       // Eventi (solo dalla gara)
-      events = await fetchRaceEvents(raceKey);
+      events = await fetchRaceEvents(raceKey, gara.rows);
       const poleDriver = qualifying.find((d) => d.position === 1);
       const raceWinner = raceResults.find((d) => d.position === 1);
       events.pole_won = !!(poleDriver && raceWinner && poleDriver.driver_number === raceWinner.driver_number);
@@ -383,42 +410,33 @@ async function fetchJson(url: string): Promise<any[]> {
   return data;
 }
 
-async function fetchSessionResults(sessionKey: number): Promise<DriverResult[]> {
-  const results = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-  if (!results || results.length === 0) return [];
+/**
+ * Risultati ufficiali di una sessione (`session_result`) più i controlli di
+ * prontezza del dato (vedi lib/official-results.ts per il perché).
+ */
+async function loadOfficialResults(
+  session: { session_key: number; session_name?: string; date_end?: string },
+): Promise<{ ok: true; rows: OfficialRow[] } | { ok: false; error: string }> {
+  const rows: OfficialRow[] = await fetchJson(`${OPENF1}/session_result?session_key=${session.session_key}`);
+  const drivers = await fetchJson(`${OPENF1}/drivers?session_key=${session.session_key}`);
+  const expectedDrivers = new Set(drivers.map((d: any) => d?.driver_number).filter(Boolean)).size;
 
-  const lastPositions = new Map<number, any>();
-  for (const r of results) {
-    if (r.driver_number) lastPositions.set(r.driver_number, r);
-  }
+  const check = checkResultsReady({
+    sessionName: session.session_name || "Sessione",
+    dateEnd: session.date_end,
+    rows,
+    expectedDrivers,
+  });
+  if (!check.ok) return { ok: false, error: `${check.error} (sessione ${session.session_key})` };
 
-  return Array.from(lastPositions.values()).map((r) => ({
-    driver_number: r.driver_number,
-    position: r.position,
-    dnf: false,
-  }));
+  return { ok: true, rows };
 }
 
-
-// Griglia ufficiale da Jolpica/Ergast: disponibile a gara conclusa, include le
-// penalità in griglia. Usata quando `starting_grid` di OpenF1 è vuoto.
-async function fetchJolpicaGrid(round: number): Promise<JolpicaResult[]> {
-  try {
-    const year = new Date().getFullYear();
-    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${year}/${round}/results.json`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json?.MRData?.RaceTable?.Races?.[0]?.Results ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
-  // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ)
-  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
+async function fetchRaceResults(sessionKey: number, officialRows: OfficialRow[], dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
+  // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ),
+  // già verificati da loadOfficialResults()
   const resultMap = new Map<number, any>();
-  for (const sr of sessionResults) {
+  for (const sr of officialRows) {
     if (sr.driver_number) resultMap.set(sr.driver_number, sr);
   }
 
@@ -440,14 +458,6 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startin
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
   const penalizedDrivers = extractPenalizedDrivers(raceControl);
 
-  // Fallback: se session_result non ha dati, usa position come prima
-  if (resultMap.size === 0) {
-    const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-    for (const r of positions) {
-      if (r.driver_number) resultMap.set(r.driver_number, r);
-    }
-  }
-
   return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number,
     position: r.position,
@@ -462,11 +472,10 @@ async function fetchRaceResults(sessionKey: number, dotdNumber?: number, startin
   }));
 }
 
-async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
-  // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ)
-  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
+async function fetchSprintResults(sessionKey: number, officialRows: OfficialRow[]): Promise<DriverResult[]> {
+  // Risultati ufficiali da session_result, già verificati da loadOfficialResults()
   const resultMap = new Map<number, any>();
-  for (const sr of sessionResults) {
+  for (const sr of officialRows) {
     if (sr.driver_number) resultMap.set(sr.driver_number, sr);
   }
 
@@ -480,14 +489,6 @@ async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
     }
   }
 
-  // Fallback: se session_result non ha dati, usa position
-  if (resultMap.size === 0) {
-    const positions = await fetchJson(`${OPENF1}/position?session_key=${sessionKey}`);
-    for (const r of positions) {
-      if (r.driver_number) resultMap.set(r.driver_number, r);
-    }
-  }
-
   return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number,
     position: r.position,
@@ -497,7 +498,7 @@ async function fetchSprintResults(sessionKey: number): Promise<DriverResult[]> {
   }));
 }
 
-async function fetchRaceEvents(sessionKey: number): Promise<RaceWeekendResults["events"]> {
+async function fetchRaceEvents(sessionKey: number, officialRows: OfficialRow[]): Promise<RaceWeekendResults["events"]> {
   // SC, VSC, Red Flag da race_control
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
 
@@ -512,12 +513,8 @@ async function fetchRaceEvents(sessionKey: number): Promise<RaceWeekendResults["
     if (rc.flag === "RED" || (msg.includes("RED FLAG") && !msg.includes("CHEQUERED"))) red_flag = true;
   }
 
-  // DNF/DNS/DSQ da session_result (fonte ufficiale)
-  const sessionResults = await fetchJson(`${OPENF1}/session_result?session_key=${sessionKey}`);
-  let total_dnf = 0;
-  for (const sr of sessionResults) {
-    if (sr.dnf || sr.dns || sr.dsq) total_dnf++;
-  }
+  // Ritiri da session_result (fonte ufficiale, già verificata)
+  const total_dnf = countDnf(officialRows);
 
   // Gomme wet da stints
   const stints = await fetchJson(`${OPENF1}/stints?session_key=${sessionKey}`);

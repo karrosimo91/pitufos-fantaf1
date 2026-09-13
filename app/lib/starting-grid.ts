@@ -12,15 +12,17 @@
 //   1. `starting_grid` di OpenF1 — la griglia ufficiale. Verificato a Monza
 //      2026: risponde 200 con array VUOTO anche a gara in corso e token
 //      valido, quindi non ci si può contare.
-//   2. Risultati Jolpica/Ergast (campo `grid`) — ufficiali e affidabili, ma
-//      disponibili solo a gara conclusa: buoni per il post-gara, inutili live.
-//   3. Prime posizioni registrate nella sessione gara di OpenF1 — il feed
+//   2. Prime posizioni registrate nella sessione gara di OpenF1 — il feed
 //      `position` parte dallo schieramento, quindi la prima posizione di ogni
 //      pilota è la sua casella in griglia. Approssimazione buona e disponibile
 //      live, l'unica che copre la gara in corso.
-//   4. Posizioni di qualifica — ultimo fallback, ignora le penalità: è il
+//   3. Posizioni di qualifica — ultimo fallback, ignora le penalità: è il
 //      comportamento sbagliato che stiamo correggendo, meglio di niente ma da
 //      segnalare sempre nei log.
+//
+// Fonti esterne a OpenF1 (Jolpica/Ergast) non si usano: numerano i round
+// saltando le gare cancellate, quindi il nostro round non è il loro e si
+// rischia di prendere la griglia di un'altra gara senza accorgersene.
 
 export interface GridEntry {
   driver_number?: number | null;
@@ -29,7 +31,6 @@ export interface GridEntry {
 
 export type GridSourceName =
   | "starting_grid"
-  | "jolpica_results"
   | "race_first_positions"
   | "qualifying"
   | "none";
@@ -96,28 +97,4 @@ export function gridFromRacePositions(
     driver_number,
     position: v.position,
   }));
-}
-
-export interface JolpicaResult {
-  grid?: string | number;
-  position?: string | number;
-  Driver?: { permanentNumber?: string | number };
-}
-
-/**
- * Griglia dai risultati Jolpica/Ergast (campo `grid`, ufficiale).
- * `grid: 0` significa partenza dalla pit lane: la trattiamo come ultima
- * casella, perché è di fatto quello che è.
- */
-export function gridFromJolpicaResults(results: JolpicaResult[] | null | undefined): GridEntry[] {
-  const rows = results ?? [];
-  const lastPlace = rows.length;
-  const out: GridEntry[] = [];
-  for (const r of rows) {
-    const num = Number(r?.Driver?.permanentNumber);
-    const grid = Number(r?.grid);
-    if (!num || Number.isNaN(grid)) continue;
-    out.push({ driver_number: num, position: grid > 0 ? grid : lastPlace });
-  }
-  return out;
 }
