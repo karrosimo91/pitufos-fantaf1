@@ -72,6 +72,47 @@ export default function AdminPage() {
     setAuditing(false);
   };
 
+  // ─── Ricalcolo completo di un round: tutte le sessioni in ordine ───
+  // Ogni chiamata è idempotente (punti per differenza, prezzi solo sul round
+  // più recente), quindi rilanciare è sempre sicuro. Si ferma al primo errore.
+  const [recalcRound, setRecalcRound] = useState(false);
+  const [recalcRoundLog, setRecalcRoundLog] = useState<string[]>([]);
+  const handleRicalcolaRound = async () => {
+    const r = RACES_2026.find((x) => x.round === round);
+    const sessioni = r?.sprint ? ["sprint_shootout", "sprint", "qualifying", "race"] : ["qualifying", "race"];
+    if (!confirm(`Ricalcolare il Round ${round} (${sessioni.join(" → ")})? I punti si riallineano per differenza.`)) return;
+    setRecalcRound(true);
+    setRecalcRoundLog([]);
+    const out: string[] = [];
+    for (const s of sessioni) {
+      out.push(`▶ ${s}`);
+      setRecalcRoundLog([...out]);
+      try {
+        const body: any = { round, session: s };
+        if (s === "race" && dotd) body.driver_of_the_day = dotd;
+        const res = await fetch("/api/post-gara", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          out.push(`✗ ${s}: ${data.error || res.status}`);
+          setRecalcRoundLog([...out]);
+          break;
+        }
+        for (const l of data.log || []) out.push(`  ${l}`);
+        out.push(`✓ ${s}`);
+        setRecalcRoundLog([...out]);
+      } catch (err: any) {
+        out.push(`✗ ${s}: ${err.message}`);
+        setRecalcRoundLog([...out]);
+        break;
+      }
+    }
+    setRecalcRound(false);
+  };
+
   const handlePostGara = async () => {
     setLoading(true);
     setResult(null);
@@ -330,6 +371,25 @@ export default function AdminPage() {
             </select>
           </div>
         )}
+
+        {/* Ricalcolo completo del round */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+            Ricalcolo completo Round {round}
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={handleRicalcolaRound} disabled={recalcRound || loading || resetting}
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcRound ? "bg-white/10 text-white/30 cursor-wait" : "bg-emerald-600 hover:bg-emerald-600/80 text-white"}`}>
+              {recalcRound ? "Ricalcolo in corso..." : `Ricalcola round ${round}`}
+            </button>
+            <span className="text-white/30 text-[11px]">
+              {RACES_2026.find((x) => x.round === round)?.sprint ? "Shootout → Sprint → Qualifica → Gara" : "Qualifica → Gara"}, idempotente. Il Driver of the Day salvato viene mantenuto se non ne selezioni uno.
+            </span>
+          </div>
+          {recalcRoundLog.length > 0 && (
+            <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[300px] overflow-auto">{recalcRoundLog.join("\n")}</pre>
+          )}
+        </div>
 
         {/* Bottoni */}
         <div className="flex gap-3">
