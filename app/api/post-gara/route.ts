@@ -9,6 +9,7 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
+import { applyRaceOverrides, RACE_OVERRIDES } from "../../lib/manual-overrides";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
@@ -179,6 +180,10 @@ export async function POST(request: NextRequest) {
       if (!dotd) log.push("ATTENZIONE: nessun Driver of the Day indicato (+5 non assegnato)");
 
       raceResults = await fetchRaceResults(raceKey, official.rows, dotd, gridMap);
+      // Decisioni FIA post-gara che OpenF1 non ha recepito (vedi manual-overrides.ts)
+      const ov = applyRaceOverrides(round, raceResults);
+      raceResults = ov.race;
+      if (ov.modifiche.length) log.push(`Override classifica (${RACE_OVERRIDES[round].fonte}): ${ov.modifiche.join(", ")}`);
       log.push(`Gara: ${raceResults.length} piloti, ${raceResults.filter((d) => d.dnf).length} ritiri, ${raceResults.filter((d) => d.dns).length} DNS`);
 
       events = await fetchRaceEvents(raceKey, official.rows);

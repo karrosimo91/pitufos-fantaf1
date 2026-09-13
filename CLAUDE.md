@@ -205,6 +205,12 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    (`allowMissingDrivers`, soglia minima 15). Nessuna esenzione per penalità in griglia: quelle
    valgono 0 in qualifica e si pagano con la griglia in gara. DNS (forza maggiore, pilota
    rimosso dal weekend) resta 0.
+10. **Override manuali** (`lib/manual-overrides.ts`): decisioni FIA post-gara che OpenF1 non
+   recepisce (Monaco 2026: Corte d'Appello 3/9, Gasly 7°, Hadjar 3°; OpenF1 è rimasto alla
+   classifica intermedia con Gasly 3°). Applicati a ogni calcolo e nell'audit, con fonte.
+   Prima di ricalcolare un round vecchio: controllare che OpenF1 non abbia "dimenticato"
+   una decisione successiva. DNS tecnici (Cina, Miami sprint, Montréal 2026) sono `dns: true`
+   in OpenF1 e valgono 0: regola da confermare in CDA (prima erano -10/-5 come DNF).
 9. **Quotazioni solo sul round più recente**: rilanciare una gara passata ricalcola i punti,
    non i prezzi (il cleanup delle quotazioni future cancellerebbe quelle dei round dopo).
 8. **Audit prima di ricalcolare**: `/api/audit-regole?from=&to=` (sola lettura, cookie admin o `admin_key`)

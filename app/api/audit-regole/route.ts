@@ -8,6 +8,7 @@ import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { findRaceSessionForRound, findSessionInMeeting, type OpenF1Session } from "../../lib/openf1-sessions";
 import { addAbsentAsNoTime, mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } from "../../lib/official-results";
 import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
+import { applyRaceOverrides } from "../../lib/manual-overrides";
 
 /**
  * GET /api/audit-regole?from=2&to=16[&raw=1]  (cookie admin, oppure &admin_key=...)
@@ -116,8 +117,10 @@ export async function GET(request: NextRequest) {
 
     const B: RaceWeekendResults = {
       ...results,
-      race: results.race.map((r) => ({ ...r, grid_position: gridReale.get(r.driver_number) ?? r.grid_position })),
+      race: applyRaceOverrides(round, results.race.map((r) => ({ ...r, grid_position: gridReale.get(r.driver_number) ?? r.grid_position }))).race,
     };
+    const overrideApplicato = applyRaceOverrides(round, results.race).modifiche;
+    if (overrideApplicato.length) note.push(`override classifica applicato: ${overrideApplicato.join(", ")}`);
 
     // ── Regola 1: pole dalla griglia
     const poleQuali = results.qualifying.find((q) => q.position === 1)?.driver_number ?? null;
