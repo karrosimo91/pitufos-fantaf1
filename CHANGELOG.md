@@ -34,6 +34,8 @@
 ### Fix (13/09, notte)
 - **Monaco: OpenF1 non ha recepito la Corte d'Appello** — `session_result` riporta ancora Gasly 3° (penalità cancellate l'11/6), mentre la decisione del 3/9 lo ha rimesso 7° con Hadjar 3°. Il ricalcolo aveva sovrascritto l'archivio corretto. Nuovo `lib/manual-overrides.ts`: posizioni finali forzate per round, con fonte, applicate a ogni calcolo e nell'audit.
 
+- **Non partito = ritiro** (decisione CDA 13/09): il `dns` di OpenF1 (guasto in griglia, come Norris e Piastri in Cina, Hulkenberg e Lindblad nella sprint di Miami, Lindblad a Montréal) vale -10 in gara e -5 in sprint come un DNF, conta nel numero DNF e vale -5 se in qualifica. L'unica eccezione è la forza maggiore decisa dal CDA (pilota rimosso dal weekend), lista manuale `FORZA_MAGGIORE` in `lib/manual-overrides.ts` (Hadjar, round 14). Vale anche nel live (`/api/live-retired`).
+
 ### Sotto il cofano
 - **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.
 - **Ritirate le route doppione** `/api/fetch-risultati`, `/api/ricalcola-round`, `/api/calcola-risultati` (410): copie con logica divergente e senza controlli, non chiamate da nessuna parte. Il calcolo passa solo da `/api/post-gara`, il ricalcolo penalità da `/api/recalc-penalties`, l'azzeramento da `/api/reset-round`.

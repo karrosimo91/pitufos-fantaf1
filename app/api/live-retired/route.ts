@@ -31,8 +31,9 @@ async function getToken(): Promise<string | null> {
  * ha quel pilota. `session_result` porta i flag ufficiali e viene aggiornato
  * durante la sessione, quindi è la fonte giusta anche a gara in corso.
  *
- * Nota: `dns` (non partito) NON è un ritiro e resta fuori — vale 0 punti, non
- * −10, come da regolamento (caso Hadjar round 14).
+ * Nota: `dns` (non partito) è un ritiro come un DNF (regola CDA 13/09/2026:
+ * guasto in griglia = -10). La forza maggiore (pilota rimosso dal weekend) è
+ * una lista manuale in manual-overrides.ts e non passa da qui.
  */
 export async function GET(request: NextRequest) {
   const sessionKey = request.nextUrl.searchParams.get("session_key");
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     const rows: { driver_number?: number | null; dnf?: boolean; dsq?: boolean; dns?: boolean }[] = await res.json();
     const retired = rows
-      .filter((r) => r?.driver_number && (r.dnf || r.dsq))
+      .filter((r) => r?.driver_number && (r.dnf || r.dsq || r.dns))
       .map((r) => r.driver_number as number);
 
     if (debug) {
