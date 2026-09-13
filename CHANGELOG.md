@@ -5,7 +5,8 @@
 ### Regolamento (decisioni 13/09/2026, in attesa di ricalcolo retroattivo)
 - **"Pole vince la gara" si valuta sulla griglia di partenza** — la pole è chi parte primo, non chi ha fatto il miglior tempo in qualifica: se il poleman ha una penalità in griglia, la pole di fatto passa a chi parte davanti. Vale nel post-gara e nel live; senza griglia si ricade sulla qualifica.
 - **"Senza tempo" in qualifica vale -5** (-3 in sprint shootout) — rilevato dai risultati ufficiali (`duration` di `session_result` senza alcun tempo in Q1/Q2/Q3). Prima non scattava mai.
-- **Esenzione per penalità in griglia a priori** — chi parte dal fondo per cambio motore/cambio o dalla pit lane e non gira in qualifica NON prende il -5: restano i punti del piazzamento. Rilevazione dai messaggi dei commissari del weekend ("GRID PLACE PENALTY", "BACK OF THE GRID", "PIT LANE"), con provenienza salvata (`no_time`, `esente_penalita`) e riportata nel log.
+- **Se non fai la Q prendi -5 e basta** — vale anche per chi OpenF1 non elenca proprio nella classifica di qualifica (Madrid 2026: 20 righe su 22, Bearman assente): gli iscritti al weekend assenti dalla classifica vengono aggiunti come "senza tempo". Nessun altro punto tolto, nessuna esenzione per penalità in griglia (quelle valgono 0 in qualifica e si pagano con la griglia in gara). La guardia sui dati completi accetta per qualifica e shootout liste corte, con soglia minima contro le pubblicazioni a metà.
+- **Quotazioni solo sul round più recente** — rilanciare una gara passata ricalcola i punti e non tocca i prezzi: prima il cleanup delle "quotazioni future" avrebbe cancellato quelle dei round successivi.
 - **Posizioni guadagnate/perse dalla griglia reale** — già nel codice dal 6/9, ma i round 2-14 in archivio hanno come griglia la posizione di qualifica (tutti e 22 i piloti, in ogni round): il ricalcolo retroattivo va fatto.
 - Nuovo `/api/audit-regole` (sola lettura, admin): per ogni round ricalcola tutti i giocatori applicando le regole una alla volta e riporta i delta per round, per giocatore e per regola, con i piloti che le fanno scattare. Sostituisce `/api/audit-griglia`.
 
@@ -23,6 +24,11 @@
 - **OpenF1 risponde 429 sotto carico e il codice lo leggeva come "nessun dato"** — nel primo audit sei round su tredici risultavano senza griglia e senza qualifica solo per questo. Ora ogni chiamata OpenF1 riprova su 429/5xx con attesa crescente (1s, 2s, 4s) e l'audit riporta esito HTTP e righe di ogni chiamata (`chiamate_openf1`), così "non disponibile" dice il perché.
 - **Non classificato in qualifica** — un pilota senza posizione in `session_result` (tempi cancellati, esclusione) non è più trattato come un P17-22 da -1: è l'NC del regolamento, -5. Trovato a Miami 2026 (Hadjar, in archivio P9 con +2). L'audit elenca a parte anche i DNS di qualifica (0 punti).
 - Audit più leggero (race_control solo di qualifica, shootout e gara) e limitato a 60 s: su Vercel Hobby va lanciato a blocchi di round.
+
+### Sicurezza
+- **Credenziali admin fuori dal client** — utente, password e `ADMIN_API_KEY` erano scritti nel codice della pagina `/admin`, quindi nel JavaScript scaricato da ogni giocatore. Ora il login passa da `/api/admin-login`, confronta con `ADMIN_USER` / `ADMIN_PASS` (variabili Vercel) e rilascia un cookie httpOnly firmato, valido 12 ore; tutte le route admin accettano il cookie (o `admin_key` nel body per gli script). Da fare su Vercel: impostare `ADMIN_USER` e `ADMIN_PASS`, ruotare `ADMIN_API_KEY`.
+- Bottone **Ricalcola round** in `/admin`: rilancia in sequenza tutte le sessioni del round (Shootout, Sprint, Qualifica, Gara) con log, sfruttando i ricalcoli idempotenti.
+- Pannello **Audit regole** in `/admin`: lancia l'audit a blocchi di round e mostra la tabella dei totali, le note e il JSON completo, senza chiavi negli URL.
 
 ### Sotto il cofano
 - **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.

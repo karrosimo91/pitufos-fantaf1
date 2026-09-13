@@ -3,6 +3,7 @@ import {
   checkResultsReady,
   countDnf,
   hasNoTime,
+  addAbsentAsNoTime,
   mapQualifyingResults,
   poleDriverNumber,
   poleWon,
@@ -161,25 +162,21 @@ describe("senza tempo in qualifica (regole 2 e 4)", () => {
     const out = mapQualifyingResults([{ driver_number: 18, position: 22, duration: [null, null, null] }]);
     expect(out[0].dnf).toBe(true);
     expect(out[0].no_time).toBe(true);
-    expect(out[0].esente_penalita).toBeUndefined();
   });
 
-  it("senza tempo ma con penalità in griglia a priori → esente, niente -5", () => {
-    const out = mapQualifyingResults(
-      [{ driver_number: 18, position: 22, duration: [null, null, null] }],
-      { esenti: new Set([18]) },
-    );
-    expect(out[0].dnf).toBe(false);
-    expect(out[0].no_time).toBe(true);
-    expect(out[0].esente_penalita).toBe(true);
+  it("assente dalla classifica ma iscritto al weekend → senza tempo, -5 (Bearman Madrid 2026)", () => {
+    const rows = mapQualifyingResults([{ driver_number: 1, position: 1, duration: [80, 79, 78] }]);
+    const out = addAbsentAsNoTime(rows, [1, 87]);
+    const bea = out.find((r) => r.driver_number === 87)!;
+    expect(bea.dnf).toBe(true);
+    expect(bea.no_time).toBe(true);
+    expect(out.find((r) => r.driver_number === 1)!.dnf).toBe(false);
   });
 
-  it("l'esenzione non copre la squalifica", () => {
-    const out = mapQualifyingResults(
-      [{ driver_number: 18, position: 22, dsq: true, duration: [null, null, null] }],
-      { esenti: new Set([18]) },
-    );
-    expect(out[0].dnf).toBe(true);
+  it("la guardia accetta una qualifica con assenti, ma non una pubblicazione a metà", () => {
+    expect(checkResultsReady({ sessionName: "Qualifying", dateEnd: FINE, rows: righe(20), expectedDrivers: 22, allowMissingDrivers: true, now: DOPO }).ok).toBe(true);
+    expect(checkResultsReady({ sessionName: "Qualifying", dateEnd: FINE, rows: righe(9), expectedDrivers: 22, allowMissingDrivers: true, now: DOPO }).ok).toBe(false);
+    expect(checkResultsReady({ sessionName: "Race", dateEnd: FINE, rows: righe(20), expectedDrivers: 22, now: DOPO }).ok).toBe(false);
   });
 });
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequest } from "../../lib/admin-auth";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import {
@@ -7,11 +8,12 @@ import {
 } from "../../lib/scoring";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
-import { extractPenalizedDrivers, extractGridPenalizedDrivers } from "../../lib/penalties";
+import { extractPenalizedDrivers } from "../../lib/penalties";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
 import {
+  addAbsentAsNoTime,
   checkResultsReady,
   countDnf,
   mapQualifyingResults,
@@ -48,8 +50,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { round, admin_key, session, driver_of_the_day } = body;
 
-  const expectedKey = process.env.ADMIN_API_KEY;
-  if (!expectedKey || admin_key !== expectedKey) {
+  if (!isAdminRequest(request, admin_key)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
     // STEP 2: Risultati ufficiali (o niente)
     // ═══════════════════════════════════
 
-    const official = await loadOfficialResults(target);
+    const official = await loadOfficialResults(target, mode === "qualifying" || mode === "sprint_shootout");
     if (!official.ok) {
       log.push(official.error);
       return NextResponse.json({ error: official.error, log }, { status: 409 });
@@ -135,9 +136,9 @@ export async function POST(request: NextRequest) {
     };
 
     if (mode === "sprint_shootout") {
-      const esenti = await gridPenalizedInMeeting(sessions, meetingKey);
-      sprint_shootout = mapQualifyingResults(official.rows, { esenti });
-      log.push(`Sprint Shootout (key: ${target.session_key}): ${sprint_shootout.length} piloti`);
+      const iscritti = await iscrittiMeeting(meetingKey);
+      sprint_shootout = addAbsentAsNoTime(mapQualifyingResults(official.rows), iscritti);
+      log.push(`Sprint Shootout (key: ${target.session_key}): ${official.rows.length} classificati, ${iscritti.size} iscritti`);
       logQualifica(log, sprint_shootout);
 
     } else if (mode === "sprint") {
@@ -145,9 +146,9 @@ export async function POST(request: NextRequest) {
       log.push(`Sprint (key: ${target.session_key}): ${sprint.length} piloti, ${sprint.filter((d) => d.dnf).length} ritiri`);
 
     } else if (mode === "qualifying") {
-      const esenti = await gridPenalizedInMeeting(sessions, meetingKey);
-      qualifying = mapQualifyingResults(official.rows, { esenti });
-      log.push(`Qualifica (key: ${target.session_key}): ${qualifying.length} piloti`);
+      const iscritti = await iscrittiMeeting(meetingKey);
+      qualifying = addAbsentAsNoTime(mapQualifyingResults(official.rows), iscritti);
+      log.push(`Qualifica (key: ${target.session_key}): ${official.rows.length} classificati, ${iscritti.size} iscritti`);
       logQualifica(log, qualifying);
 
     } else {
@@ -255,7 +256,20 @@ export async function POST(request: NextRequest) {
     // STEP 5: Aggiorna quotazioni piloti (solo post-race)
     // Algoritmo a fasce CDA — vedi scoring.ts:aggiornaQuotazione
     // ═══════════════════════════════════
-    if (mode === "race") {
+    // Le quotazioni si aggiornano solo se questo è il round più recente in
+    // archivio: rilanciare una gara passata deve toccare i punti, non i prezzi
+    // (il cleanup delle "quotazioni future" cancellerebbe quelle dei round
+    // successivi, già usate dal mercato).
+    const { data: roundsSuccessivi } = await supabase
+      .from("weekend_results")
+      .select("round")
+      .gt("round", round)
+      .limit(1);
+    const isRoundPiuRecente = !roundsSuccessivi || roundsSuccessivi.length === 0;
+    if (mode === "race" && !isRoundPiuRecente) {
+      log.push("--- STEP 5: quotazioni NON aggiornate (round passato, esistono round successivi in archivio) ---");
+    }
+    if (mode === "race" && isRoundPiuRecente) {
       log.push("--- STEP 5: Aggiorna quotazioni piloti ---");
       try {
         // Leggi quotazioni vigenti (ultima riga <= round per ogni pilota)
@@ -342,27 +356,23 @@ export async function POST(request: NextRequest) {
 // ─── Helper functions ───
 
 /**
- * Regola 4: piloti con penalità in griglia "a priori" nel weekend, letti dai
- * messaggi race_control di tutte le sessioni del meeting disponibili finora.
- * Per loro il "senza tempo" in qualifica non vale -5.
+ * Iscritti al weekend: piloti della stagione (rosa dell'app) presenti nella
+ * lista OpenF1 `drivers` del meeting. Chi c'è ma manca dalla classifica di
+ * qualifica non ha girato: -5 (addAbsentAsNoTime).
  */
-async function gridPenalizedInMeeting(sessions: OpenF1Session[], meetingKey: number): Promise<Set<number>> {
-  const own = sessions.filter((s) => s.meeting_key === meetingKey);
-  const all: { message?: string | null; driver_number?: number | null }[] = [];
-  for (const s of own) {
-    const rc = await fetchJson(`${OPENF1}/race_control?session_key=${s.session_key}`);
-    all.push(...rc);
-  }
-  return extractGridPenalizedDrivers(all);
+async function iscrittiMeeting(meetingKey: number): Promise<Set<number>> {
+  const rows = await fetchJson(`${OPENF1}/drivers?meeting_key=${meetingKey}`);
+  const rosa = new Set(DRIVERS_2026.map((d) => d.number));
+  const out = new Set<number>();
+  for (const r of rows) if (r?.driver_number && rosa.has(r.driver_number)) out.add(r.driver_number);
+  return out;
 }
 
 function logQualifica(log: string[], rows: DriverResult[]) {
   const nc = rows.filter((r) => r.dnf && !r.no_time).map((r) => `#${r.driver_number}`);
-  const noTime = rows.filter((r) => r.no_time && !r.esente_penalita).map((r) => `#${r.driver_number}`);
-  const esenti = rows.filter((r) => r.esente_penalita).map((r) => `#${r.driver_number}`);
+  const noTime = rows.filter((r) => r.no_time).map((r) => `#${r.driver_number}`);
   if (nc.length) log.push(`  NC/squalificati (-5): ${nc.join(", ")}`);
-  if (noTime.length) log.push(`  Senza tempo (-5): ${noTime.join(", ")}`);
-  if (esenti.length) log.push(`  Senza tempo ma esenti per penalità in griglia a priori (punti del piazzamento): ${esenti.join(", ")}`);
+  if (noTime.length) log.push(`  Senza tempo o assenti (-5): ${noTime.join(", ")}`);
 }
 
 /**
@@ -371,6 +381,7 @@ function logQualifica(log: string[], rows: DriverResult[]) {
  */
 async function loadOfficialResults(
   session: OpenF1Session,
+  allowMissingDrivers = false,
 ): Promise<{ ok: true; rows: OfficialRow[] } | { ok: false; error: string }> {
   const nome = session.session_name || "Sessione";
   const res = await fetchOpenF1<OfficialRow>(`${OPENF1}/session_result?session_key=${session.session_key}`);
@@ -390,6 +401,7 @@ async function loadOfficialResults(
     dateEnd: session.date_end,
     rows: res.data,
     expectedDrivers,
+    allowMissingDrivers,
   });
   if (!check.ok) return { ok: false, error: `${check.error} (sessione ${session.session_key})` };
 

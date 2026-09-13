@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RACES_2026 } from "../lib/races";
 import { DRIVERS_2026 } from "../lib/drivers-data";
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "97SemperF!06!";
-const ADMIN_API_KEY = "pitufos-f1-admin-2026-xK9mQ3";
+// Credenziali e chiave admin stanno SOLO lato server (ADMIN_USER, ADMIN_PASS,
+// ADMIN_API_KEY su Vercel): il login passa da /api/admin-login e rilascia un
+// cookie httpOnly; le route lo verificano. Vedi lib/admin-auth.ts.
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
@@ -25,13 +25,92 @@ export default function AdminPage() {
   const [recalcData, setRecalcData] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
-  const handleLogin = () => {
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-      setAuthed(true);
-      setLoginError("");
-    } else {
-      setLoginError("Credenziali errate");
+  // Sessione ancora valida dopo un refresh? Chiediamo al server.
+  useEffect(() => {
+    fetch("/api/admin-login").then((r) => { if (r.ok) setAuthed(true); }).catch(() => {});
+  }, []);
+
+  const handleLogin = async () => {
+    setLoginError("");
+    try {
+      const res = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, pass }),
+      });
+      if (res.ok) {
+        setAuthed(true);
+        setPass("");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setLoginError(data?.error || "Credenziali errate");
+      }
+    } catch (err: any) {
+      setLoginError(err.message);
     }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/admin-login", { method: "DELETE" }).catch(() => {});
+    setAuthed(false);
+  };
+
+  // ─── Audit regole (sola lettura) ───
+  const [auditFrom, setAuditFrom] = useState(2);
+  const [auditTo, setAuditTo] = useState(8);
+  const [auditing, setAuditing] = useState(false);
+  const [auditData, setAuditData] = useState<any>(null);
+  const handleAudit = async () => {
+    setAuditing(true);
+    setAuditData(null);
+    try {
+      const res = await fetch(`/api/audit-regole?from=${auditFrom}&to=${auditTo}&raw=1`);
+      setAuditData(await res.json());
+    } catch (err: any) {
+      setAuditData({ error: err.message });
+    }
+    setAuditing(false);
+  };
+
+  // ─── Ricalcolo completo di un round: tutte le sessioni in ordine ───
+  // Ogni chiamata è idempotente (punti per differenza, prezzi solo sul round
+  // più recente), quindi rilanciare è sempre sicuro. Si ferma al primo errore.
+  const [recalcRound, setRecalcRound] = useState(false);
+  const [recalcRoundLog, setRecalcRoundLog] = useState<string[]>([]);
+  const handleRicalcolaRound = async () => {
+    const r = RACES_2026.find((x) => x.round === round);
+    const sessioni = r?.sprint ? ["sprint_shootout", "sprint", "qualifying", "race"] : ["qualifying", "race"];
+    if (!confirm(`Ricalcolare il Round ${round} (${sessioni.join(" → ")})? I punti si riallineano per differenza.`)) return;
+    setRecalcRound(true);
+    setRecalcRoundLog([]);
+    const out: string[] = [];
+    for (const s of sessioni) {
+      out.push(`▶ ${s}`);
+      setRecalcRoundLog([...out]);
+      try {
+        const body: any = { round, session: s };
+        if (s === "race" && dotd) body.driver_of_the_day = dotd;
+        const res = await fetch("/api/post-gara", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          out.push(`✗ ${s}: ${data.error || res.status}`);
+          setRecalcRoundLog([...out]);
+          break;
+        }
+        for (const l of data.log || []) out.push(`  ${l}`);
+        out.push(`✓ ${s}`);
+        setRecalcRoundLog([...out]);
+      } catch (err: any) {
+        out.push(`✗ ${s}: ${err.message}`);
+        setRecalcRoundLog([...out]);
+        break;
+      }
+    }
+    setRecalcRound(false);
   };
 
   const handlePostGara = async () => {
@@ -39,7 +118,7 @@ export default function AdminPage() {
     setResult(null);
     setLogs([]);
     try {
-      const body: any = { round, admin_key: ADMIN_API_KEY, session };
+      const body: any = { round, session };
       if (session === "race" && dotd) body.driver_of_the_day = dotd;
 
       const res = await fetch("/api/post-gara", {
@@ -64,7 +143,7 @@ export default function AdminPage() {
     setRecalcPen(true);
     setRecalcData(null);
     try {
-      const body: any = { admin_key: ADMIN_API_KEY };
+      const body: any = {};
       if (!allRounds) body.round = round;
       const res = await fetch("/api/recalc-penalties", {
         method: "POST",
@@ -86,7 +165,7 @@ export default function AdminPage() {
       const res = await fetch("/api/review-round", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round, admin_key: ADMIN_API_KEY }),
+        body: JSON.stringify({ round }),
       });
       const data = await res.json();
       setReviewData(data);
@@ -161,11 +240,63 @@ export default function AdminPage() {
             </h1>
           </div>
           <button
-            onClick={() => setAuthed(false)}
+            onClick={handleLogout}
             className="text-white/30 hover:text-white/60 text-xs border border-white/10 px-3 py-2 rounded-lg transition-all"
           >
             Logout
           </button>
+        </div>
+
+        {/* Audit regole (sola lettura) */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+            Audit regole (sola lettura, a blocchi di round)
+          </label>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <input type="number" min={1} max={24} value={auditFrom} onChange={(e) => setAuditFrom(Number(e.target.value))}
+              className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
+            <span className="text-white/40 text-xs">→</span>
+            <input type="number" min={1} max={24} value={auditTo} onChange={(e) => setAuditTo(Number(e.target.value))}
+              className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
+            <button onClick={handleAudit} disabled={auditing}
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${auditing ? "bg-white/10 text-white/30 cursor-wait" : "bg-blue-600 hover:bg-blue-600/80 text-white"}`}>
+              {auditing ? "Audit in corso..." : "Lancia audit"}
+            </button>
+            <span className="text-white/30 text-[11px]">Max ~6 round per chiamata (limite 60s)</span>
+          </div>
+          {auditData?.error && <div className="text-red-400 text-xs">{auditData.error}</div>}
+          {auditData?.totali_stagione && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs font-[family-name:var(--font-jetbrains)]">
+                <thead className="text-white/40 text-[10px] uppercase tracking-wider">
+                  <tr><th className="text-left py-1">Giocatore</th><th className="text-right">Salvato</th><th className="text-right">Griglia</th><th className="text-right">Pole</th><th className="text-right">Qualifica</th><th className="text-right">Nuovo</th></tr>
+                </thead>
+                <tbody>
+                  {auditData.totali_stagione.map((t: any) => (
+                    <tr key={t.nome} className="border-t border-white/[0.06]">
+                      <td className="py-1.5 text-white/80">{t.nome}</td>
+                      <td className="text-right text-white/60">{t.salvato}</td>
+                      <td className={`text-right ${t.regola3 ? "text-yellow-300" : "text-white/40"}`}>{t.regola3 > 0 ? "+" : ""}{t.regola3}</td>
+                      <td className={`text-right ${t.regola1 ? "text-yellow-300" : "text-white/40"}`}>{t.regola1 > 0 ? "+" : ""}{t.regola1}</td>
+                      <td className={`text-right ${t.regole24 ? "text-yellow-300" : "text-white/40"}`}>{t.regole24 > 0 ? "+" : ""}{t.regole24}</td>
+                      <td className="text-right text-white font-bold">{t.nuovo}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {auditData.report?.some((r: any) => r.note?.length) && (
+                <div className="mt-3 text-yellow-400 text-[11px] space-y-1">
+                  {auditData.report.filter((r: any) => r.note?.length).map((r: any) => (
+                    <div key={r.round}>R{r.round}: {r.note.join(" · ")}</div>
+                  ))}
+                </div>
+              )}
+              <details className="mt-3">
+                <summary className="text-white/40 text-[11px] cursor-pointer">JSON completo (per round, piloti, chiamate OpenF1)</summary>
+                <pre className="mt-2 text-[10px] text-white/60 whitespace-pre-wrap break-all max-h-[400px] overflow-auto">{JSON.stringify(auditData, null, 2)}</pre>
+              </details>
+            </div>
+          )}
         </div>
 
         {/* Selezione Round */}
@@ -241,6 +372,25 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Ricalcolo completo del round */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+            Ricalcolo completo Round {round}
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={handleRicalcolaRound} disabled={recalcRound || loading || resetting}
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcRound ? "bg-white/10 text-white/30 cursor-wait" : "bg-emerald-600 hover:bg-emerald-600/80 text-white"}`}>
+              {recalcRound ? "Ricalcolo in corso..." : `Ricalcola round ${round}`}
+            </button>
+            <span className="text-white/30 text-[11px]">
+              {RACES_2026.find((x) => x.round === round)?.sprint ? "Shootout → Sprint → Qualifica → Gara" : "Qualifica → Gara"}, idempotente. Il Driver of the Day salvato viene mantenuto se non ne selezioni uno.
+            </span>
+          </div>
+          {recalcRoundLog.length > 0 && (
+            <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[300px] overflow-auto">{recalcRoundLog.join("\n")}</pre>
+          )}
+        </div>
+
         {/* Bottoni */}
         <div className="flex gap-3">
           <button
@@ -289,7 +439,7 @@ export default function AdminPage() {
                 const res = await fetch("/api/reset-round", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ round, admin_key: ADMIN_API_KEY }),
+                  body: JSON.stringify({ round }),
                 });
                 const data = await res.json();
                 setResult(data);
@@ -812,7 +962,7 @@ export default function AdminPage() {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                  round, admin_key: ADMIN_API_KEY,
+                                  round,
                                   user_id: player.user_id,
                                   fields: { chip_piloti: "sesto" },
                                 }),

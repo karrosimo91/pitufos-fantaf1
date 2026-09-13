@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequest } from "../../../lib/admin-auth";
 import { createServerClient } from "../../../lib/supabase-server";
 
 /**
@@ -19,8 +20,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const { admin_key, round = 1 } = body as { admin_key?: string; round?: number };
 
-  const expectedKey = process.env.ADMIN_API_KEY;
-  if (!expectedKey || admin_key !== expectedKey) {
+  if (!isAdminRequest(request, admin_key)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
