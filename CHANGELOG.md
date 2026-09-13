@@ -31,6 +31,9 @@
 - Bottone **Ricalcola round** in `/admin`: rilancia in sequenza tutte le sessioni del round (Shootout, Sprint, Qualifica, Gara) con log, sfruttando i ricalcoli idempotenti.
 - Pannello **Audit regole** in `/admin`: lancia l'audit a blocchi di round e mostra la tabella dei totali, le note e il JSON completo, senza chiavi negli URL.
 
+### Fix (13/09, notte)
+- **Monaco: OpenF1 non ha recepito la Corte d'Appello** — `session_result` riporta ancora Gasly 3° (penalità cancellate l'11/6), mentre la decisione del 3/9 lo ha rimesso 7° con Hadjar 3°. Il ricalcolo aveva sovrascritto l'archivio corretto. Nuovo `lib/manual-overrides.ts`: posizioni finali forzate per round, con fonte, applicate a ogni calcolo e nell'audit.
+
 ### Sotto il cofano
 - **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.
 - **Ritirate le route doppione** `/api/fetch-risultati`, `/api/ricalcola-round`, `/api/calcola-risultati` (410): copie con logica divergente e senza controlli, non chiamate da nessuna parte. Il calcolo passa solo da `/api/post-gara`, il ricalcolo penalità da `/api/recalc-penalties`, l'azzeramento da `/api/reset-round`.
