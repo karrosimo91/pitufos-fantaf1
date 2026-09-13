@@ -146,15 +146,15 @@ export function buildLiveWeekendResults(
     isMainRace || kind === "sprint",
   );
 
-  // Pole = chi parte 1° in griglia. Se non ci viene passato esplicitamente,
-  // lo deduciamo dalla griglia di partenza (disponibile live in gara). Così la
-  // previsione "Pole vince" si valuta in tempo reale: pole_won = pole è ora P1.
-  let poleDriver: number | null = qualifyingPole ?? null;
-  if (poleDriver == null) {
-    for (const [drv, gp] of gridPositions) {
-      if (gp === 1) { poleDriver = drv; break; }
-    }
+  // Pole = chi PARTE 1° in griglia (regola: la previsione "Pole vince" si
+  // valuta sulla griglia di partenza, non sulla qualifica: se il poleman ha
+  // una penalità, la pole di fatto passa a chi parte davanti). La qualifica
+  // è solo il fallback finché la griglia non c'è. Live: pole_won = pole è ora P1.
+  let poleDriver: number | null = null;
+  for (const [drv, gp] of gridPositions) {
+    if (gp === 1) { poleDriver = drv; break; }
   }
+  if (poleDriver == null) poleDriver = qualifyingPole ?? null;
   const poleWon = isMainRace && poleDriver != null
     ? snap.positions.get(poleDriver)?.position === 1
     : (previousResults?.events.pole_won ?? false);

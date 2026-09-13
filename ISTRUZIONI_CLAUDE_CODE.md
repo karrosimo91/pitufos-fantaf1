@@ -208,8 +208,10 @@ Usa per: calendario sessioni, risultati, posizioni live, race control, stints, l
 Dati storici: gratis, no auth.
 Dati live: richiedono abbonamento (per ora usa i dati storici, il live lo aggiungiamo dopo).
 
-### Jolpica (api.jolpi.ca/ergast/f1)
-Usa per: calendario completo con orari sessioni, classifiche piloti/costruttori.
+### Jolpica (api.jolpi.ca/ergast/f1) — NON USARE
+Rimossa in v1.10.0. Numera i round saltando le gare cancellate (nel 2026 il nostro
+round 16, Madrid, per Jolpica è il 14): interrogata col nostro numero di round
+risponde con un'altra gara, senza errori. Fonte dati unica: OpenF1.
 
 ### Supabase
 Usa per: autenticazione utenti, profili, scuderia piloti, previsioni, classifiche giocatori, campionati.

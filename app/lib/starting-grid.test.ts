@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildGridMap, resolveGrid, gridFromRacePositions, gridFromJolpicaResults } from "./starting-grid";
+import { buildGridMap, resolveGrid, gridFromRacePositions } from "./starting-grid";
 import { calcolaGara } from "./scoring";
 
 describe("buildGridMap", () => {
@@ -88,38 +88,14 @@ describe("gridFromRacePositions", () => {
   });
 });
 
-describe("gridFromJolpicaResults", () => {
-  it("legge il campo grid ufficiale", () => {
-    const entries = gridFromJolpicaResults([
-      { grid: "20", position: "8", Driver: { permanentNumber: "44" } },
-      { grid: "1", position: "1", Driver: { permanentNumber: "10" } },
-    ]);
-    const grid = new Map(entries.map((e) => [e.driver_number, e.position]));
-    expect(grid.get(44)).toBe(20);
-    expect(grid.get(10)).toBe(1);
-  });
-
-  it("grid 0 (partenza dalla pit lane) vale come ultima casella", () => {
-    const rows = Array.from({ length: 22 }, (_, i) => ({
-      grid: String(i + 1),
-      position: String(i + 1),
-      Driver: { permanentNumber: String(i + 1) },
-    }));
-    rows[0] = { grid: "0", position: "1", Driver: { permanentNumber: "99" } };
-    const entries = gridFromJolpicaResults(rows);
-    const grid = new Map(entries.map((e) => [e.driver_number, e.position]));
-    expect(grid.get(99)).toBe(22);
-  });
-});
-
 describe("resolveGrid", () => {
   it("prende la prima fonte non vuota nell'ordine dato", () => {
     const r = resolveGrid([
       { name: "starting_grid", entries: [] },
-      { name: "jolpica_results", entries: [{ driver_number: 44, position: 20 }] },
+      { name: "race_first_positions", entries: [{ driver_number: 44, position: 20 }] },
       { name: "qualifying", entries: [{ driver_number: 44, position: 7 }] },
     ]);
-    expect(r.source).toBe("jolpica_results");
+    expect(r.source).toBe("race_first_positions");
     expect(r.grid.get(44)).toBe(20);
   });
 

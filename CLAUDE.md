@@ -6,9 +6,10 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ## Stack
 - **Frontend:** Next.js + Tailwind CSS
 - **Hosting:** Vercel (deploy automatico da GitHub)
-- **API dati F1:** OpenF1 (api.openf1.org) per dati live e storici + Jolpica (api.jolpi.ca/ergast/f1) per classifiche e calendario
+- **API dati F1:** solo OpenF1 (api.openf1.org), per dati live e storici. Jolpica/Ergast NON si usa: numera i round saltando le gare cancellate (nel 2026 Bahrain e Jeddah), quindi col nostro numero di round risponde con un'altra gara
 - **Dati live:** OpenF1 abbonamento €9.90/mese, connessione WebSocket per real-time durante le gare
 - **Repo:** github.com/karrosimo91/pitufos-fantaf1
+- **Sito in produzione:** https://pitufos-fantaf1.vercel.app/
 
 ## Regolamento v1.0 — Approvato dal CDA
 
@@ -158,9 +159,9 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 ## API OpenF1 — Endpoint che usiamo
 - `sessions` → calendario, tipo sessione
 - `session_result` → classifiche finali (qualifica, gara, sprint)
-- `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → risultati Jolpica (campo `grid`, solo a gara conclusa) → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
+- `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
 - `drivers` → info piloti (nome, team, numero, foto, colore)
-- `race_control` → Safety Car, VSC, Red Flag, penalità. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
+- `race_control` → Safety Car, VSC, Red Flag, penalità di gara e in griglia. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
 - `stints` → compound gomme (per previsione wet)
 - `laps` → tempi al giro (per giro veloce)
 - `meetings` → info weekend
@@ -169,10 +170,45 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 
 **Dati manuali:** Driver of the Day, quotazioni iniziali, variazione quotazioni
 
-## API Jolpica — Endpoint che usiamo
-- `/current.json` → calendario completo con orari FP, quali, sprint, gara
-- `/current/driverstandings.json` → classifica piloti
-- `/current/constructorstandings.json` → classifica costruttori
+## Calcolo punteggi — regole di robustezza (v1.10.0)
+Unico percorso di scrittura: `/api/post-gara` (risultati + punteggi), `/api/recalc-penalties`
+(ricalcolo penalità), `/api/reset-round` (azzeramento). `fetch-risultati`, `ricalcola-round`
+e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
+
+1. **Round → sessione OpenF1 per data**, mai per posizione in lista (`lib/openf1-sessions.ts`,
+   `findRaceSessionForRound`): si cerca la sessione "Race" entro 36h dall'orario di gara di
+   `races.ts`. Se non c'è o è ambigua → errore, niente salvato. Motivo: OpenF1 tiene in lista
+   le gare cancellate (Bahrain, Jeddah 2026) e ne aggiunge altre (Kuala Lumpur 4/10/2026,
+   fra Baku e Singapore): `meetings[round - 1]` dal round 18 avrebbe preso la gara sbagliata.
+2. **Niente risultati ufficiali, niente calcolo** (`lib/official-results.ts`,
+   `checkResultsReady`): sessione conclusa, `session_result` con righe, tutti i piloti di
+   `/drivers`. Fallisce → 409. Nessun fallback sul feed `position` (non ha i flag dnf/dsq/dns:
+   Madrid 2026 è finita in archivio con 22 classificati e zero ritiri proprio per quello).
+   Riconoscere il caso in archivio: nessuna riga gara con `position` null.
+3. **Coerenza prima di salvare** (`validateWeekendResults`): `total_dnf` = righe dnf + dns,
+   posizioni univoche, un P1. Fallisce → 422.
+4. **Punteggi applicati per differenza** (`lib/score-round.ts`, `applicaPunteggiRound`):
+   `weekend_scores.real_points` (migrazione v18) registra i punti Classifica Reale dati da
+   ogni round; `classifica_totale` si aggiorna sottraendo il vecchio e sommando il nuovo,
+   anche per `real_points`. Rilanciare è sempre sicuro. `isPostRace` dipende dalla presenza
+   della gara in archivio, non dalla sessione rilanciata.
+5. **Classifica Reale** (`lib/classifica-reale.ts`): stessa regola su server e Statistiche.
+   Pari merito: piloti_points, poi previsioni_points, poi user_id — proposta, da confermare
+   in CDA.
+6. Driver of the Day è manuale: un rilancio senza DOTD mantiene quello salvato.
+7. **Qualifica e "pole vince"** (decisioni 13/09/2026): la pole è chi PARTE primo in griglia
+   (`poleWon` in `official-results.ts`, anche live); "senza tempo" in qualifica = -5 (-3 in
+   shootout) da `duration` di `session_result`; esente chi ha una penalità in griglia a priori
+   (messaggi race_control del weekend, `extractGridPenalizedDrivers`), flag `no_time` e
+   `esente_penalita` sulla riga. Le penalità in griglia in sé valgono 0 in qualifica e si
+   pagano con la griglia in gara.
+8. **Audit prima di ricalcolare**: `/api/audit-regole?admin_key=&from=&to=` (sola lettura)
+   mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
+   qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
+
+Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti del singolo
+pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su nessun round
+(nessun `dns: true` in archivio), ma la regola va decisa: proposta, escludere il DNS.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)

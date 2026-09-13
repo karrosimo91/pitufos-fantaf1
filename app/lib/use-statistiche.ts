@@ -4,6 +4,7 @@ import { createClient, isSupabaseConfigured } from "./supabase";
 import { RACES_2026 } from "./races";
 import type { RaceWeekendResults } from "./scoring";
 import { PREVISIONI_PUNTI } from "./types";
+import { ordinaClassificaWeekend, PUNTI_REALE } from "./classifica-reale";
 
 // ═══════════════════════════════════════════════════════════════
 // Hook dati per /statistiche — un solo fetch per lega, poi tutto
@@ -179,7 +180,7 @@ export interface SeasonPoint {
 }
 
 /** Punti "Classifica Reale": ogni weekend i primi 10 prendono punti F1. */
-export const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+export { PUNTI_REALE };
 
 /** Riepilogo stagionale di un singolo Team Principal. */
 export interface PlayerSummary {
@@ -298,10 +299,13 @@ export function deriveStats(raw: StatsRaw, roundStart: number, roundEnd: number)
     realPoints.set(p.userId, 0);
   }
   for (const r of rounds) {
-    const standing = raw.players
-      .map((p) => ({ userId: p.userId, row: byUser.get(p.userId)?.get(r) }))
-      .filter((e): e is { userId: string; row: ScoreRow } => !!e.row)
-      .sort((a, b) => Number(b.row.total_points) - Number(a.row.total_points));
+    // Stesso ordinamento del server (lib/classifica-reale.ts), pari merito inclusi
+    const standing = ordinaClassificaWeekend(
+      raw.players
+        .map((p) => ({ userId: p.userId, row: byUser.get(p.userId)?.get(r) }))
+        .filter((e): e is { userId: string; row: ScoreRow } => !!e.row)
+        .map((e) => ({ ...e, user_id: e.userId, total_points: e.row.total_points, piloti_points: e.row.piloti_points, previsioni_points: e.row.previsioni_points })),
+    );
     if (standing.length === 0) continue;
     roundWinners.push({ round: r, userId: standing[0].userId, points: Number(standing[0].row.total_points) });
     standing.forEach((e, idx) => {

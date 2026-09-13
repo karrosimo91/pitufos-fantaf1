@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { RACES_2026 } from "../../lib/races";
+import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-sessions";
 
 const OPENF1 = "https://api.openf1.org/v1";
 
@@ -24,19 +25,17 @@ async function getToken(): Promise<string | null> {
 }
 
 /**
- * Risolve il meeting_key di un round come fa /api/fetch-risultati:
- * meeting della stagione in ordine di data, escludendo i test pre-stagione.
+ * Risolve il meeting_key di un round abbinando PER DATA la sessione gara
+ * (vedi lib/openf1-sessions.ts): la posizione in lista non è affidabile.
  */
 async function meetingKeyForRound(round: number, opts: RequestInit): Promise<string | null> {
-  const year = new Date().getFullYear();
-  const res = await fetch(`${OPENF1}/meetings?year=${year}`, opts);
+  const race = RACES_2026.find((r) => r.round === round);
+  const year = race ? new Date(race.date).getUTCFullYear() : new Date().getFullYear();
+  const res = await fetch(`${OPENF1}/sessions?year=${year}`, opts);
   if (!res.ok) return null;
-  const all = await res.json();
-  const meetings = all
-    .filter((m: { meeting_name?: string }) => !m.meeting_name?.toLowerCase().includes("testing"))
-    .sort((a: { date_start: string }, b: { date_start: string }) =>
-      new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
-  return meetings[round - 1]?.meeting_key?.toString() ?? null;
+  const sessions: OpenF1Session[] = await res.json();
+  const match = findRaceSessionForRound(round, sessions);
+  return match.ok ? String(match.session.meeting_key) : null;
 }
 
 /**

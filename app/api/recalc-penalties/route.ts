@@ -3,10 +3,9 @@ import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { OPENF1, fetchJson } from "../../lib/openf1-server";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { computePlayerScores } from "../../lib/score-round";
+import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
-
-const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-sessions";
 
 /**
  * POST /api/recalc-penalties
@@ -17,8 +16,9 @@ const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
  * che OpenF1 lascia null). Per ogni round con risultati gara:
  *   1. ri-scarica race_control e ricalcola i piloti penalizzati
  *   2. aggiorna i flag `penalty` in weekend_results
- *   3. se qualcosa è cambiato, ricalcola i punteggi del round e applica il
- *      DELTA (somma punti + classifica reale) a classifica_totale — idempotente
+ *   3. se qualcosa è cambiato, ricalcola i punteggi del round e li applica per
+ *      differenza (somma punti + classifica reale) via applicaPunteggiRound —
+ *      idempotente
  *
  * Se `round` è omesso, processa tutti i round con risultati gara salvati.
  */
@@ -53,12 +53,10 @@ export async function POST(request: NextRequest) {
     }
     log.push(`Round da verificare: ${targetRounds.map((r) => r.round).join(", ")}`);
 
-    // 2. Risolvi i meeting OpenF1 una volta sola
+    // 2. Calendario OpenF1 una volta sola; la gara di ogni round si trova per
+    //    data (vedi lib/openf1-sessions.ts), non per posizione in lista.
     const year = new Date().getFullYear();
-    const allMeetings = await fetchJson(`${OPENF1}/meetings?year=${year}`);
-    const meetings = (allMeetings || [])
-      .filter((m: any) => !m.meeting_name?.toLowerCase().includes("testing"))
-      .sort((a: any, b: any) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
+    const allSessions: OpenF1Session[] = await fetchJson(`${OPENF1}/sessions?year=${year}`);
 
     const driverName = (num: number) =>
       DRIVERS_2026.find((d) => d.number === num)?.name ?? `#${num}`;
@@ -66,17 +64,13 @@ export async function POST(request: NextRequest) {
     const report: any[] = [];
 
     for (const { round: rnd, data } of targetRounds) {
-      const meeting = meetings[rnd - 1];
-      if (!meeting) {
-        log.push(`R${rnd}: meeting non trovato su OpenF1 — saltato`);
+      const match = findRaceSessionForRound(rnd, allSessions);
+      if (!match.ok) {
+        log.push(`R${rnd}: ${match.error} — saltato`);
         continue;
       }
-      const sessions = await fetchJson(`${OPENF1}/sessions?meeting_key=${meeting.meeting_key}`);
-      const raceSession = sessions.find((s: any) => s.session_name?.toLowerCase() === "race");
-      if (!raceSession) {
-        log.push(`R${rnd}: sessione gara non trovata — saltato`);
-        continue;
-      }
+      const raceSession = match.session;
+      const meeting = { meeting_name: raceSession.location ?? `meeting ${raceSession.meeting_key}` };
 
       // Ricalcola i piloti penalizzati con la rilevazione aggiornata
       const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${raceSession.session_key}`);
@@ -114,65 +108,13 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // 3b. Stato precedente: vecchi punteggi weekend + classifica reale implicita
-      const { data: oldScores } = await supabase
-        .from("weekend_scores")
-        .select("user_id, total_points")
-        .eq("round", rnd);
-
-      const oldTotal = new Map<string, number>();
-      for (const os of oldScores || []) oldTotal.set(os.user_id, os.total_points ?? 0);
-
-      const oldRealRanking = [...(oldScores || [])].sort(
-        (a, b) => (b.total_points ?? 0) - (a.total_points ?? 0)
-      );
-      const oldReal = new Map<string, number>();
-      oldRealRanking.forEach((os, i) => oldReal.set(os.user_id, PUNTI_REALE[i] ?? 0));
-
-      // 3c. Ricalcola i nuovi punteggi (gara → isPostRace true)
+      // 3b. Ricalcola i punteggi (gara in archivio → isPostRace true) e
+      //     applicali per differenza: somma punti e Classifica Reale.
       const newScores = await computePlayerScores(supabase, rnd, updatedResults, true);
-      const newReal = new Map<string, number>();
-      newScores.forEach((ps, i) => newReal.set(ps.user_id, PUNTI_REALE[i] ?? 0));
-
-      // 3d. Applica i delta (idempotente) a classifica_totale e weekend_scores
-      const affected: any[] = [];
-      for (const ps of newScores) {
-        const deltaTotal = ps.weekend_points - (oldTotal.get(ps.user_id) ?? 0);
-        const deltaReal = (newReal.get(ps.user_id) ?? 0) - (oldReal.get(ps.user_id) ?? 0);
-
-        const { data: existing } = await supabase
-          .from("classifica_totale")
-          .select("total_points, real_points")
-          .eq("user_id", ps.user_id)
-          .single();
-
-        await supabase.from("classifica_totale").upsert({
-          user_id: ps.user_id,
-          team_principal_name: ps.name,
-          scuderia_name: ps.scuderia,
-          total_points: (existing?.total_points ?? 0) + deltaTotal,
-          last_weekend_points: ps.weekend_points,
-          real_points: (existing?.real_points ?? 0) + deltaReal,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-        await supabase.from("weekend_scores").upsert({
-          user_id: ps.user_id,
-          round: rnd,
-          total_points: ps.weekend_points,
-          piloti_points: ps.piloti_points,
-          previsioni_points: ps.previsioni_points,
-        }, { onConflict: "user_id,round" });
-
-        if (deltaTotal !== 0 || deltaReal !== 0) {
-          affected.push({
-            nome: ps.name,
-            delta_punti: deltaTotal,
-            delta_reale: deltaReal,
-            nuovo_weekend: ps.weekend_points,
-          });
-        }
-      }
+      const applicati = await applicaPunteggiRound(supabase, rnd, newScores, true);
+      const affected = applicati
+        .filter((a) => a.delta_total !== 0 || a.delta_real !== 0)
+        .map((a) => ({ nome: a.nome, delta_punti: a.delta_total, delta_reale: a.delta_real, nuovo_weekend: a.weekend_points }));
 
       report.push({
         round: rnd,
