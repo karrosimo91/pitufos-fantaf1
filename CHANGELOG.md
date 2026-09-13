@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.10.0 — 13 Settembre 2026
+
+### Fix
+- **Zero ritiri a Madrid (round 16)** — il calcolo post-gara era partito pochi minuti dopo la bandiera a scacchi, quando OpenF1 non aveva ancora pubblicato `session_result`; il codice ripiegava sul feed `position`, che non porta i flag di ritiro, e salvava 22 piloti "classificati" e `total_dnf` 0 senza nessun errore. Ora `/api/post-gara` **non salva e non calcola niente** finché i risultati ufficiali non ci sono e non sono completi: la sessione deve essere conclusa, `session_result` deve rispondere e devono esserci tutti i piloti attesi (confronto con `/drivers`). Se manca qualcosa risponde 409 spiegando perché, e l'archivio resta com'era. Il fallback sul feed `position` è stato eliminato.
+- **Round abbinato per data, non per posizione** — la gara di un round veniva presa con `meetings[round - 1]`, fidandosi che la lista OpenF1 avesse lo stesso ordine e numero del nostro calendario. Con Bahrain e Jeddah cancellate ma in lista reggeva ancora; con una gara in più (Kuala Lumpur, 4 ottobre, fra Baku e Singapore) dal round 18 l'indice avrebbe puntato alla gara sbagliata. Ora la sessione gara si trova confrontando `date_start` con l'orario di gara del nostro calendario (finestra di 36 ore); se non c'è o è ambigua, errore esplicito. Vale per `post-gara`, `recalc-penalties`, `audit-griglia` e `live-grid`.
+- **Classifica Reale gonfiata nei ricalcoli** — i punti 25-18-15 venivano sommati a `classifica_totale.real_points` a ogni calcolo della gara e mai sottratti dal reset: ogni rilancio raddoppiava. Il valore in produzione era arrivato a 637 con un massimo teorico di 325 (la pagina Statistiche non lo leggeva, quindi nessuno l'ha visto). Ora ogni round registra in `weekend_scores.real_points` quanto ha dato e la classifica generale si aggiorna per differenza: rilanciare cento volte dà lo stesso risultato di lanciare una volta. Migrazione v18 con riallineamento dei dati.
+- **Pari merito nella Classifica Reale** — a punteggio weekend uguale l'ordine era quello casuale delle righe del DB, diverso a ogni calcolo. Regola unica per server e pagina Statistiche: prima i punti piloti, poi le previsioni, poi l'id (proposta da confermare in CDA, un solo punto nel codice da cambiare).
+- **Rilancio della qualifica dopo la gara** — ricalcolare la qualifica di un round già chiuso azzerava previsioni, penalità cambi e Classifica Reale perché "non era la sessione gara". Ora contano appena la gara è in archivio, qualunque sessione si rilanci.
+- **Driver of the Day perso nei rilanci** — è un dato manuale: se non arriva col rilancio si tiene quello già salvato invece di azzerarlo.
+- **Coerenza interna prima del salvataggio** — eventi e righe piloti devono raccontare la stessa storia (numero ritiri, posizioni univoche, un vincitore): se no il salvataggio si ferma con 422. Trovato e corretto in archivio il round 2 (Cina): 7 ritiri nelle righe piloti ma `total_dnf` 0 (senza impatto sui punti, nessuno aveva previsto 7).
+- **Qualifica dai risultati ufficiali** — la classifica di qualifica e sprint shootout arrivava dal feed `position`, che non conosce NC e squalifiche: il −5 (−3 in shootout) non scattava mai. Ora arriva da `session_result`.
+
+### Sotto il cofano
+- **Solo OpenF1** — rimossa Jolpica/Ergast da griglia, post-gara, audit e helper: numera i round saltando le gare cancellate (il nostro 16 per loro è il 14), quindi col nostro numero risponde con un'altra gara.
+- **Ritirate le route doppione** `/api/fetch-risultati`, `/api/ricalcola-round`, `/api/calcola-risultati` (410): copie con logica divergente e senza controlli, non chiamate da nessuna parte. Il calcolo passa solo da `/api/post-gara`, il ricalcolo penalità da `/api/recalc-penalties`, l'azzeramento da `/api/reset-round`.
+- Nuove librerie pure e testate: `lib/official-results.ts` (prontezza e coerenza dei risultati), `lib/openf1-sessions.ts` (round → sessione per data), `lib/classifica-reale.ts` (ordinamento e punti reale); `lib/score-round.ts` ha l'unico punto di scrittura dei punteggi (`applicaPunteggiRound`). 175 test.
+
+---
+
 ## v1.9.2 — 6 Settembre 2026
 
 ### Fix

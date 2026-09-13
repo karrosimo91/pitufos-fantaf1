@@ -3,8 +3,10 @@ import {
   checkResultsReady,
   countDnf,
   mapQualifyingResults,
+  validateWeekendResults,
   MIN_DRIVERS_ATTESI,
 } from "./official-results";
+import type { RaceWeekendResults } from "./scoring";
 
 const FINE = "2026-09-13T15:00:00+00:00";
 const DOPO = new Date("2026-09-13T16:00:00Z").getTime();
@@ -85,5 +87,51 @@ describe("countDnf", () => {
 
   it("nessun ritiro fa 0 (e deve essere un 0 vero, non un dato mancante)", () => {
     expect(countDnf(righe(22))).toBe(0);
+  });
+});
+
+
+function weekend(race: RaceWeekendResults["race"], total_dnf: number): RaceWeekendResults {
+  return {
+    qualifying: [],
+    race,
+    events: { safety_car: false, virtual_safety_car: false, red_flag: false, wet_tyres: false, pole_won: false, total_dnf },
+  };
+}
+
+describe("validateWeekendResults", () => {
+  const gara = [
+    { driver_number: 1, position: 1, dnf: false },
+    { driver_number: 2, position: 2, dnf: false },
+    { driver_number: 3, position: null as unknown as number, dnf: true },
+  ];
+
+  it("passa quando eventi e righe piloti concordano", () => {
+    expect(validateWeekendResults(weekend(gara, 1))).toEqual([]);
+  });
+
+  it("caso round 2: ritiri nelle righe ma total_dnf 0", () => {
+    const err = validateWeekendResults(weekend(gara, 0));
+    expect(err.some((e) => e.includes("total_dnf=0"))).toBe(true);
+  });
+
+  it("il DNS entra nel conteggio come oggi fa countDnf", () => {
+    const conDns = [...gara, { driver_number: 4, position: null as unknown as number, dnf: false, dns: true }];
+    expect(validateWeekendResults(weekend(conDns, 2))).toEqual([]);
+    expect(validateWeekendResults(weekend(conDns, 1))).not.toEqual([]);
+  });
+
+  it("posizioni duplicate fra classificati", () => {
+    const dup = [{ driver_number: 1, position: 1, dnf: false }, { driver_number: 2, position: 1, dnf: false }];
+    expect(validateWeekendResults(weekend(dup, 0)).some((e) => e.includes("stessa posizione"))).toBe(true);
+  });
+
+  it("nessun vincitore", () => {
+    const senzaP1 = [{ driver_number: 1, position: 2, dnf: false }];
+    expect(validateWeekendResults(weekend(senzaP1, 0)).some((e) => e.includes("prima posizione"))).toBe(true);
+  });
+
+  it("senza gara (solo qualifica) non controlla nulla", () => {
+    expect(validateWeekendResults(weekend([], 0))).toEqual([]);
   });
 });

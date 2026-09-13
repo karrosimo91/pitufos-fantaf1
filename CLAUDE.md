@@ -170,31 +170,36 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 
 **Dati manuali:** Driver of the Day, quotazioni iniziali, variazione quotazioni
 
-## Guardia sui dati ufficiali (post-gara)
-`/api/post-gara` non salva e non calcola niente finché OpenF1 non ha pubblicato
-risultati ufficiali completi. I controlli sono in `lib/official-results.ts`
-(`checkResultsReady`, testata) e valgono per qualifica, sprint shootout, sprint e gara:
-1. la sessione deve essere conclusa (`date_end` passata);
-2. `session_result` deve avere righe;
-3. devono esserci tutti i piloti attesi secondo `/drivers`.
-Se un controllo fallisce la route risponde 409 col motivo, senza scrivere nulla.
+## Calcolo punteggi — regole di robustezza (v1.10.0)
+Unico percorso di scrittura: `/api/post-gara` (risultati + punteggi), `/api/recalc-penalties`
+(ricalcolo penalità), `/api/reset-round` (azzeramento). `fetch-risultati`, `ricalcola-round`
+e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
 
-Perché: prima, con `session_result` vuoto, il codice ripiegava sul feed `position`,
-che NON porta i flag dnf/dsq/dns. Succedeva davvero — Madrid 2026 (round 16),
-salvato alle 15:21 UTC subito dopo la bandiera a scacchi: 22 piloti tutti
-"classificati", zero DNF, punteggi sbagliati e nessun errore visibile.
-Riconoscere il caso in archivio: se in `weekend_results` NESSUNA riga gara ha
-`position` null, il dato viene dal feed `position`, non dai risultati ufficiali
-(i ritirati veri hanno `position` null).
+1. **Round → sessione OpenF1 per data**, mai per posizione in lista (`lib/openf1-sessions.ts`,
+   `findRaceSessionForRound`): si cerca la sessione "Race" entro 36h dall'orario di gara di
+   `races.ts`. Se non c'è o è ambigua → errore, niente salvato. Motivo: OpenF1 tiene in lista
+   le gare cancellate (Bahrain, Jeddah 2026) e ne aggiunge altre (Kuala Lumpur 4/10/2026,
+   fra Baku e Singapore): `meetings[round - 1]` dal round 18 avrebbe preso la gara sbagliata.
+2. **Niente risultati ufficiali, niente calcolo** (`lib/official-results.ts`,
+   `checkResultsReady`): sessione conclusa, `session_result` con righe, tutti i piloti di
+   `/drivers`. Fallisce → 409. Nessun fallback sul feed `position` (non ha i flag dnf/dsq/dns:
+   Madrid 2026 è finita in archivio con 22 classificati e zero ritiri proprio per quello).
+   Riconoscere il caso in archivio: nessuna riga gara con `position` null.
+3. **Coerenza prima di salvare** (`validateWeekendResults`): `total_dnf` = righe dnf + dns,
+   posizioni univoche, un P1. Fallisce → 422.
+4. **Punteggi applicati per differenza** (`lib/score-round.ts`, `applicaPunteggiRound`):
+   `weekend_scores.real_points` (migrazione v18) registra i punti Classifica Reale dati da
+   ogni round; `classifica_totale` si aggiorna sottraendo il vecchio e sommando il nuovo,
+   anche per `real_points`. Rilanciare è sempre sicuro. `isPostRace` dipende dalla presenza
+   della gara in archivio, non dalla sessione rilanciata.
+5. **Classifica Reale** (`lib/classifica-reale.ts`): stessa regola su server e Statistiche.
+   Pari merito: piloti_points, poi previsioni_points, poi user_id — proposta, da confermare
+   in CDA.
+6. Driver of the Day è manuale: un rilancio senza DOTD mantiene quello salvato.
 
-`/api/fetch-risultati` era un secondo percorso di scrittura più debole (qualifica
-dal feed `position`, DNF dai soli messaggi `race_control`, griglia da Jolpica,
-nessuna guardia) e non era chiamata da nessuna parte: ora risponde 410, si passa
-solo da `/api/post-gara`.
-
-Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti
-del singolo pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Correggerlo
-cambia punti già assegnati, quindi prima serve il CDA.
+Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti del singolo
+pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su nessun round
+(nessun `dns: true` in archivio), ma la regola va decisa: proposta, escludere il DNS.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)

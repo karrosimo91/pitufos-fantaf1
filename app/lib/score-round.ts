@@ -8,6 +8,7 @@ import {
   type ChipPrevisioniConfig,
 } from "./scoring";
 import type { Previsioni } from "./types";
+import { ordinaClassificaWeekend, puntiClassificaReale } from "./classifica-reale";
 
 export interface PlayerScore {
   user_id: string;
@@ -161,6 +162,115 @@ export function computePlayerScoresFrom(
     });
   }
 
-  playerScores.sort((a, b) => b.weekend_points - a.weekend_points);
-  return playerScores;
+  // Stesso ordine della Classifica Reale (vedi classifica-reale.ts), così la
+  // lista mostrata e i punti assegnati coincidono sempre.
+  const ordine = ordinaClassificaWeekend(
+    playerScores.map((p) => ({ user_id: p.user_id, total_points: p.weekend_points, piloti_points: p.piloti_points, previsioni_points: p.previsioni_points })),
+  ).map((r) => r.user_id);
+  return ordine.map((id) => playerScores.find((p) => p.user_id === id)!);
+}
+
+// ─── Applicazione dei punteggi di un round (idempotente) ───
+
+export interface RigaApplicata {
+  user_id: string;
+  nome: string;
+  weekend_points: number;
+  real_points: number;
+  delta_total: number;
+  delta_real: number;
+}
+
+/**
+ * Scrive i punteggi di un round e aggiorna la classifica generale per
+ * DIFFERENZA rispetto a quanto già registrato per quel round. Unico punto di
+ * scrittura per post-gara, recalc-penalties e reset-round.
+ *
+ * Perché per differenza, e perché anche sui punti "reale": prima la somma
+ * punti era già a delta, ma i punti Classifica Reale (25-18-15...) venivano
+ * SOMMATI a ogni calcolo della gara; ogni rilancio di un round li
+ * raddoppiava e il reset non li toglieva. In produzione `real_points` era
+ * arrivato a 637 con un massimo teorico di 325. Ora ogni round porta in
+ * `weekend_scores.real_points` esattamente quanto ha dato, e un ricalcolo
+ * sottrae quello e somma il nuovo: rilanciare cento volte dà lo stesso
+ * risultato di lanciare una volta.
+ *
+ * Con `playerScores` vuoto il round viene semplicemente tolto dalla
+ * classifica generale (è quello che fa reset-round).
+ */
+export async function applicaPunteggiRound(
+  supabase: any,
+  round: number,
+  playerScores: PlayerScore[],
+  isPostRace: boolean,
+): Promise<RigaApplicata[]> {
+  // Stato precedente del round.
+  const { data: oldRows } = await supabase
+    .from("weekend_scores")
+    .select("user_id, total_points, piloti_points, previsioni_points, real_points")
+    .eq("round", round);
+  const old = (oldRows ?? []) as { user_id: string; total_points: number | null; piloti_points: number | null; previsioni_points: number | null; real_points: number | null }[];
+
+  // Punti reale già dati: dalla colonna se c'è, altrimenti (righe salvate
+  // prima della colonna) ricostruiti con la stessa regola di allora.
+  const derivedOldReal = puntiClassificaReale(old);
+  const oldTotal = new Map<string, number>();
+  const oldReal = new Map<string, number>();
+  for (const r of old) {
+    oldTotal.set(r.user_id, Number(r.total_points ?? 0));
+    oldReal.set(r.user_id, r.real_points != null ? Number(r.real_points) : (derivedOldReal.get(r.user_id) ?? 0));
+  }
+
+  // Nuovo stato: punti reale solo quando la gara è calcolata.
+  const newReal = isPostRace
+    ? puntiClassificaReale(playerScores.map((p) => ({ user_id: p.user_id, total_points: p.weekend_points, piloti_points: p.piloti_points, previsioni_points: p.previsioni_points })))
+    : new Map<string, number>();
+
+  const out: RigaApplicata[] = [];
+  const utenti = new Set<string>([...oldTotal.keys(), ...playerScores.map((p) => p.user_id)]);
+
+  for (const userId of utenti) {
+    const ps = playerScores.find((p) => p.user_id === userId);
+    const nuovoTotale = ps?.weekend_points ?? 0;
+    const nuovoReale = ps ? (newReal.get(userId) ?? 0) : 0;
+    const deltaTotal = nuovoTotale - (oldTotal.get(userId) ?? 0);
+    const deltaReal = nuovoReale - (oldReal.get(userId) ?? 0);
+
+    const { data: existing } = await supabase
+      .from("classifica_totale")
+      .select("total_points, real_points, team_principal_name, scuderia_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existing || ps) {
+      await supabase.from("classifica_totale").upsert({
+        user_id: userId,
+        team_principal_name: ps?.name ?? existing?.team_principal_name ?? "—",
+        scuderia_name: ps?.scuderia ?? existing?.scuderia_name ?? "—",
+        total_points: Number(existing?.total_points ?? 0) + deltaTotal,
+        real_points: Number(existing?.real_points ?? 0) + deltaReal,
+        last_weekend_points: nuovoTotale,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+    }
+
+    if (ps) {
+      await supabase.from("weekend_scores").upsert({
+        user_id: userId,
+        round,
+        total_points: ps.weekend_points,
+        piloti_points: ps.piloti_points,
+        previsioni_points: ps.previsioni_points,
+        real_points: nuovoReale,
+      }, { onConflict: "user_id,round" });
+    } else {
+      // Non è più fra i calcolati (es. formazione tolta): il round non deve
+      // più contare per questo utente.
+      await supabase.from("weekend_scores").delete().eq("user_id", userId).eq("round", round);
+    }
+
+    out.push({ user_id: userId, nome: ps?.name ?? existing?.team_principal_name ?? userId, weekend_points: nuovoTotale, real_points: nuovoReale, delta_total: deltaTotal, delta_real: deltaReal });
+  }
+
+  return out;
 }

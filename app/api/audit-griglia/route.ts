@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "../../lib/supabase-server";
 import { computePlayerScoresFrom, type RoundScoringInputs } from "../../lib/score-round";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
+import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-sessions";
 import type { RaceWeekendResults } from "../../lib/scoring";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 
@@ -89,22 +90,16 @@ export async function GET(request: NextRequest) {
   const year = new Date().getFullYear();
   const rounds = (allResults || []).map((r: { round: number }) => r.round).sort((a: number, b: number) => a - b);
 
-  // OpenF1: risolve round → session_key della gara, come fa /api/fetch-risultati
+  // OpenF1: round → session_key della gara, abbinata per data
+  // (vedi lib/openf1-sessions.ts), come fa /api/post-gara
   const token = await openf1Token();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-  const meetings = (await openf1Json(`${OPENF1}/meetings?year=${year}`, headers))
-    .filter((m) => !String(m.meeting_name ?? "").toLowerCase().includes("testing"))
-    .sort((a, b) => new Date(String(a.date_start)).getTime() - new Date(String(b.date_start)).getTime());
-  const allSessions = await openf1Json(`${OPENF1}/sessions?year=${year}`, headers);
+  const allSessions = (await openf1Json(`${OPENF1}/sessions?year=${year}`, headers)) as unknown as OpenF1Session[];
 
   const raceSessionKeyByRound = new Map<number, number>();
   for (const round of rounds) {
-    const meetingKey = meetings[round - 1]?.meeting_key;
-    if (!meetingKey) continue;
-    const race = allSessions.find(
-      (s) => s.meeting_key === meetingKey && String(s.session_name ?? "").toLowerCase() === "race",
-    );
-    if (race?.session_key) raceSessionKeyByRound.set(round, Number(race.session_key));
+    const match = findRaceSessionForRound(round, allSessions);
+    if (match.ok) raceSessionKeyByRound.set(round, match.session.session_key);
   }
 
   const report: unknown[] = [];

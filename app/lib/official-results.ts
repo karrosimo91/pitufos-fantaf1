@@ -17,7 +17,7 @@
 // quindi interrogarla col nostro numero significa prendere i dati di un'altra
 // gara senza accorgersene.
 
-import type { DriverResult } from "./scoring";
+import type { DriverResult, RaceWeekendResults } from "./scoring";
 
 export interface OfficialRow {
   driver_number?: number | null;
@@ -118,4 +118,45 @@ export function mapQualifyingResults(rows: OfficialRow[]): DriverResult[] {
  */
 export function countDnf(rows: OfficialRow[]): number {
   return byDriver(rows).filter((r) => r.dnf || r.dsq || r.dns).length;
+}
+
+// ─── Coerenza interna prima del salvataggio ───
+
+/**
+ * Controlli che un RaceWeekendResults deve superare prima di finire in
+ * archivio. Sono le incoerenze che abbiamo trovato davvero nei dati salvati:
+ *   - round 2 (Cina): 7 righe piloti ritirate ma `total_dnf` 0, perché
+ *     eventi e piloti erano stati calcolati da fonti diverse in momenti
+ *     diversi; la previsione "numero DNF" veniva valutata su un numero falso;
+ *   - round 16 (Madrid): 22 piloti tutti classificati e zero ritiri, dato
+ *     preso dal feed `position` al posto dei risultati ufficiali.
+ * Un archivio incoerente produce punteggi sbagliati senza che nessuno se ne
+ * accorga, quindi si rifiuta il salvataggio e si spiega cosa non torna.
+ */
+export function validateWeekendResults(results: RaceWeekendResults): string[] {
+  const errori: string[] = [];
+  const race = results.race ?? [];
+
+  if (race.length > 0) {
+    const senzaNumero = race.filter((r) => !r.driver_number).length;
+    if (senzaNumero > 0) errori.push(`${senzaNumero} righe gara senza numero pilota`);
+
+    const numeri = race.map((r) => r.driver_number).filter(Boolean);
+    if (new Set(numeri).size !== numeri.length) errori.push("numero pilota duplicato nei risultati gara");
+
+    // Ritiri: gli eventi devono raccontare la stessa storia delle righe piloti.
+    const ritirati = race.filter((r) => r.dnf).length;
+    const nonPartiti = race.filter((r) => r.dns).length;
+    const attesi = ritirati + nonPartiti; // stessa regola di countDnf()
+    if (results.events.total_dnf !== attesi) {
+      errori.push(`total_dnf=${results.events.total_dnf} ma le righe gara hanno ${ritirati} ritiri e ${nonPartiti} DNS (atteso ${attesi})`);
+    }
+
+    // Classificati: posizioni tutte diverse e senza buchi in testa.
+    const classificati = race.filter((r) => !r.dnf && !r.dns && r.position != null).map((r) => r.position as number);
+    if (new Set(classificati).size !== classificati.length) errori.push("due piloti classificati nella stessa posizione");
+    if (classificati.length > 0 && !classificati.includes(1)) errori.push("nessun pilota in prima posizione");
+  }
+
+  return errori;
 }
