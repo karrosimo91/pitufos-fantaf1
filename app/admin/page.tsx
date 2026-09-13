@@ -113,6 +113,54 @@ export default function AdminPage() {
     setRecalcRound(false);
   };
 
+  // ─── Ricalcolo di tutta la stagione: solo i round già in archivio ───
+  const [recalcSeason, setRecalcSeason] = useState(false);
+  const [recalcSeasonLog, setRecalcSeasonLog] = useState<string[]>([]);
+  const ricalcolaUnRound = async (rnd: number, out: string[], push: (l: string[]) => void): Promise<boolean> => {
+    const r = RACES_2026.find((x) => x.round === rnd);
+    const sessioni = r?.sprint ? ["sprint_shootout", "sprint", "qualifying", "race"] : ["qualifying", "race"];
+    for (const s of sessioni) {
+      try {
+        const res = await fetch("/api/post-gara", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ round: rnd, session: s }),
+        });
+        const data = await res.json();
+        if (!res.ok) { out.push(`  ✗ R${rnd} ${s}: ${data.error || res.status}`); push([...out]); return false; }
+        const riga = (data.log || []).find((l: string) => /^1\. /.test(l));
+        out.push(`  ✓ R${rnd} ${s}${riga ? ` — ${riga}` : ""}`);
+        push([...out]);
+      } catch (err: any) {
+        out.push(`  ✗ R${rnd} ${s}: ${err.message}`); push([...out]); return false;
+      }
+    }
+    return true;
+  };
+  const handleRicalcolaStagione = async () => {
+    setRecalcSeason(true);
+    setRecalcSeasonLog([]);
+    const out: string[] = [];
+    try {
+      const res = await fetch("/api/admin/rounds");
+      const data = await res.json();
+      const rounds: number[] = data.rounds || [];
+      if (!res.ok || rounds.length === 0) { out.push(`Nessun round in archivio (${data.error || res.status})`); setRecalcSeasonLog(out); setRecalcSeason(false); return; }
+      if (!confirm(`Ricalcolare tutti i round in archivio (${rounds.join(", ")})? Tutte le sessioni, in ordine. Punti per differenza, prezzi non toccati. Ci vogliono alcuni minuti: non chiudere la pagina.`)) { setRecalcSeason(false); return; }
+      const t0 = Date.now();
+      for (const rnd of rounds) {
+        out.push(`▶ Round ${rnd}`); setRecalcSeasonLog([...out]);
+        const ok = await ricalcolaUnRound(rnd, out, setRecalcSeasonLog);
+        if (!ok) { out.push(`■ Interrotto al round ${rnd}: correggi e rilancia, i round già fatti restano validi.`); break; }
+      }
+      out.push(`Fine in ${Math.round((Date.now() - t0) / 1000)} s. Rilancia l'audit: tutti i delta devono essere 0.`);
+    } catch (err: any) {
+      out.push(`✗ ${err.message}`);
+    }
+    setRecalcSeasonLog([...out]);
+    setRecalcSeason(false);
+  };
+
   const handlePostGara = async () => {
     setLoading(true);
     setResult(null);
@@ -388,6 +436,23 @@ export default function AdminPage() {
           </div>
           {recalcRoundLog.length > 0 && (
             <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[300px] overflow-auto">{recalcRoundLog.join("\n")}</pre>
+          )}
+        </div>
+
+        {/* Ricalcolo stagione */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+            Ricalcolo intera stagione
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={handleRicalcolaStagione} disabled={recalcSeason || recalcRound || loading || resetting}
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcSeason ? "bg-white/10 text-white/30 cursor-wait" : "bg-orange-600 hover:bg-orange-600/80 text-white"}`}>
+              {recalcSeason ? "Ricalcolo in corso..." : "Ricalcola tutti i round in archivio"}
+            </button>
+            <span className="text-white/30 text-[11px]">Solo i round già calcolati, tutte le sessioni, in ordine. Idempotente. Alcuni minuti.</span>
+          </div>
+          {recalcSeasonLog.length > 0 && (
+            <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[400px] overflow-auto">{recalcSeasonLog.join("\n")}</pre>
           )}
         </div>
 
