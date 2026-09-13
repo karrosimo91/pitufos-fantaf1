@@ -161,7 +161,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - `session_result` → classifiche finali (qualifica, gara, sprint)
 - `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
 - `drivers` → info piloti (nome, team, numero, foto, colore)
-- `race_control` → Safety Car, VSC, Red Flag, penalità. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
+- `race_control` → Safety Car, VSC, Red Flag, penalità di gara e in griglia. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
 - `stints` → compound gomme (per previsione wet)
 - `laps` → tempi al giro (per giro veloce)
 - `meetings` → info weekend
@@ -196,6 +196,15 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    Pari merito: piloti_points, poi previsioni_points, poi user_id — proposta, da confermare
    in CDA.
 6. Driver of the Day è manuale: un rilancio senza DOTD mantiene quello salvato.
+7. **Qualifica e "pole vince"** (decisioni 13/09/2026): la pole è chi PARTE primo in griglia
+   (`poleWon` in `official-results.ts`, anche live); "senza tempo" in qualifica = -5 (-3 in
+   shootout) da `duration` di `session_result`; esente chi ha una penalità in griglia a priori
+   (messaggi race_control del weekend, `extractGridPenalizedDrivers`), flag `no_time` e
+   `esente_penalita` sulla riga. Le penalità in griglia in sé valgono 0 in qualifica e si
+   pagano con la griglia in gara.
+8. **Audit prima di ricalcolare**: `/api/audit-regole?admin_key=&from=&to=` (sola lettura)
+   mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
+   qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
 
 Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti del singolo
 pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su nessun round

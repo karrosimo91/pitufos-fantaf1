@@ -65,3 +65,39 @@ export function extractPenalizedDrivers(raceControl: RaceControlMessage[]): Set<
   }
   return penalized;
 }
+
+// ─── Penalità in griglia (regola 4 qualifica) ───
+//
+// Servono per la regola "senza tempo = -5, salvo penalità a priori": chi
+// sa già di partire dal fondo (cambio motore, cambio, pit lane) spesso non
+// gira in qualifica, e quel -5 non deve colpirlo. I messaggi dei commissari
+// lo dicono ("10 GRID PLACE PENALTY FOR CAR 18", "CAR 5 ... BACK OF THE GRID",
+// "CAR 77 WILL START FROM THE PIT LANE"); il numero auto sta nel testo.
+const GRID_PENALTY_MARKERS = [
+  "GRID PENALTY",
+  "GRID PLACE",
+  "GRID POSITION PENALTY",
+  "BACK OF THE GRID",
+  "START FROM THE PIT LANE",
+  "PIT LANE START",
+  "START FROM THE BACK",
+];
+
+/** True se il messaggio comunica una penalità in griglia o partenza dal fondo. */
+export function isGridPenaltyMessage(message: string): boolean {
+  const msg = message.toUpperCase();
+  if (NON_PENALTY_MARKERS.some((m) => msg.includes(m))) return false;
+  return GRID_PENALTY_MARKERS.some((m) => msg.includes(m));
+}
+
+/** Piloti con almeno una penalità in griglia nei messaggi dati (tutte le sessioni del weekend). */
+export function extractGridPenalizedDrivers(raceControl: RaceControlMessage[]): Set<number> {
+  const out = new Set<number>();
+  for (const rc of raceControl ?? []) {
+    const text = rc.message || "";
+    if (!isGridPenaltyMessage(text)) continue;
+    const num = rc.driver_number ?? carNumberFromMessage(text);
+    if (num) out.add(num);
+  }
+  return out;
+}

@@ -23,6 +23,13 @@ export interface DriverResult {
   fastest_lap?: boolean;
   driver_of_the_day?: boolean;
   penalty?: boolean;
+  // Solo qualifica / sprint shootout: nessun tempo valido in nessuna fase.
+  // Vale -5 (-3 in shootout) tramite `dnf`, salvo `esente_penalita`.
+  no_time?: boolean;
+  // Solo qualifica: penalità in griglia "a priori" (motore, cambio, pit
+  // lane): il -5 per "senza tempo" non si applica, restano i punti del
+  // piazzamento. Provenienza per breakdown e audit.
+  esente_penalita?: boolean;
 }
 
 export interface RaceWeekendResults {

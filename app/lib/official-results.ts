@@ -25,6 +25,9 @@ export interface OfficialRow {
   dnf?: boolean | null;
   dsq?: boolean | null;
   dns?: boolean | null;
+  /** Gara: tempo totale. Qualifica: array [Q1, Q2, Q3], null dove non c'è tempo. */
+  duration?: number | null | (number | null)[];
+  number_of_laps?: number | null;
 }
 
 export type ReadinessResult = { ok: true } | { ok: false; error: string };
@@ -95,17 +98,70 @@ function byDriver(rows: OfficialRow[]): OfficialRow[] {
 }
 
 /**
- * Qualifica e Sprint Shootout.
- * Qui `dnf` vale "NC / squalificato / senza tempo": -5 in qualifica, -3 in
- * sprint shootout (vedi scoring.ts). `dns` resta distinto: 0 punti.
+ * "Senza tempo" in qualifica: nessun tempo valido in nessuna fase.
+ * OpenF1 in `session_result` di qualifica mette `duration` come array
+ * [Q1, Q2, Q3] con null dove il pilota non ha un tempo; per la gara è un
+ * numero. Tolleriamo entrambe le forme. Un DNS non è "senza tempo": non ha
+ * preso parte, vale 0.
  */
-export function mapQualifyingResults(rows: OfficialRow[]): DriverResult[] {
-  return byDriver(rows).map((r) => ({
-    driver_number: r.driver_number as number,
-    position: r.position as number,
-    dnf: !!(r.dnf || r.dsq),
-    dns: !!r.dns,
-  }));
+export function hasNoTime(row: OfficialRow): boolean {
+  if (row.dns) return false;
+  const d = row.duration;
+  if (d === undefined) return false; // campo assente: non possiamo dirlo, non inventiamo
+  if (Array.isArray(d)) return d.every((v) => v == null || v <= 0);
+  return d == null || d <= 0;
+}
+
+export interface QualifyingMapOptions {
+  /**
+   * Piloti con penalità in griglia "a priori" (cambio motore, pit lane...):
+   * per loro il "senza tempo" NON vale -5, restano i punti del piazzamento.
+   */
+  esenti?: Set<number>;
+}
+
+/**
+ * Qualifica e Sprint Shootout.
+ * `dnf` qui vale "NC / squalificato / senza tempo": -5 in qualifica, -3 in
+ * sprint shootout (vedi scoring.ts). `dns` resta distinto: 0 punti.
+ * Il "senza tempo" scatta solo se il pilota non è esente (regola 4).
+ */
+export function mapQualifyingResults(rows: OfficialRow[], opts: QualifyingMapOptions = {}): DriverResult[] {
+  const esenti = opts.esenti ?? new Set<number>();
+  return byDriver(rows).map((r) => {
+    const num = r.driver_number as number;
+    const noTime = hasNoTime(r);
+    const esente = noTime && esenti.has(num);
+    const out: DriverResult = {
+      driver_number: num,
+      position: r.position as number,
+      dnf: !!(r.dnf || r.dsq || (noTime && !esente)),
+      dns: !!r.dns,
+    };
+    if (noTime) out.no_time = true;
+    if (esente) out.esente_penalita = true;
+    return out;
+  });
+}
+
+/**
+ * Previsione "Pole vince la gara": la pole è chi PARTE primo in griglia,
+ * non chi ha fatto il miglior tempo in qualifica (se il poleman ha una
+ * penalità in griglia, la pole di fatto passa a chi parte davanti). Senza
+ * griglia si ricade sul primo della qualifica.
+ */
+export function poleDriverNumber(race: DriverResult[], qualifying: DriverResult[]): number | null {
+  const fromGrid = race.find((r) => r.grid_position === 1);
+  if (fromGrid) return fromGrid.driver_number;
+  const fromQuali = qualifying.find((q) => q.position === 1 && !q.dnf && !q.dns);
+  return fromQuali?.driver_number ?? null;
+}
+
+export function poleWon(race: DriverResult[], qualifying: DriverResult[]): boolean {
+  const pole = poleDriverNumber(race, qualifying);
+  if (pole == null) return false;
+  const winner = race.find((r) => r.position === 1 && !r.dnf && !r.dns);
+  return !!winner && winner.driver_number === pole;
 }
 
 /**

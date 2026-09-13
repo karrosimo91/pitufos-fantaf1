@@ -7,7 +7,7 @@ import {
 } from "../../lib/scoring";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
-import { extractPenalizedDrivers } from "../../lib/penalties";
+import { extractPenalizedDrivers, extractGridPenalizedDrivers } from "../../lib/penalties";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
@@ -15,6 +15,8 @@ import {
   checkResultsReady,
   countDnf,
   mapQualifyingResults,
+  poleDriverNumber,
+  poleWon,
   validateWeekendResults,
   type OfficialRow,
 } from "../../lib/official-results";
@@ -133,16 +135,20 @@ export async function POST(request: NextRequest) {
     };
 
     if (mode === "sprint_shootout") {
-      sprint_shootout = mapQualifyingResults(official.rows);
+      const esenti = await gridPenalizedInMeeting(sessions, meetingKey);
+      sprint_shootout = mapQualifyingResults(official.rows, { esenti });
       log.push(`Sprint Shootout (key: ${target.session_key}): ${sprint_shootout.length} piloti`);
+      logQualifica(log, sprint_shootout);
 
     } else if (mode === "sprint") {
       sprint = await fetchSprintResults(target.session_key, official.rows);
       log.push(`Sprint (key: ${target.session_key}): ${sprint.length} piloti, ${sprint.filter((d) => d.dnf).length} ritiri`);
 
     } else if (mode === "qualifying") {
-      qualifying = mapQualifyingResults(official.rows);
+      const esenti = await gridPenalizedInMeeting(sessions, meetingKey);
+      qualifying = mapQualifyingResults(official.rows, { esenti });
       log.push(`Qualifica (key: ${target.session_key}): ${qualifying.length} piloti`);
+      logQualifica(log, qualifying);
 
     } else {
       const raceKey = target.session_key;
@@ -175,10 +181,11 @@ export async function POST(request: NextRequest) {
       log.push(`Gara: ${raceResults.length} piloti, ${raceResults.filter((d) => d.dnf).length} ritiri, ${raceResults.filter((d) => d.dns).length} DNS`);
 
       events = await fetchRaceEvents(raceKey, official.rows);
-      const poleDriver = qualifying.find((d) => d.position === 1);
-      const raceWinner = raceResults.find((d) => d.position === 1);
-      events.pole_won = !!(poleDriver && raceWinner && poleDriver.driver_number === raceWinner.driver_number);
-      if (!poleDriver) log.push("ATTENZIONE: qualifica non ancora calcolata — 'pole vince' valutato false");
+      // "Pole vince": la pole è chi parte primo in griglia (regola 1)
+      events.pole_won = poleWon(raceResults, qualifying);
+      const pole = poleDriverNumber(raceResults, qualifying);
+      if (pole == null) log.push("ATTENZIONE: né griglia né qualifica disponibili — 'pole vince' valutato false");
+      else log.push(`Pole (primo in griglia): #${pole}${gridSource === "qualifying" || gridSource === "none" ? " (dalla qualifica, griglia reale assente)" : ""}`);
 
       log.push(`Eventi: SC=${events.safety_car} VSC=${events.virtual_safety_car} RF=${events.red_flag} Wet=${events.wet_tyres} DNF=${events.total_dnf} PoleWon=${events.pole_won}`);
     }
@@ -333,6 +340,30 @@ export async function POST(request: NextRequest) {
 }
 
 // ─── Helper functions ───
+
+/**
+ * Regola 4: piloti con penalità in griglia "a priori" nel weekend, letti dai
+ * messaggi race_control di tutte le sessioni del meeting disponibili finora.
+ * Per loro il "senza tempo" in qualifica non vale -5.
+ */
+async function gridPenalizedInMeeting(sessions: OpenF1Session[], meetingKey: number): Promise<Set<number>> {
+  const own = sessions.filter((s) => s.meeting_key === meetingKey);
+  const all: { message?: string | null; driver_number?: number | null }[] = [];
+  for (const s of own) {
+    const rc = await fetchJson(`${OPENF1}/race_control?session_key=${s.session_key}`);
+    all.push(...rc);
+  }
+  return extractGridPenalizedDrivers(all);
+}
+
+function logQualifica(log: string[], rows: DriverResult[]) {
+  const nc = rows.filter((r) => r.dnf && !r.no_time).map((r) => `#${r.driver_number}`);
+  const noTime = rows.filter((r) => r.no_time && !r.esente_penalita).map((r) => `#${r.driver_number}`);
+  const esenti = rows.filter((r) => r.esente_penalita).map((r) => `#${r.driver_number}`);
+  if (nc.length) log.push(`  NC/squalificati (-5): ${nc.join(", ")}`);
+  if (noTime.length) log.push(`  Senza tempo (-5): ${noTime.join(", ")}`);
+  if (esenti.length) log.push(`  Senza tempo ma esenti per penalità in griglia a priori (punti del piazzamento): ${esenti.join(", ")}`);
+}
 
 /**
  * Risultati ufficiali di una sessione (`session_result`) più i controlli di

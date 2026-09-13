@@ -3,6 +3,8 @@ import {
   isRacePenaltyMessage,
   carNumberFromMessage,
   extractPenalizedDrivers,
+  isGridPenaltyMessage,
+  extractGridPenalizedDrivers,
 } from "./penalties";
 
 describe("isRacePenaltyMessage", () => {
@@ -77,5 +79,28 @@ describe("extractPenalizedDrivers — dati reali Monaco 2026 (session 11299)", (
       { driver_number: 16, message: "5 SECOND TIME PENALTY" },
     ]);
     expect(penalized.has(16)).toBe(true);
+  });
+});
+
+
+describe("penalità in griglia (regola 4 qualifica)", () => {
+  it("riconosce penalità in griglia, fondo e pit lane", () => {
+    expect(isGridPenaltyMessage("FIA STEWARDS: 10 GRID PLACE PENALTY FOR CAR 18 (STR) - POWER UNIT ELEMENTS")).toBe(true);
+    expect(isGridPenaltyMessage("CAR 5 (BOR) WILL START FROM THE BACK OF THE GRID")).toBe(true);
+    expect(isGridPenaltyMessage("CAR 77 (BOT) WILL START FROM THE PIT LANE")).toBe(true);
+  });
+
+  it("non confonde indagini e penalità di gara", () => {
+    expect(isGridPenaltyMessage("INCIDENT INVOLVING CAR 4 UNDER INVESTIGATION - GRID PENALTY POSSIBLE")).toBe(false);
+    expect(isGridPenaltyMessage("5 SECOND TIME PENALTY FOR CAR 44 (HAM)")).toBe(false);
+  });
+
+  it("estrae i numeri auto dal testo", () => {
+    const set = extractGridPenalizedDrivers([
+      { message: "3 GRID PLACE PENALTY FOR CAR 18 (STR) - IMPEDING", driver_number: null },
+      { message: "CAR 77 WILL START FROM THE PIT LANE", driver_number: null },
+      { message: "5 SECOND TIME PENALTY FOR CAR 44", driver_number: null },
+    ]);
+    expect([...set].sort()).toEqual([18, 77]);
   });
 });
