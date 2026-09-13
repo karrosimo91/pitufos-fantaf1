@@ -110,8 +110,8 @@ function byDriver(rows: OfficialRow[]): OfficialRow[] {
  * "Senza tempo" in qualifica: nessun tempo valido in nessuna fase.
  * OpenF1 in `session_result` di qualifica mette `duration` come array
  * [Q1, Q2, Q3] con null dove il pilota non ha un tempo; per la gara è un
- * numero. Tolleriamo entrambe le forme. Un DNS non è "senza tempo": non ha
- * preso parte, vale 0.
+ * numero. Tolleriamo entrambe le forme. Il flag `dns` è ignorato qui: lo
+ * gestisce mapQualifyingResults (-5, salvo forza maggiore).
  */
 export function hasNoTime(row: OfficialRow): boolean {
   if (row.dns) return false;
@@ -121,30 +121,51 @@ export function hasNoTime(row: OfficialRow): boolean {
   return d == null || d <= 0;
 }
 
+export interface QualifyingMapOptions {
+  /** Piloti in forza maggiore (rimossi dal weekend, decisione CDA): 0 punti invece di -5 */
+  forzaMaggiore?: Set<number>;
+}
+
 /**
  * Qualifica e Sprint Shootout.
- * `dnf` qui vale "NC / squalificato / senza tempo": -5 in qualifica, -3 in
- * sprint shootout (vedi scoring.ts), e basta: nessun altro punto tolto o
- * dato. `dns` resta distinto: 0 punti (forza maggiore, pilota rimosso dal
- * weekend).
+ * `dnf` qui vale "NC / squalificato / senza tempo / non ha girato": -5 in
+ * qualifica, -3 in sprint shootout (vedi scoring.ts), e basta: nessun altro
+ * punto tolto o dato. `dns` (0 punti) solo per la forza maggiore decisa dal
+ * CDA, lista manuale.
  */
-export function mapQualifyingResults(rows: OfficialRow[]): DriverResult[] {
+export function mapQualifyingResults(rows: OfficialRow[], opts: QualifyingMapOptions = {}): DriverResult[] {
+  const fm = opts.forzaMaggiore ?? new Set<number>();
   return byDriver(rows).map((r) => {
     const num = r.driver_number as number;
-    const noTime = hasNoTime(r);
-    // Senza posizione e senza essere DNS = non classificato (tempi cancellati,
-    // esclusione dalla qualifica): è l'NC del regolamento, -5. Trovato a
-    // Miami e Spa 2026: Hadjar con position null in session_result.
-    const nonClassificato = r.position == null && !r.dns;
+    if (fm.has(num)) {
+      return { driver_number: num, position: r.position as number, dnf: false, dns: true };
+    }
+    // Il `dns` di OpenF1 (non ha girato) è un "senza tempo": -5 come gli altri.
+    const noTime = !!r.dns || hasNoTime({ ...r, dns: false });
+    // Senza posizione = non classificato (tempi cancellati, esclusione dalla
+    // qualifica): è l'NC del regolamento, -5. Trovato a Miami e Spa 2026:
+    // Hadjar con position null in session_result.
+    const nonClassificato = r.position == null;
     const out: DriverResult = {
       driver_number: num,
       position: r.position as number,
       dnf: !!(r.dnf || r.dsq || nonClassificato || noTime),
-      dns: !!r.dns,
+      dns: false,
     };
     if (noTime) out.no_time = true;
     return out;
   });
+}
+
+/**
+ * Gara e sprint: ritiri. Regola CDA: chi non parte (DNS) è un ritiro come
+ * un DNF (-10 gara, -5 sprint). OpenF1 marca `dns` anche il guasto in
+ * griglia (Cina, Miami sprint, Montréal 2026), quindi l'unica eccezione, la
+ * forza maggiore decisa dal CDA, è una lista manuale (manual-overrides.ts).
+ */
+export function raceRetireFlags(r: OfficialRow, forzaMaggiore: boolean): { dnf: boolean; dns: boolean } {
+  if (forzaMaggiore) return { dnf: false, dns: true };
+  return { dnf: !!(r.dnf || r.dsq || r.dns), dns: false };
 }
 
 /**
@@ -154,12 +175,13 @@ export function mapQualifyingResults(rows: OfficialRow[]): DriverResult[] {
  * aggiunti come "senza tempo". `iscritti` = piloti della stagione presenti
  * nel weekend (lista OpenF1 `drivers` del meeting ∩ rosa dell'app).
  */
-export function addAbsentAsNoTime(rows: DriverResult[], iscritti: Iterable<number>): DriverResult[] {
+export function addAbsentAsNoTime(rows: DriverResult[], iscritti: Iterable<number>, forzaMaggiore: Set<number> = new Set()): DriverResult[] {
   const presenti = new Set(rows.map((r) => r.driver_number));
   const out = [...rows];
   for (const num of iscritti) {
     if (presenti.has(num)) continue;
-    out.push({ driver_number: num, position: undefined as unknown as number, dnf: true, no_time: true });
+    if (forzaMaggiore.has(num)) out.push({ driver_number: num, position: undefined as unknown as number, dnf: false, dns: true });
+    else out.push({ driver_number: num, position: undefined as unknown as number, dnf: true, no_time: true });
   }
   return out;
 }
@@ -186,14 +208,12 @@ export function poleWon(race: DriverResult[], qualifying: DriverResult[]): boole
 
 /**
  * Numero di ritiri della gara per la previsione "numero DNF esatto".
- *
- * ATTENZIONE (incoerenza nota, lasciata com'era di proposito): qui il DNS
- * viene contato, mentre per i punti del singolo pilota il DNS vale 0 e non
- * -10 (vedi `scoring.ts`, caso Hadjar round 14). Correggerlo cambierebbe
- * punti già assegnati, quindi la modifica va portata prima al CDA.
+ * Chi non parte è un ritiro (regola CDA 13/09/2026), quindi il DNS conta,
+ * coerente con il -10 del singolo pilota. La forza maggiore (lista manuale)
+ * non conta: il pilota non era del weekend.
  */
-export function countDnf(rows: OfficialRow[]): number {
-  return byDriver(rows).filter((r) => r.dnf || r.dsq || r.dns).length;
+export function countDnf(rows: OfficialRow[], forzaMaggiore: Set<number> = new Set()): number {
+  return byDriver(rows).filter((r) => (r.dnf || r.dsq || r.dns) && !forzaMaggiore.has(r.driver_number as number)).length;
 }
 
 // ─── Coerenza interna prima del salvataggio ───

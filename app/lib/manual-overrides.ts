@@ -48,3 +48,19 @@ export function applyRaceOverrides(
   });
   return { race: out, modifiche };
 }
+
+// ─── Forza maggiore ───
+//
+// Regola CDA: un pilota che non parte (DNS) è un ritiro, -10 in gara e -5 in
+// sprint, esattamente come un DNF. L'unica eccezione è la forza maggiore
+// decisa dal CDA (pilota rimosso dal weekend: infortunio, sostituzione di
+// sedile), che vale 0. OpenF1 non distingue i due casi (marca `dns` anche il
+// guasto in griglia), quindi l'eccezione è una lista manuale per round.
+export const FORZA_MAGGIORE: Record<number, number[]> = {
+  // Zandvoort 2026: Hadjar infortunato, sostituito da Lawson (decisione CDA)
+  14: [6],
+};
+
+export function isForzaMaggiore(round: number, driverNumber: number): boolean {
+  return (FORZA_MAGGIORE[round] ?? []).includes(driverNumber);
+}

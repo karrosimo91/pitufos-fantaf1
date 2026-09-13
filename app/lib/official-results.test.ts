@@ -7,6 +7,7 @@ import {
   mapQualifyingResults,
   poleDriverNumber,
   poleWon,
+  raceRetireFlags,
   validateWeekendResults,
   MIN_DRIVERS_ATTESI,
 } from "./official-results";
@@ -71,11 +72,11 @@ describe("checkResultsReady", () => {
 });
 
 describe("mapQualifyingResults", () => {
-  it("NC/DSQ diventano dnf (-5 in qualifica), dns resta distinto", () => {
+  it("NC/DSQ diventano dnf (-5 in qualifica); dns di OpenF1 idem, salvo forza maggiore", () => {
     const out = mapQualifyingResults(righe(3, { 1: { dsq: true }, 2: { dns: true } }));
     expect(out.find((d) => d.driver_number === 1)?.dnf).toBe(true);
-    expect(out.find((d) => d.driver_number === 2)?.dnf).toBe(false);
-    expect(out.find((d) => d.driver_number === 2)?.dns).toBe(true);
+    expect(out.find((d) => d.driver_number === 2)?.dnf).toBe(true);
+    expect(out.find((d) => d.driver_number === 2)?.dns).toBe(false);
     expect(out.find((d) => d.driver_number === 3)?.dnf).toBe(false);
   });
 
@@ -154,8 +155,24 @@ describe("senza tempo in qualifica (regole 2 e 4)", () => {
     expect(hasNoTime({ driver_number: 18, position: 22 })).toBe(false);
   });
 
-  it("DNS non è senza tempo", () => {
+  it("hasNoTime ignora il flag dns (lo gestisce mapQualifyingResults)", () => {
     expect(hasNoTime({ driver_number: 6, position: null, dns: true, duration: [null, null, null] })).toBe(false);
+  });
+
+  it("dns di OpenF1 in qualifica = non ha girato = -5", () => {
+    const out = mapQualifyingResults([{ driver_number: 18, position: null, dns: true, duration: [null, null, null] }]);
+    expect(out[0].dnf).toBe(true);
+    expect(out[0].no_time).toBe(true);
+    expect(out[0].dns).toBe(false);
+  });
+
+  it("forza maggiore (lista CDA) in qualifica = 0, dns", () => {
+    const out = mapQualifyingResults([{ driver_number: 6, position: null, dns: true }], { forzaMaggiore: new Set([6]) });
+    expect(out[0].dnf).toBe(false);
+    expect(out[0].dns).toBe(true);
+    const assenti = addAbsentAsNoTime([], [6, 87], new Set([6]));
+    expect(assenti.find((r) => r.driver_number === 6)!.dns).toBe(true);
+    expect(assenti.find((r) => r.driver_number === 87)!.dnf).toBe(true);
   });
 
   it("senza tempo → dnf (-5) e flag no_time", () => {
@@ -214,9 +231,18 @@ describe("qualifica: non classificato", () => {
     expect(out[0].no_time).toBeUndefined();
   });
 
-  it("posizione nulla con DNS resta DNS (0 punti)", () => {
-    const out = mapQualifyingResults([{ driver_number: 6, position: null, dns: true, duration: [null, null, null] }]);
-    expect(out[0].dnf).toBe(false);
-    expect(out[0].dns).toBe(true);
+});
+
+describe("gara e sprint: non partito = ritiro (regola CDA 13/09/2026)", () => {
+  it("dns di OpenF1 (guasto in griglia) → dnf, -10", () => {
+    expect(raceRetireFlags({ driver_number: 41, position: null, dns: true }, false)).toEqual({ dnf: true, dns: false });
+  });
+  it("forza maggiore → dns, 0 punti", () => {
+    expect(raceRetireFlags({ driver_number: 6, position: null, dns: true }, true)).toEqual({ dnf: false, dns: true });
+  });
+  it("countDnf conta i DNS ma non la forza maggiore", () => {
+    const rows = [{ driver_number: 1, position: 1 }, { driver_number: 41, position: null, dns: true }, { driver_number: 6, position: null, dns: true }];
+    expect(countDnf(rows)).toBe(2);
+    expect(countDnf(rows, new Set([6]))).toBe(1);
   });
 });

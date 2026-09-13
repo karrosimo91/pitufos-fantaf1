@@ -8,7 +8,7 @@ import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { findRaceSessionForRound, findSessionInMeeting, type OpenF1Session } from "../../lib/openf1-sessions";
 import { addAbsentAsNoTime, mapQualifyingResults, poleDriverNumber, poleWon, type OfficialRow } from "../../lib/official-results";
 import { OPENF1, fetchOpenF1 } from "../../lib/openf1-server";
-import { applyRaceOverrides } from "../../lib/manual-overrides";
+import { applyRaceOverrides, FORZA_MAGGIORE } from "../../lib/manual-overrides";
 
 /**
  * GET /api/audit-regole?from=2&to=16[&raw=1]  (cookie admin, oppure &admin_key=...)
@@ -150,9 +150,10 @@ export async function GET(request: NextRequest) {
 
     let qualiNuova: DriverResult[] = C.qualifying;
     let ssNuova: DriverResult[] | undefined = C.sprint_shootout;
-    if (qualiRows.length >= 15) qualiNuova = addAbsentAsNoTime(mapQualifyingResults(qualiRows), iscritti);
+    const forzaMaggiore = new Set(FORZA_MAGGIORE[round] ?? []);
+    if (qualiRows.length >= 15) qualiNuova = addAbsentAsNoTime(mapQualifyingResults(qualiRows, { forzaMaggiore }), iscritti, forzaMaggiore);
     else note.push(`qualifica ufficiale non disponibile (${chiamate.session_result_qualifica ?? "sessione non trovata"}): regole 2 e 4 non valutate`);
-    if (ssSession && ssRows.length >= 15) ssNuova = addAbsentAsNoTime(mapQualifyingResults(ssRows), iscritti);
+    if (ssSession && ssRows.length >= 15) ssNuova = addAbsentAsNoTime(mapQualifyingResults(ssRows, { forzaMaggiore }), iscritti, forzaMaggiore);
 
     const D: RaceWeekendResults = { ...C, qualifying: qualiNuova, sprint_shootout: ssNuova };
 

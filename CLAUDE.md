@@ -66,8 +66,9 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - Posizione persa vs griglia di partenza: -1 per posizione
 - Giro veloce: +3
 - Driver of the Day: +5
-- DNF/Ritiro: -10
+- DNF/Ritiro/DNS (non partito, anche per guasto in griglia): -10 (decisione CDA 13/09/2026; in sprint -5)
 - Penalità in gara/post gara: -5
+- Forza maggiore (pilota rimosso dal weekend, es. Hadjar Zandvoort): 0, lista manuale in `lib/manual-overrides.ts` (`FORZA_MAGGIORE`)
 
 ### Previsioni (6 per weekend)
 Punti differenziati SI vs NO (evento raro premia di più):
@@ -209,17 +210,14 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    recepisce (Monaco 2026: Corte d'Appello 3/9, Gasly 7°, Hadjar 3°; OpenF1 è rimasto alla
    classifica intermedia con Gasly 3°). Applicati a ogni calcolo e nell'audit, con fonte.
    Prima di ricalcolare un round vecchio: controllare che OpenF1 non abbia "dimenticato"
-   una decisione successiva. DNS tecnici (Cina, Miami sprint, Montréal 2026) sono `dns: true`
-   in OpenF1 e valgono 0: regola da confermare in CDA (prima erano -10/-5 come DNF).
+   una decisione successiva. `FORZA_MAGGIORE` elenca i piloti rimossi dal weekend (0 punti);
+   ogni altro `dns` di OpenF1 (guasto in griglia: Cina, Miami sprint, Montréal 2026) è un ritiro,
+   -10/-5, e conta nel `total_dnf`.
 9. **Quotazioni solo sul round più recente**: rilanciare una gara passata ricalcola i punti,
    non i prezzi (il cleanup delle quotazioni future cancellerebbe quelle dei round dopo).
 8. **Audit prima di ricalcolare**: `/api/audit-regole?from=&to=` (sola lettura, cookie admin o `admin_key`)
    mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
    qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
-
-Incoerenza nota ancora aperta: `total_dnf` conta anche i DNS, mentre per i punti del singolo
-pilota il DNS vale 0 e non -10 (caso Hadjar round 14). Non è mai scattata su nessun round
-(nessun `dns: true` in archivio), ma la regola va decisa: proposta, escludere il DNS.
 
 ## Admin — autenticazione
 - Credenziali SOLO lato server: `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_API_KEY` (variabili Vercel). Mai

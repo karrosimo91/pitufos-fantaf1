@@ -9,7 +9,7 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { applyRaceOverrides, RACE_OVERRIDES } from "../../lib/manual-overrides";
+import { applyRaceOverrides, RACE_OVERRIDES, FORZA_MAGGIORE } from "../../lib/manual-overrides";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
@@ -18,6 +18,7 @@ import {
   checkResultsReady,
   countDnf,
   mapQualifyingResults,
+  raceRetireFlags,
   poleDriverNumber,
   poleWon,
   validateWeekendResults,
@@ -114,6 +115,9 @@ export async function POST(request: NextRequest) {
     // ═══════════════════════════════════
 
     const official = await loadOfficialResults(target, mode === "qualifying" || mode === "sprint_shootout");
+    // Piloti rimossi dal weekend per forza maggiore (decisione CDA): 0 punti
+    const forzaMaggiore = new Set(FORZA_MAGGIORE[round] ?? []);
+    if (forzaMaggiore.size) log.push(`Forza maggiore (0 punti): ${[...forzaMaggiore].map((n) => `#${n}`).join(", ")}`);
     if (!official.ok) {
       log.push(official.error);
       return NextResponse.json({ error: official.error, log }, { status: 409 });
@@ -138,17 +142,17 @@ export async function POST(request: NextRequest) {
 
     if (mode === "sprint_shootout") {
       const iscritti = await iscrittiMeeting(meetingKey);
-      sprint_shootout = addAbsentAsNoTime(mapQualifyingResults(official.rows), iscritti);
+      sprint_shootout = addAbsentAsNoTime(mapQualifyingResults(official.rows, { forzaMaggiore }), iscritti, forzaMaggiore);
       log.push(`Sprint Shootout (key: ${target.session_key}): ${official.rows.length} classificati, ${iscritti.size} iscritti`);
       logQualifica(log, sprint_shootout);
 
     } else if (mode === "sprint") {
-      sprint = await fetchSprintResults(target.session_key, official.rows);
+      sprint = await fetchSprintResults(target.session_key, official.rows, forzaMaggiore);
       log.push(`Sprint (key: ${target.session_key}): ${sprint.length} piloti, ${sprint.filter((d) => d.dnf).length} ritiri`);
 
     } else if (mode === "qualifying") {
       const iscritti = await iscrittiMeeting(meetingKey);
-      qualifying = addAbsentAsNoTime(mapQualifyingResults(official.rows), iscritti);
+      qualifying = addAbsentAsNoTime(mapQualifyingResults(official.rows, { forzaMaggiore }), iscritti, forzaMaggiore);
       log.push(`Qualifica (key: ${target.session_key}): ${official.rows.length} classificati, ${iscritti.size} iscritti`);
       logQualifica(log, qualifying);
 
@@ -179,14 +183,14 @@ export async function POST(request: NextRequest) {
       if (dotd && !driver_of_the_day) log.push(`Driver of the Day mantenuto dal calcolo precedente: #${dotd}`);
       if (!dotd) log.push("ATTENZIONE: nessun Driver of the Day indicato (+5 non assegnato)");
 
-      raceResults = await fetchRaceResults(raceKey, official.rows, dotd, gridMap);
+      raceResults = await fetchRaceResults(raceKey, official.rows, dotd, gridMap, forzaMaggiore);
       // Decisioni FIA post-gara che OpenF1 non ha recepito (vedi manual-overrides.ts)
       const ov = applyRaceOverrides(round, raceResults);
       raceResults = ov.race;
       if (ov.modifiche.length) log.push(`Override classifica (${RACE_OVERRIDES[round].fonte}): ${ov.modifiche.join(", ")}`);
-      log.push(`Gara: ${raceResults.length} piloti, ${raceResults.filter((d) => d.dnf).length} ritiri, ${raceResults.filter((d) => d.dns).length} DNS`);
+      log.push(`Gara: ${raceResults.length} piloti, ${raceResults.filter((d) => d.dnf).length} ritiri (DNS inclusi), ${raceResults.filter((d) => d.dns).length} forza maggiore`);
 
-      events = await fetchRaceEvents(raceKey, official.rows);
+      events = await fetchRaceEvents(raceKey, official.rows, forzaMaggiore);
       // "Pole vince": la pole è chi parte primo in griglia (regola 1)
       events.pole_won = poleWon(raceResults, qualifying);
       const pole = poleDriverNumber(raceResults, qualifying);
@@ -413,7 +417,7 @@ async function loadOfficialResults(
   return { ok: true, rows: res.data };
 }
 
-async function fetchRaceResults(sessionKey: number, officialRows: OfficialRow[], dotdNumber?: number, startingGridMap?: Map<number, number>): Promise<DriverResult[]> {
+async function fetchRaceResults(sessionKey: number, officialRows: OfficialRow[], dotdNumber: number | undefined, startingGridMap: Map<number, number> | undefined, forzaMaggiore: Set<number>): Promise<DriverResult[]> {
   // Risultati ufficiali da session_result (posizioni, DNF, DNS, DSQ),
   // già verificati da loadOfficialResults()
   const resultMap = new Map<number, OfficialRow>();
@@ -443,17 +447,15 @@ async function fetchRaceResults(sessionKey: number, officialRows: OfficialRow[],
     driver_number: r.driver_number as number,
     position: r.position as number,
     grid_position: gridMap.get(r.driver_number as number) || undefined,
-    // dns (non ha preso parte) è distinto da dnf/dsq (ha corso poi si è
-    // ritirato/squalificato): solo dnf/dsq portano il malus -10, vedi scoring.ts
-    dnf: !!(r.dnf || r.dsq),
-    dns: !!r.dns,
+    // Non partito = ritiro (-10), salvo forza maggiore CDA (0): vedi raceRetireFlags
+    ...raceRetireFlags(r, forzaMaggiore.has(r.driver_number as number)),
     fastest_lap: r.driver_number === fastestLapDriver,
     driver_of_the_day: r.driver_number === dotdNumber,
     penalty: penalizedDrivers.has(r.driver_number as number),
   }));
 }
 
-async function fetchSprintResults(sessionKey: number, officialRows: OfficialRow[]): Promise<DriverResult[]> {
+async function fetchSprintResults(sessionKey: number, officialRows: OfficialRow[], forzaMaggiore: Set<number>): Promise<DriverResult[]> {
   // Risultati ufficiali da session_result, già verificati da loadOfficialResults()
   const resultMap = new Map<number, OfficialRow>();
   for (const sr of officialRows) {
@@ -473,13 +475,12 @@ async function fetchSprintResults(sessionKey: number, officialRows: OfficialRow[
   return Array.from(resultMap.values()).map((r) => ({
     driver_number: r.driver_number as number,
     position: r.position as number,
-    dnf: !!(r.dnf || r.dsq),
-    dns: !!r.dns,
+    ...raceRetireFlags(r, forzaMaggiore.has(r.driver_number as number)),
     fastest_lap: r.driver_number === fastestLapDriver,
   }));
 }
 
-async function fetchRaceEvents(sessionKey: number, officialRows: OfficialRow[]): Promise<RaceWeekendResults["events"]> {
+async function fetchRaceEvents(sessionKey: number, officialRows: OfficialRow[], forzaMaggiore: Set<number>): Promise<RaceWeekendResults["events"]> {
   // SC, VSC, Red Flag da race_control
   const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${sessionKey}`);
 
@@ -495,7 +496,7 @@ async function fetchRaceEvents(sessionKey: number, officialRows: OfficialRow[]):
   }
 
   // Ritiri da session_result (fonte ufficiale, già verificata)
-  const total_dnf = countDnf(officialRows);
+  const total_dnf = countDnf(officialRows, forzaMaggiore);
 
   // Gomme wet da stints
   const stints = await fetchJson(`${OPENF1}/stints?session_key=${sessionKey}`);
