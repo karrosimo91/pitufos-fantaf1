@@ -10,6 +10,7 @@ import {
   type ChipPrevisioniConfig,
 } from "../../lib/scoring";
 import type { Previsioni } from "../../lib/types";
+import { penalitaCambi as calcolaPenalitaCambi } from "../../lib/penalita-cambi";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 
 function driverName(num: number): string {
@@ -217,7 +218,7 @@ export async function POST(request: NextRequest) {
     // Transfer penalties
     const userCambi = (cambiData || []).filter((c) => c.user_id === formazione.user_id);
     const numCambi = userCambi.length;
-    const penalitaCambi = formazione.chip_piloti === "wildcard" ? 0 : Math.max(0, numCambi - 2) * 10;
+    const penalitaCambi = calcolaPenalitaCambi(numCambi, formazione.chip_piloti);
 
     // Compare with saved scores
     const saved = savedScores?.find((s) => s.user_id === formazione.user_id);

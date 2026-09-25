@@ -16,6 +16,7 @@ export function PlayerDetailModal({
   gridPositions,
   previousResults,
   sessionType,
+  penalitaCambi = 0,
   onClose,
 }: {
   player: PlayerFormazione;
@@ -25,6 +26,8 @@ export function PlayerDetailModal({
   gridPositions: Map<number, number>;
   previousResults: RaceWeekendResults | null;
   sessionType: string;
+  /** Penalità cambi extra, già tolta da `entry.points` */
+  penalitaCambi?: number;
   onClose: () => void;
 }) {
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
@@ -99,6 +102,16 @@ export function PlayerDetailModal({
 
           {isMainRace && previsioniRow && (
             <PrevisioniGrid previsioniRow={previsioniRow} events={detail.events} />
+          )}
+
+          {penalitaCambi > 0 && (
+            <div>
+              <div className="hud-label mb-2">Penalità cambi extra</div>
+              <div className="inline-flex items-center gap-2 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+                <span className="text-xs font-bold text-amber-400 font-[family-name:var(--font-jetbrains)] tabular-nums">−{penalitaCambi}</span>
+                <span className="text-xs text-amber-400/70">punti sul weekend</span>
+              </div>
+            </div>
           )}
 
           {player.chip_piloti && (

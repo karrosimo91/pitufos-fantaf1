@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.10.1 — 25 Settembre 2026
+
+### Fix
+- **Penalità cambi extra anche nel live** — durante la gara il punteggio provvisorio e le classifiche live (weekend e generale) mostravano il lordo: il −10 per ogni cambio oltre il 2° arrivava solo col calcolo post-gara, quindi chi aveva penalità compariva più in alto e poi scendeva. Ora il live toglie la penalità dal via della gara, come la salverà il post-gara (sprint e qualifica restano al lordo, come in archivio). Nel punteggio personale compare la voce "CAMBI", nel dettaglio di un Team Principal la riga "Penalità cambi extra".
+- Nuova `/api/live-penalita?round=`: `mercato_cambi` è leggibile solo dal proprietario, quindi la penalità degli altri la calcola il server e restituisce solo i punti, non i cambi. Prima della deadline risponde vuoto.
+- Regola della penalità (2 gratis, poi −10, zero con Wildcard) in un unico punto, `lib/penalita-cambi.ts`, usato da post-gara, review round e live.
+
 ## v1.10.0 — 13 Settembre 2026
 
 ### Ricalcolo stagione (round 2-16), chiuso il 13/09 sera
