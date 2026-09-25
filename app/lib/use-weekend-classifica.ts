@@ -46,8 +46,6 @@ export interface WeekendClassificaEntry {
   isMe: boolean;
 }
 
-const EMPTY_PENALITA = new Map<string, number>();
-
 function rowToPrevisioni(row: PlayerPrevisioni): Previsioni {
   return {
     safetyCar: row.safety_car,
@@ -226,16 +224,13 @@ export function useWeekendClassifica(opts: {
     };
   }, [sessionKey, sessionType, debug]);
 
-  // Penalità cambi extra (dal 3° cambio −10), solo in gara come nel post-gara:
-  // lì la penalità si applica quando la gara è in archivio, qui dal via, così
-  // il punteggio live è già quello che verrà salvato. `mercato_cambi` è
-  // leggibile solo dal proprietario, quindi la penalità degli altri arriva da
-  // una route server che restituisce solo i punti. Si riprova se fallisce:
-  // senza penalità la classifica live resterebbe al lordo.
+  // Penalità cambi extra (dal 3° cambio −10), in ogni sessione del weekend
+  // come nel post-gara, così il punteggio live è già quello che verrà salvato.
+  // `mercato_cambi` è leggibile solo dal proprietario, quindi la penalità
+  // degli altri arriva da una route server che restituisce solo i punti. Si
+  // riprova se fallisce: senza penalità la classifica resterebbe al lordo.
   useEffect(() => {
     if (debug || !round) return;
-    const kind = classifySession(sessionType);
-    if (kind !== "race" && kind !== "unknown") return;
 
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -269,7 +264,7 @@ export function useWeekendClassifica(opts: {
       abort.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [round, sessionType, debug]);
+  }, [round, debug]);
 
   // Fetch formazioni + previsioni + profili della lega
   useEffect(() => {
@@ -372,7 +367,7 @@ export function useWeekendClassifica(opts: {
     const virtualResults = archivio
       ? (previousResults as RaceWeekendResults)
       : buildLiveWeekendResults(sessionType, snap, events, gridPositions, previousResults);
-    // Previsioni e penalità cambi: in gara, o in archivio se la gara è salvata.
+    // Previsioni: in gara, o in archivio se la gara è salvata.
     const isRace = countsPrevisioni(archivio ? "" : sessionType, previousResults);
 
     const entries = formazioni.map<WeekendClassificaEntry>((f) => {
@@ -394,7 +389,7 @@ export function useWeekendClassifica(opts: {
         userId: f.user_id,
         scuderiaName: f.scuderia_name,
         tpName: f.tp_name,
-        points: calc.total - (isRace ? penalita.get(f.user_id) ?? 0 : 0),
+        points: calc.total - (penalita.get(f.user_id) ?? 0),
         isMe: f.user_id === userId,
       };
     });
@@ -407,8 +402,8 @@ export function useWeekendClassifica(opts: {
     classifica,
     formazioni,
     previsioniByUser: previsioni,
-    /** user_id → penalità cambi (in gara o gara in archivio, già tolta da `classifica`) */
-    penalitaByUser: countsPrevisioni(!debug && !sessionKey ? "" : sessionType, previousResults) ? penalita : EMPTY_PENALITA,
+    /** user_id → penalità cambi (già tolta da `classifica`) */
+    penalitaByUser: penalita,
     previousResults,
     /** true quando la lettura di `weekend_results` è terminata (anche se vuota) */
     previousLoaded,
