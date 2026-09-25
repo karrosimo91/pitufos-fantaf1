@@ -9,6 +9,7 @@ import {
 } from "./scoring";
 import type { Previsioni } from "./types";
 import { ordinaClassificaWeekend, puntiClassificaReale } from "./classifica-reale";
+import { penalitaCambi as calcolaPenalitaCambi } from "./penalita-cambi";
 
 export interface PlayerScore {
   user_id: string;
@@ -145,11 +146,9 @@ export function computePlayerScoresFrom(
     const profile = profiles?.find((p: any) => p.id === formazione.user_id);
 
     // Penalità cambi: solo post-race, e mai con chip wildcard
-    let penalitaCambi = 0;
-    if (isPostRace && formazione.chip_piloti !== "wildcard") {
-      const numCambi = cambiPerUser.get(formazione.user_id) ?? 0;
-      penalitaCambi = Math.max(0, numCambi - 2) * 10;
-    }
+    const penalitaCambi = isPostRace
+      ? calcolaPenalitaCambi(cambiPerUser.get(formazione.user_id) ?? 0, formazione.chip_piloti)
+      : 0;
 
     playerScores.push({
       user_id: formazione.user_id,

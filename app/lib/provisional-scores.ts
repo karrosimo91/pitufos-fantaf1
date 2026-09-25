@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
+import type { RaceWeekendResults } from "./scoring";
+import { classifySession } from "./build-live-results";
 
 export interface ProvisionalScore {
   userId: string;
@@ -68,6 +70,28 @@ export function computeProvisionalTotals(
   return { sessions, totals };
 }
 
+/** La sessione live ha già i risultati ufficiali in `weekend_results`? */
+export function isSessionArchived(sessionName: string, official: RaceWeekendResults | null): boolean {
+  if (!official) return false;
+  switch (classifySession(sessionName)) {
+    case "qualifying": return (official.qualifying?.length ?? 0) > 0;
+    case "sprint_shootout": return (official.sprint_shootout?.length ?? 0) > 0;
+    case "sprint": return (official.sprint?.length ?? 0) > 0;
+    case "race": return (official.race?.length ?? 0) > 0;
+    default: return false;
+  }
+}
+
+/**
+ * I provvisori sono superati se il calcolo ufficiale del round (ultimo salvataggio
+ * di `weekend_results`) è uguale o successivo all'ultimo salvataggio dal live.
+ */
+export function isProvisionalStale(provisionalTimestamp: string | undefined, officialUpdatedAt: string | null): boolean {
+  if (!officialUpdatedAt) return false;
+  if (!provisionalTimestamp) return true;
+  return new Date(officialUpdatedAt).getTime() >= new Date(provisionalTimestamp).getTime();
+}
+
 /**
  * Salva i punteggi provvisori su Supabase, accumulando sessioni del weekend.
  */
@@ -81,6 +105,17 @@ export async function saveProvisionalScores(
   if (!supabase) return;
 
   try {
+    // Sessione già calcolata dal post-gara: non riscrivere i provvisori. Chi
+    // resta sul live a sessione conclusa li salverebbe dopo il calcolo
+    // ufficiale, e i provvisori (senza Driver of the Day, override ecc.)
+    // tornerebbero a coprire i punteggi ufficiali.
+    const { data: official } = await supabase
+      .from("weekend_results")
+      .select("data")
+      .eq("round", round)
+      .maybeSingle();
+    if (isSessionArchived(sessionName, (official?.data as RaceWeekendResults | undefined) ?? null)) return;
+
     // Leggi dati esistenti per questo round
     const { data: existing } = await supabase
       .from("provisional_weekend")
@@ -166,29 +201,25 @@ export function useProvisionalScores(isLive: boolean, currentRound: number) {
     const supabase = createClient();
     if (!supabase) { setLoading(false); return; }
 
-    // Controlla se esistono risultati ufficiali
-    const { data: wr } = await supabase
-      .from("weekend_scores")
-      .select("round")
-      .eq("round", currentRound)
-      .limit(1);
+    // I provvisori valgono finché non arriva un calcolo ufficiale PIÙ RECENTE.
+    // Prima bastava che il round avesse un punteggio qualsiasi per cancellarli:
+    // nei weekend in cui la qualifica viene calcolata subito, i provvisori
+    // della gara sparivano appena salvati e a gara finita non si vedeva niente
+    // fino al calcolo del post-gara.
+    const [{ data: wr }, { data }] = await Promise.all([
+      supabase.from("weekend_results").select("updated_at").eq("round", currentRound).maybeSingle(),
+      supabase.from("provisional_weekend").select("data").eq("round", currentRound).maybeSingle(),
+    ]);
+    const prov = (data?.data as ProvisionalData | undefined) ?? null;
 
-    if (wr && wr.length > 0) {
-      // Risultati ufficiali esistono, cancella provvisori
+    if (prov && isProvisionalStale(prov.timestamp, wr?.updated_at ?? null)) {
       await supabase.from("provisional_weekend").delete().eq("round", currentRound);
       setProvisional(null);
       setLoading(false);
       return;
     }
 
-    // Leggi provvisori
-    const { data } = await supabase
-      .from("provisional_weekend")
-      .select("data")
-      .eq("round", currentRound)
-      .maybeSingle();
-
-    setProvisional(data?.data || null);
+    setProvisional(prov);
     setLoading(false);
   }, [isLive, currentRound]);
 

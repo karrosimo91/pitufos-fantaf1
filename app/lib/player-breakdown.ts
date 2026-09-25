@@ -106,7 +106,9 @@ export function computePlayerWeekendDetail(
 ): PlayerWeekendDetail {
   const events = detectLiveEvents(snap);
   const liveResults = buildLiveWeekendResults(sessionType, snap, events, gridPositions, previousResults, qualifyingPole);
-  const isRace = classifySession(sessionType) === "race";
+  const isRace = countsPrevisioni(sessionType, previousResults);
+  // Nessuna sessione in corso: posizioni e ritiri vengono dall'archivio.
+  const archivio = classifySession(sessionType) === "unknown";
 
   const previsioniIn: Previsioni = isRace && previsioniRow
     ? {
@@ -134,15 +136,48 @@ export function computePlayerWeekendDetail(
       : undefined,
   );
 
-  const piloti: LivePilotaScore[] = calc.pilotiDettaglio.map((d) => ({
-    driver_number: d.driver_number,
-    position: snap.positions.get(d.driver_number)?.position ?? 22,
-    puntiBase: d.puntiBase,
-    moltiplicatore: d.moltiplicatore,
-    puntiFinali: d.puntiFinali,
-    isDnf: events.dnfDrivers.has(d.driver_number),
-    isFastestLap: snap.fastestLap?.driver_number === d.driver_number,
-  }));
+  const piloti: LivePilotaScore[] = calc.pilotiDettaglio.map((d) => {
+    if (archivio) {
+      const r = lastArchivedResult(d.driver_number, liveResults);
+      return {
+        driver_number: d.driver_number,
+        position: r?.position ?? 22,
+        puntiBase: d.puntiBase,
+        moltiplicatore: d.moltiplicatore,
+        puntiFinali: d.puntiFinali,
+        isDnf: !!r?.dnf,
+        isFastestLap: !!liveResults.race?.find((x) => x.driver_number === d.driver_number)?.fastest_lap,
+      };
+    }
+    return {
+      driver_number: d.driver_number,
+      position: snap.positions.get(d.driver_number)?.position ?? 22,
+      puntiBase: d.puntiBase,
+      moltiplicatore: d.moltiplicatore,
+      puntiFinali: d.puntiFinali,
+      isDnf: events.dnfDrivers.has(d.driver_number),
+      isFastestLap: snap.fastestLap?.driver_number === d.driver_number,
+    };
+  });
 
   return { piloti, totalPoints: calc.total, events: liveResults.events, liveResults };
+}
+
+/**
+ * Le previsioni contano solo in gara: durante la gara live, oppure a sessione
+ * finita (nessuna sessione in corso) se la gara è già in archivio. Stessa
+ * regola del post-gara (`isPostRace`).
+ */
+export function countsPrevisioni(sessionType: string, previousResults: RaceWeekendResults | null): boolean {
+  const kind = classifySession(sessionType);
+  if (kind === "race") return true;
+  return kind === "unknown" && (previousResults?.race?.length ?? 0) > 0;
+}
+
+/** Risultato del pilota nell'ultima sessione in archivio (gara → sprint → shootout → qualifica). */
+export function lastArchivedResult(driverNum: number, results: RaceWeekendResults): DriverResult | undefined {
+  for (const arr of [results.race, results.sprint, results.sprint_shootout, results.qualifying]) {
+    if (arr?.length) return arr.find((x) => x.driver_number === driverNum);
+  }
+  return undefined;
 }

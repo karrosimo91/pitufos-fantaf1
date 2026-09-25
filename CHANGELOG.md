@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.10.1 — 25 Settembre 2026
+
+### Fix
+- **Penalità cambi extra anche nel live** — durante la gara il punteggio provvisorio e le classifiche live (weekend e generale) mostravano il lordo: il −10 per ogni cambio oltre il 2° arrivava solo col calcolo post-gara, quindi chi aveva penalità compariva più in alto e poi scendeva. Ora il live toglie la penalità dal via della gara, come la salverà il post-gara (sprint e qualifica restano al lordo, come in archivio). Nel punteggio personale compare la voce "CAMBI", nel dettaglio di un Team Principal la riga "Penalità cambi extra".
+- Nuova `/api/live-penalita?round=`: `mercato_cambi` è leggibile solo dal proprietario, quindi la penalità degli altri la calcola il server e restituisce solo i punti, non i cambi. Prima della deadline risponde vuoto.
+- Regola della penalità (2 gratis, poi −10, zero con Wildcard) in un unico punto, `lib/penalita-cambi.ts`, usato da post-gara, review round e live.
+- **Dettaglio degli altri Team Principal che non scorreva fino in fondo** (Live e Classifica) — la barra di navigazione in basso è `fixed z-50` come il modale ma viene dopo nella pagina, quindi gli stava sopra: la parte finale del dettaglio (previsioni, chip) restava coperta e i tocchi lì andavano alla barra. Ora il modale è montato sopra tutto (`BottomSheet`, portal su body), usa l'altezza reale dello schermo (`dvh`, su iOS `vh` contava anche la barra degli indirizzi) e lascia spazio alla home indicator.
+- **Classifica Generale live contava due volte le sessioni già calcolate** — se la qualifica era già stata calcolata, i suoi punti erano nel totale di stagione e anche nel punteggio live del weekend. Ora dal totale si toglie quanto il round ha già dato.
+- **Provvisori della gara che sparivano** — bastava che il round avesse un punteggio qualsiasi (es. qualifica calcolata) per cancellarli, quindi a gara finita non si vedeva niente fino al post-gara. Ora valgono finché non arriva un calcolo ufficiale più recente, e il live non li riscrive per una sessione già calcolata.
+
+### Novità
+- **Punteggi del weekend anche a sessione finita** — dalla deadline al lunedì dopo la gara, quando non c'è una sessione live, la pagina Gara mostra la classifica weekend e generale di tutti con il dettaglio per giocatore (piloti, previsioni, penalità), calcolata dalle sessioni già in archivio. Fra la fine di una sessione e il suo calcolo restano i provvisori.
+
 ## v1.10.0 — 13 Settembre 2026
 
 ### Ricalcolo stagione (round 2-16), chiuso il 13/09 sera

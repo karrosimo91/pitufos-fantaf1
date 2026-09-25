@@ -61,6 +61,9 @@ export default function LiveTab({
   );
   const mockLive = useMemo(() => buildMockLiveData(driverNumbers, primoPilota, chipPiloti), [driverNumbers, primoPilota, chipPiloti]);
   const live = debug ? mockLive : realLive;
+  // Penalità cambi extra: la classifica live l'ha già tolta, qui la togliamo
+  // anche dal punteggio personale così i due numeri coincidono.
+  const myPenalita = userId ? data.penalitaByUser.get(userId) ?? 0 : 0;
 
   const classifica = debug ? MOCK_CLASSIFICA : data.classifica;
   const isRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint qualifying");
@@ -136,7 +139,7 @@ export default function LiveTab({
         meta={<ConnectedPill connected={live.connected} mode={(live as { mode?: "init" | "mqtt" | "polling" }).mode} />}
         className="mb-4"
       >
-        <div className="big-num">{live.totalPoints}</div>
+        <div className="big-num">{live.totalPoints - myPenalita}</div>
         <div className="flex items-baseline justify-between mt-3">
           <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[1.5px] uppercase">
             PILOTI <span className="text-white/60 ml-1">{live.totalPiloti}</span>
@@ -144,6 +147,12 @@ export default function LiveTab({
               <>
                 <span className="mx-2 text-white/15">·</span>
                 PREVISIONI <span className="text-white/60 ml-1">{live.totalPrevisioni}</span>
+              </>
+            )}
+            {myPenalita > 0 && (
+              <>
+                <span className="mx-2 text-white/15">·</span>
+                CAMBI <span className="text-amber-400/80 ml-1">−{myPenalita}</span>
               </>
             )}
           </div>
@@ -226,7 +235,7 @@ export default function LiveTab({
 
       {/* ─── CLASSIFICA GENERALE: stagione + delta live ─── */}
       {subTab === "generale" && (
-        <ClassificaGeneraleLive legaId={legaId} liveWeekendPoints={liveWeekendPoints} userId={userId} />
+        <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={liveWeekendPoints} userId={userId} />
       )}
 
       {/* Modale dettaglio giocatore (overlay, indipendente dal sotto-tab) */}
@@ -239,6 +248,7 @@ export default function LiveTab({
           gridPositions={data.gridPositions}
           previousResults={data.previousResults}
           sessionType={sessionType}
+          penalitaCambi={data.penalitaByUser.get(selectedFormazione.user_id) ?? 0}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

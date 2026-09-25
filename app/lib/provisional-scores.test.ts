@@ -54,3 +54,31 @@ describe("computeProvisionalTotals", () => {
     expect(afterRace.sessions.find((s) => s.sessionName === "Race")!.scores.u1).toBe(-10);
   });
 });
+
+import { isProvisionalStale, isSessionArchived } from "./provisional-scores";
+import type { RaceWeekendResults } from "./scoring";
+
+describe("isProvisionalStale", () => {
+  it("nessun calcolo ufficiale: provvisori validi", () => {
+    expect(isProvisionalStale("2026-09-27T14:00:00Z", null)).toBe(false);
+  });
+  it("gara salvata dal live dopo il calcolo della qualifica: validi", () => {
+    expect(isProvisionalStale("2026-09-27T15:00:00Z", "2026-09-26T16:00:00Z")).toBe(false);
+  });
+  it("calcolo ufficiale dopo l'ultimo salvataggio live: superati", () => {
+    expect(isProvisionalStale("2026-09-27T15:00:00Z", "2026-09-27T15:30:00Z")).toBe(true);
+  });
+});
+
+describe("isSessionArchived", () => {
+  const official = {
+    qualifying: [{ driver_number: 1, position: 1 }],
+    race: [],
+    events: { safety_car: false, virtual_safety_car: false, red_flag: false, wet_tyres: false, pole_won: false, total_dnf: 0 },
+  } as RaceWeekendResults;
+  it("qualifica calcolata, gara no", () => {
+    expect(isSessionArchived("Qualifying", official)).toBe(true);
+    expect(isSessionArchived("Race", official)).toBe(false);
+    expect(isSessionArchived("Race", null)).toBe(false);
+  });
+});
