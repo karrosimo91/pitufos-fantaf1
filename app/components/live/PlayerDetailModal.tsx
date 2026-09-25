@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { RaceWeekendResults } from "../../lib/scoring";
 import type { PlayerFormazione, PlayerPrevisioni, WeekendClassificaEntry } from "../../lib/use-weekend-classifica";
 import type { LiveSnapshot } from "../../lib/build-live-results";
-import { buildPilotaBreakdown, computePlayerWeekendDetail } from "../../lib/player-breakdown";
+import { buildPilotaBreakdown, computePlayerWeekendDetail, countsPrevisioni } from "../../lib/player-breakdown";
 import { chipLabel } from "../../lib/chip-labels";
 import { PilotaLiveRow } from "./PilotaLiveRow";
+import { BottomSheet } from "../ui/BottomSheet";
 
 export function PlayerDetailModal({
   player,
@@ -32,99 +33,82 @@ export function PlayerDetailModal({
 }) {
   const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
 
-  // Scroll-lock della pagina sotto: su mobile lo scroll del modale altrimenti
-  // "scappa" alla pagina e sembra che il dettaglio non scorra.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
   const detail = useMemo(
     () => computePlayerWeekendDetail(player, previsioniRow, snap, gridPositions, previousResults, sessionType),
     [player, previsioniRow, snap, gridPositions, previousResults, sessionType],
   );
 
-  const isMainRace = sessionType.toLowerCase().includes("race") && !sessionType.toLowerCase().includes("sprint");
+  // Gara in corso, oppure (vista a sessione finita) gara già in archivio.
+  const showPrevisioni = countsPrevisioni(sessionType, previousResults);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4"
-      onMouseDown={onClose}
-      onTouchEnd={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="bg-[#12121e] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col"
-        onMouseDown={(e) => e.stopPropagation()}
-        onTouchEnd={(e) => e.stopPropagation()}
-      >
-        <div className="shrink-0 bg-[#12121e] border-b border-white/[0.06] px-5 py-4 flex items-center justify-between">
-          <div>
-            <div className="font-bold text-base">{entry.tpName}</div>
-            <div className="text-[11px] text-white/30">{entry.scuderiaName}</div>
+    <BottomSheet
+      onClose={onClose}
+      header={
+        <>
+          <div className="min-w-0">
+            <div className="font-bold text-base truncate">{entry.tpName}</div>
+            <div className="text-[11px] text-white/30 truncate">{entry.scuderiaName}</div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{entry.points}</span>
             <button onClick={onClose} className="text-white/30 hover:text-white/60 p-1">
               <X size={20} />
             </button>
           </div>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <div className="hud-label mb-2">Piloti</div>
+          <div className="space-y-1.5">
+            {detail.piloti.map((p) => {
+              const sections = buildPilotaBreakdown(
+                p.driver_number,
+                previousResults,
+                detail.liveResults,
+                sessionType,
+              );
+              return (
+                <PilotaLiveRow
+                  key={p.driver_number}
+                  p={p}
+                  primoPilota={player.primo_pilota}
+                  chipPiloti={player.chip_piloti}
+                  breakdownSections={sections}
+                  expanded={expandedDriver === p.driver_number}
+                  onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
+                />
+              );
+            })}
+          </div>
         </div>
 
-        <div
-          className="overflow-y-auto flex-1 min-h-0 px-5 py-4 space-y-4 overscroll-contain"
-          style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
-        >
+        {showPrevisioni && previsioniRow && (
+          <PrevisioniGrid previsioniRow={previsioniRow} events={detail.events} />
+        )}
+
+        {penalitaCambi > 0 && (
           <div>
-            <div className="hud-label mb-2">Piloti</div>
-            <div className="space-y-1.5">
-              {detail.piloti.map((p) => {
-                const sections = buildPilotaBreakdown(
-                  p.driver_number,
-                  previousResults,
-                  detail.liveResults,
-                  sessionType,
-                );
-                return (
-                  <PilotaLiveRow
-                    key={p.driver_number}
-                    p={p}
-                    primoPilota={player.primo_pilota}
-                    chipPiloti={player.chip_piloti}
-                    breakdownSections={sections}
-                    expanded={expandedDriver === p.driver_number}
-                    onToggle={() => setExpandedDriver(expandedDriver === p.driver_number ? null : p.driver_number)}
-                  />
-                );
-              })}
+            <div className="hud-label mb-2">Penalità cambi extra</div>
+            <div className="inline-flex items-center gap-2 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+              <span className="text-xs font-bold text-amber-400 font-[family-name:var(--font-jetbrains)] tabular-nums">−{penalitaCambi}</span>
+              <span className="text-xs text-amber-400/70">punti sul weekend</span>
             </div>
           </div>
+        )}
 
-          {isMainRace && previsioniRow && (
-            <PrevisioniGrid previsioniRow={previsioniRow} events={detail.events} />
-          )}
-
-          {penalitaCambi > 0 && (
-            <div>
-              <div className="hud-label mb-2">Penalità cambi extra</div>
-              <div className="inline-flex items-center gap-2 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
-                <span className="text-xs font-bold text-amber-400 font-[family-name:var(--font-jetbrains)] tabular-nums">−{penalitaCambi}</span>
-                <span className="text-xs text-amber-400/70">punti sul weekend</span>
-              </div>
+        {player.chip_piloti && (
+          <div>
+            <div className="hud-label mb-2">Aggiornamento</div>
+            <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+              <span className="text-xs font-bold text-amber-400">{chipLabel(player.chip_piloti)}</span>
             </div>
-          )}
-
-          {player.chip_piloti && (
-            <div>
-              <div className="hud-label mb-2">Aggiornamento</div>
-              <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                <span className="text-xs font-bold text-amber-400">{chipLabel(player.chip_piloti)}</span>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 

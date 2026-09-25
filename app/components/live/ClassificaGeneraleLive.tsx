@@ -1,6 +1,7 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useClassificaLega } from "../../lib/store";
+import { createClient, isSupabaseConfigured } from "../../lib/supabase";
 import { SectionHead } from "../ui/SectionHead";
 
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -9,36 +10,43 @@ const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
  * Classifica Generale live: classifica di stagione della lega + il punteggio
  * del weekend in corso (ancora non salvato ufficialmente) sommato in tempo reale.
  *
- * `liveWeekendPoints` mappa userId → punti del weekend live (da useWeekendClassifica).
- * Il totale di stagione (`total_points`) NON include il round in corso finché non
- * viene calcolato il post-gara, quindi sommiamo direttamente i punti live.
+ * `liveWeekendPoints` mappa userId → punti del weekend live (da useWeekendClassifica),
+ * cumulativi: comprendono anche le sessioni del weekend già in archivio.
+ * Il totale di stagione invece include già il round in corso appena il post-gara
+ * ne ha calcolato una sessione (es. la qualifica): sommarli direttamente contava
+ * due volte quella sessione. Quindi dal totale si toglie quanto il round ha già
+ * dato (`weekend_scores`) e si aggiunge il cumulativo live.
  */
 export function ClassificaGeneraleLive({
   legaId,
+  round,
   liveWeekendPoints,
   userId,
 }: {
   legaId?: string;
+  round: number;
   liveWeekendPoints: Map<string, number>;
   userId?: string;
 }) {
   const { classifica: season, loading } = useClassificaLega(legaId ?? null, null);
+  const roundSalvato = useRoundScores(round);
 
   const rows = useMemo(() => {
     return season
       .map((e) => {
         const live = liveWeekendPoints.get(e.user_id) ?? 0;
+        const giaInTotale = roundSalvato.get(e.user_id) ?? 0;
         return {
           userId: e.user_id,
           scuderiaName: e.scuderia_name,
           tpName: e.team_principal_name,
           liveWeekend: live,
-          total: e.total_points + live,
+          total: e.total_points - giaInTotale + live,
           isMe: e.user_id === userId,
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [season, liveWeekendPoints, userId]);
+  }, [season, liveWeekendPoints, roundSalvato, userId]);
 
   if (loading && rows.length === 0) {
     return <div className="text-center py-8 text-white/20 text-sm">Caricamento classifica…</div>;
@@ -97,4 +105,28 @@ export function ClassificaGeneraleLive({
       </div>
     </>
   );
+}
+
+/** user_id → punti del round già sommati in classifica_totale (weekend_scores è read-all). */
+function useRoundScores(round: number): Map<string, number> {
+  const [scores, setScores] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!round || !isSupabaseConfigured) return;
+    const supabase = createClient();
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("weekend_scores")
+        .select("user_id, total_points")
+        .eq("round", round);
+      if (cancelled) return;
+      if (error) { console.warn("[classifica-generale-live] weekend_scores", error); return; }
+      const m = new Map<string, number>();
+      for (const r of data ?? []) m.set(r.user_id, Number(r.total_points ?? 0));
+      setScores(m);
+    })();
+    return () => { cancelled = true; };
+  }, [round]);
+  return scores;
 }

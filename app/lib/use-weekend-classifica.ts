@@ -14,6 +14,7 @@ import {
   detectLiveEvents,
   classifySession,
 } from "./build-live-results";
+import { countsPrevisioni } from "./player-breakdown";
 
 export interface PlayerFormazione {
   user_id: string;
@@ -74,6 +75,11 @@ function rowToChipPrev(row: PlayerPrevisioni | undefined): ChipPrevisioniConfig 
 /**
  * Hook per la classifica weekend live: fonde dati WebSocket + risultati sessioni precedenti
  * + formazioni/previsioni della lega e usa calcolaPuntiWeekend per ogni player.
+ *
+ * Senza sessione in corso (`sessionKey` null, `sessionType` vuoto) lavora in
+ * modalità archivio: niente WebSocket, punteggi calcolati solo dalle sessioni
+ * già salvate in `weekend_results`. Serve alla vista del weekend a sessione
+ * finita.
  */
 export function useWeekendClassifica(opts: {
   round: number;
@@ -87,6 +93,7 @@ export function useWeekendClassifica(opts: {
   const { round, sessionType, sessionKey, meetingKey, legaId, userId, debug = false } = opts;
 
   const [previousResults, setPreviousResults] = useState<RaceWeekendResults | null>(null);
+  const [previousLoaded, setPreviousLoaded] = useState(false);
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
   const [retiredDrivers, setRetiredDrivers] = useState<Set<number>>(new Set());
   const [formazioni, setFormazioni] = useState<PlayerFormazione[]>([]);
@@ -108,10 +115,14 @@ export function useWeekendClassifica(opts: {
           .abortSignal(abort.signal)
           .maybeSingle();
         if (error) {
-          if (error.name !== "AbortError") console.warn("[weekend-classifica] previousResults", error);
+          if (error.name !== "AbortError") {
+            console.warn("[weekend-classifica] previousResults", error);
+            setPreviousLoaded(true);
+          }
           return;
         }
         if (data?.data) setPreviousResults(data.data as RaceWeekendResults);
+        setPreviousLoaded(true);
       } catch (err) {
         if ((err as Error)?.name !== "AbortError") console.warn("[weekend-classifica] previousResults", err);
       }
@@ -223,7 +234,8 @@ export function useWeekendClassifica(opts: {
   // senza penalità la classifica live resterebbe al lordo.
   useEffect(() => {
     if (debug || !round) return;
-    if (classifySession(sessionType) !== "race") return;
+    const kind = classifySession(sessionType);
+    if (kind !== "race" && kind !== "unknown") return;
 
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -351,18 +363,17 @@ export function useWeekendClassifica(opts: {
   // Costruisce classifica live combinando WS + formazioni + previsioni + previousResults
   const classifica = useMemo<WeekendClassificaEntry[]>(() => {
     if (formazioni.length === 0) return [];
-    if (!debug && ws.positions.size === 0) return [];
+    const archivio = !debug && !sessionKey;
+    if (archivio && !previousResults) return [];
+    if (!archivio && !debug && ws.positions.size === 0) return [];
 
     const snap = { positions: ws.positions, raceControl: ws.raceControl, fastestLap: ws.fastestLap, stints: ws.stints, retiredDrivers };
     const events = detectLiveEvents(snap);
-    const virtualResults = buildLiveWeekendResults(
-      sessionType,
-      snap,
-      events,
-      gridPositions,
-      previousResults,
-    );
-    const isRace = classifySession(sessionType) === "race";
+    const virtualResults = archivio
+      ? (previousResults as RaceWeekendResults)
+      : buildLiveWeekendResults(sessionType, snap, events, gridPositions, previousResults);
+    // Previsioni e penalità cambi: in gara, o in archivio se la gara è salvata.
+    const isRace = countsPrevisioni(archivio ? "" : sessionType, previousResults);
 
     const entries = formazioni.map<WeekendClassificaEntry>((f) => {
       const playerPrev = previsioni.get(f.user_id);
@@ -390,15 +401,17 @@ export function useWeekendClassifica(opts: {
 
     entries.sort((a, b) => b.points - a.points);
     return entries;
-  }, [formazioni, previsioni, ws.positions, ws.raceControl, ws.fastestLap, ws.stints, sessionType, gridPositions, retiredDrivers, previousResults, penalita, userId, debug]);
+  }, [formazioni, previsioni, ws.positions, ws.raceControl, ws.fastestLap, ws.stints, sessionType, gridPositions, retiredDrivers, previousResults, penalita, userId, debug, sessionKey]);
 
   return {
     classifica,
     formazioni,
     previsioniByUser: previsioni,
-    /** user_id → penalità cambi (solo in gara, già tolta da `classifica`) */
-    penalitaByUser: classifySession(sessionType) === "race" ? penalita : EMPTY_PENALITA,
+    /** user_id → penalità cambi (in gara o gara in archivio, già tolta da `classifica`) */
+    penalitaByUser: countsPrevisioni(!debug && !sessionKey ? "" : sessionType, previousResults) ? penalita : EMPTY_PENALITA,
     previousResults,
+    /** true quando la lettura di `weekend_results` è terminata (anche se vuota) */
+    previousLoaded,
     gridPositions,
     retiredDrivers,
     ws,

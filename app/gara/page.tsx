@@ -7,11 +7,12 @@ import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
 import { useSquadra, usePrevisioni, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
-import { getNextRace, getCurrentRound } from "../lib/races";
+import { getNextRace, getCurrentRound, isAfterDeadline } from "../lib/races";
 import { useLiveSession } from "../lib/use-live-session";
 import { useProvisionalScores } from "../lib/provisional-scores";
 
 const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
+const WeekendArchivioTab = dynamic(() => import("../components/WeekendArchivioTab"), { ssr: false });
 
 const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
@@ -39,6 +40,10 @@ function GaraPage() {
   const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
   const { provisional } = useProvisionalScores(isLive, currentRound);
   const showProvisional = !isLive && !!provisional;
+  // Weekend in corso (dalla deadline al lunedì dopo la gara, finché
+  // getNextRace resta su questo round) ma nessuna sessione live: si vedono
+  // comunque i punteggi di tutti, dalle sessioni già calcolate.
+  const showArchivio = !isLive && !showProvisional && isAfterDeadline(race);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -164,6 +169,9 @@ function GaraPage() {
               })}
             </div>
           </div>
+        ) : showArchivio ? (
+          /* ═══ WEEKEND A SESSIONE FINITA (risultati ufficiali) ═══ */
+          <WeekendArchivioTab round={currentRound} userId={user?.id} legaId={legaId} />
         ) : (
           /* ═══ NESSUNA SESSIONE LIVE ═══ */
           <div className="hud-card p-10 text-center">

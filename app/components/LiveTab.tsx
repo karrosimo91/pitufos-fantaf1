@@ -235,7 +235,7 @@ export default function LiveTab({
 
       {/* ─── CLASSIFICA GENERALE: stagione + delta live ─── */}
       {subTab === "generale" && (
-        <ClassificaGeneraleLive legaId={legaId} liveWeekendPoints={liveWeekendPoints} userId={userId} />
+        <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={liveWeekendPoints} userId={userId} />
       )}
 
       {/* Modale dettaglio giocatore (overlay, indipendente dal sotto-tab) */}
