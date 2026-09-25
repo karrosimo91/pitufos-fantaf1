@@ -32,7 +32,9 @@ const EMPTY_PREVISIONI: Previsioni = {
 
 /**
  * Calcola il punteggio weekend di tutti i giocatori con formazione confermata.
- * Le previsioni e la penalità cambi vengono considerate solo se `isPostRace`.
+ * Le previsioni vengono considerate solo se `isPostRace`. La penalità cambi
+ * invece vale dal primo calcolo del weekend: non dipende dalla gara, e così
+ * dopo la qualifica classifica, Muretto e live mostrano lo stesso numero.
  * Restituisce la lista ordinata per punteggio weekend (desc).
  */
 /**
@@ -76,16 +78,14 @@ export async function computePlayerScores(
   }
 
   const cambiPerUser = new Map<string, number>();
-  if (isPostRace) {
-    for (const f of formazioni || []) {
-      if (f.chip_piloti === "wildcard") continue;
-      const { data: cambiData } = await supabase
-        .from("mercato_cambi")
-        .select("id")
-        .eq("user_id", f.user_id)
-        .eq("round", round);
-      cambiPerUser.set(f.user_id, (cambiData || []).length);
-    }
+  for (const f of formazioni || []) {
+    if (f.chip_piloti === "wildcard") continue;
+    const { data: cambiData } = await supabase
+      .from("mercato_cambi")
+      .select("id")
+      .eq("user_id", f.user_id)
+      .eq("round", round);
+    cambiPerUser.set(f.user_id, (cambiData || []).length);
   }
 
   return computePlayerScoresFrom(
@@ -145,10 +145,8 @@ export function computePlayerScoresFrom(
     );
     const profile = profiles?.find((p: any) => p.id === formazione.user_id);
 
-    // Penalità cambi: solo post-race, e mai con chip wildcard
-    const penalitaCambi = isPostRace
-      ? calcolaPenalitaCambi(cambiPerUser.get(formazione.user_id) ?? 0, formazione.chip_piloti)
-      : 0;
+    // Penalità cambi: da subito (anche solo con la qualifica), mai con wildcard
+    const penalitaCambi = calcolaPenalitaCambi(cambiPerUser.get(formazione.user_id) ?? 0, formazione.chip_piloti);
 
     playerScores.push({
       user_id: formazione.user_id,
