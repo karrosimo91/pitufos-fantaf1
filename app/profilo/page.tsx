@@ -64,7 +64,7 @@ export default function ProfiloPage() {
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="text-[10px] tracking-[2px] text-white/40 uppercase block mb-2">Email</label>
-            <div className="w-full hud-card px-4 py-3 text-sm text-white/30">
+            <div className="w-full hud-card px-4 py-3 text-sm text-white/50">
               {user.email}
             </div>
           </div>

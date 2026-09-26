@@ -6,8 +6,11 @@ import BottomNav from "../components/BottomNav";
 import { useLeghe, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
 import { RACES_2026 } from "../lib/races";
-import { ArrowLeft, Plus, LogIn, Copy, Check, Users, Trophy, Lock, Globe, Star } from "lucide-react";
+import { ArrowLeft, Plus, LogIn, Copy, Check, Users, Trophy, Lock, Globe, Star, Share2 } from "lucide-react";
 import type { Lega } from "../lib/types";
+import { shareText } from "../lib/share";
+import { inviteLink } from "../lib/pending-lega";
+import { useToast } from "../components/ui/Toast";
 
 export default function LeghePage() {
   const { user } = useAuth();
@@ -31,6 +34,15 @@ export default function LeghePage() {
 
   // Codice copiato
   const [copied, setCopied] = useState<string | null>(null);
+  const toast = useToast();
+
+  const invita = async (lega: Lega) => {
+    if (!lega.invite_code) return;
+    const text = `Unisciti a "${lega.name}" su Los Pitufos FantaF1: ${inviteLink(lega.invite_code)} (codice ${lega.invite_code})`;
+    const r = await shareText(`Invito · ${lega.name}`, text);
+    if (r === "copied") toast.show("Link d'invito copiato", { kind: "success", detail: "Incollalo nel gruppo" });
+    else if (r === "failed") toast.show("Condivisione non riuscita", { kind: "error" });
+  };
 
   const handleCrea = async () => {
     if (!nome.trim() || creating) return;
@@ -64,7 +76,7 @@ export default function LeghePage() {
     <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
-        <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
+        <Link href="/altro" className="flex items-center gap-1 text-white/50 text-xs mb-4 hover:text-white/50 transition-all">
           <ArrowLeft size={14} /> Altro
         </Link>
 
@@ -77,7 +89,7 @@ export default function LeghePage() {
 
         {!user ? (
           <div className="text-center py-20">
-            <div className="text-white/20 text-sm">Accedi per gestire le tue leghe</div>
+            <div className="text-white/45 text-sm">Accedi per gestire le tue leghe</div>
           </div>
         ) : !loaded ? (
           <div className="text-center py-20">
@@ -116,7 +128,7 @@ export default function LeghePage() {
                 <div className="text-white text-sm font-semibold">{createdLega.name}</div>
                 {createdLega.invite_code && (
                   <div className="mt-3">
-                    <div className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Codice invito</div>
+                    <div className="text-[10px] text-white/50 uppercase tracking-widest mb-1">Codice invito</div>
                     <div className="flex items-center gap-2">
                       <span className="font-[family-name:var(--font-jetbrains)] text-lg font-bold tracking-[4px] text-[#E8002D]">
                         {createdLega.invite_code}
@@ -125,7 +137,8 @@ export default function LeghePage() {
                         {copied === createdLega.invite_code ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
                       </button>
                     </div>
-                    <div className="text-[11px] text-white/30 mt-1">Condividi questo codice con i tuoi amici</div>
+                    <div className="text-[11px] text-white/50 mt-1">Condividi questo codice con i tuoi amici</div>
+                    <button onClick={() => invita(createdLega)} className="btn-secondary mt-3"><Share2 size={13} /> INVITA CON UN LINK</button>
                   </div>
                 )}
               </div>
@@ -135,20 +148,20 @@ export default function LeghePage() {
             {showCrea && (
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6 space-y-4">
                 <div>
-                  <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Nome Lega</label>
+                  <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Nome Lega</label>
                   <input
                     type="text"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     placeholder="Es: Liga dei Campioni"
                     maxLength={40}
-                    className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 placeholder:text-white/20"
+                    className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 placeholder:text-white/35"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Da Round</label>
+                    <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Da Round</label>
                     <select
                       value={roundStart}
                       onChange={(e) => setRoundStart(Number(e.target.value))}
@@ -162,7 +175,7 @@ export default function LeghePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">A Round</label>
+                    <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">A Round</label>
                     <select
                       value={roundEnd}
                       onChange={(e) => setRoundEnd(Number(e.target.value))}
@@ -179,7 +192,7 @@ export default function LeghePage() {
 
                 {/* Toggle pubblica/privata */}
                 <div>
-                  <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Tipo</label>
+                  <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Tipo</label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setIsPublic(true)}
@@ -202,7 +215,7 @@ export default function LeghePage() {
                       <Lock size={14} /> Privata
                     </button>
                   </div>
-                  <div className="text-[11px] text-white/20 mt-2">
+                  <div className="text-[11px] text-white/45 mt-2">
                     {isPublic ? "Chiunque puo' unirsi" : "Solo con codice invito"}
                   </div>
                 </div>
@@ -212,7 +225,7 @@ export default function LeghePage() {
                   disabled={!nome.trim() || creating}
                   className={`w-full py-3 rounded-xl font-bold text-sm tracking-wider transition-all ${
                     !nome.trim() || creating
-                      ? "bg-white/5 text-white/20 cursor-not-allowed"
+                      ? "bg-white/5 text-white/45 cursor-not-allowed"
                       : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white"
                   }`}
                 >
@@ -225,14 +238,14 @@ export default function LeghePage() {
             {showUnisciti && (
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6 space-y-4">
                 <div>
-                  <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Codice Invito</label>
+                  <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Codice Invito</label>
                   <input
                     type="text"
                     value={codice}
                     onChange={(e) => setCodice(e.target.value.toUpperCase())}
                     placeholder="Es: ABC123"
                     maxLength={6}
-                    className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 placeholder:text-white/20 font-[family-name:var(--font-jetbrains)] tracking-[4px] text-center text-lg"
+                    className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 placeholder:text-white/35 font-[family-name:var(--font-jetbrains)] tracking-[4px] text-center text-lg"
                   />
                 </div>
                 {joinMsg && (
@@ -245,7 +258,7 @@ export default function LeghePage() {
                   disabled={!codice.trim() || joining}
                   className={`w-full py-3 rounded-xl font-bold text-sm tracking-wider transition-all ${
                     !codice.trim() || joining
-                      ? "bg-white/5 text-white/20 cursor-not-allowed"
+                      ? "bg-white/5 text-white/45 cursor-not-allowed"
                       : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white"
                   }`}
                 >
@@ -267,23 +280,23 @@ export default function LeghePage() {
                         {lega.is_generale ? (
                           <Trophy size={14} className="text-[#E8002D]" />
                         ) : lega.is_public ? (
-                          <Globe size={14} className="text-white/30" />
+                          <Globe size={14} className="text-white/50" />
                         ) : (
-                          <Lock size={14} className="text-white/30" />
+                          <Lock size={14} className="text-white/50" />
                         )}
                         <span className="font-semibold text-sm">{lega.name}</span>
                         {lega.is_generale && (
-                          <span className="text-[9px] bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[11px] bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded-full font-bold">
                             AUTO
                           </span>
                         )}
                         {legaPreferita === lega.id && (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[11px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">
                             PREFERITA
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-[11px] text-white/30">
+                      <div className="flex items-center gap-4 text-[11px] text-white/50">
                         <span className="flex items-center gap-1">
                           <Users size={12} /> {lega.member_count ?? "—"}
                         </span>
@@ -302,12 +315,17 @@ export default function LeghePage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
+                      {lega.invite_code && (
+                        <button onClick={() => invita(lega)} className="text-white/50 hover:text-white transition-all" title="Invita con un link">
+                          <Share2 size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => setLegaPreferita(lega.id)}
                         className={`transition-all ${
                           legaPreferita === lega.id
                             ? "text-amber-400"
-                            : "text-white/20 hover:text-amber-400/60"
+                            : "text-white/45 hover:text-amber-400/60"
                         }`}
                         title={legaPreferita === lega.id ? "Lega preferita" : "Imposta come preferita"}
                       >
@@ -326,8 +344,8 @@ export default function LeghePage() {
 
               {leghe.length === 0 && (
                 <div className="text-center py-12">
-                  <div className="text-white/20 text-sm">Non sei in nessuna lega</div>
-                  <p className="text-white/10 text-xs mt-2">Crea una lega o unisciti con un codice</p>
+                  <div className="text-white/45 text-sm">Non sei in nessuna lega</div>
+                  <p className="text-white/40 text-xs mt-2">Crea una lega o unisciti con un codice</p>
                 </div>
               )}
             </div>

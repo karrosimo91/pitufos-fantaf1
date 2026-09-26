@@ -1,16 +1,26 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../lib/auth";
+import { savePendingLega } from "../lib/pending-lega";
 
-export default function LoginPage() {
+export default function LoginPageWrapper() {
+  return <Suspense><LoginPage /></Suspense>;
+}
+
+function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { signIn } = useAuth();
+  const params = useSearchParams();
+  const legaCode = params.get("lega");
+  useEffect(() => {
+    if (legaCode) savePendingLega(legaCode);
+  }, [legaCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +49,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)] mt-4">
             ACCEDI
           </h1>
-          <p className="text-white/30 text-sm mt-1">Entra nella tua scuderia per giocare</p>
+          <p className="text-white/50 text-sm mt-1">Entra nella tua scuderia per giocare</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -50,7 +60,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="la-tua@email.com"
             />
           </div>
@@ -63,7 +73,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="Min. 6 caratteri"
             />
           </div>
@@ -83,7 +93,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-white/30 text-sm mt-6">
+        <p className="text-center text-white/50 text-sm mt-6">
           Non hai un account?{" "}
           <Link href="/registrati" className="text-[#E8002D] hover:text-[#ff4466] font-semibold">
             Registrati

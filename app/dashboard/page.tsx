@@ -7,6 +7,8 @@ import BottomNav from "../components/BottomNav";
 import Muretto from "../components/muretto/Muretto";
 import { RecapMini } from "../components/recap/RecapMini";
 import { useDashboardStats, useLeghe, useLegaPreferita } from "../lib/store";
+import { takePendingLega } from "../lib/pending-lega";
+import { useToast } from "../components/ui/Toast";
 import { useWeekend } from "../lib/weekend-context";
 import { useAuth } from "../lib/auth";
 import { Trophy } from "lucide-react";
@@ -15,7 +17,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   const { round, recapRace, squadra } = useWeekend();
-  const { leghe, loaded: legheLoaded } = useLeghe();
+  const { leghe, loaded: legheLoaded, uniscitiConCodice } = useLeghe();
+  const toast = useToast();
   const { legaId: legaPreferita, loaded: legaPrefLoaded } = useLegaPreferita();
   const dashStats = useDashboardStats(legaPrefLoaded ? legaPreferita : undefined);
   const currentLega = leghe.find((l) => l.id === legaPreferita);
@@ -23,6 +26,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
   }, [authLoading, user, router]);
+
+  // Invito ricevuto prima del login: entra nella lega e avvisa.
+  useEffect(() => {
+    if (!user || !legheLoaded) return;
+    const code = takePendingLega();
+    if (!code) return;
+    uniscitiConCodice(code).then((r) => {
+      if (r.ok) toast.show("Sei nella lega dell'invito", { kind: "success", detail: `Codice ${code}` });
+      else if (r.error && !r.error.includes("gia")) toast.show("Invito non valido", { kind: "warning", detail: r.error });
+    });
+  }, [user, legheLoaded, uniscitiConCodice, toast]);
 
   if (authLoading || !user) {
     return (
@@ -60,7 +74,7 @@ export default function DashboardPage() {
             </h1>
           </div>
           <div className="text-right shrink-0">
-            <div className={`font-[family-name:var(--font-jetbrains)] text-[34px] font-extrabold tabular-nums leading-none ${dashStats.loaded ? "text-white" : "text-white/30"}`}>
+            <div className={`font-[family-name:var(--font-jetbrains)] text-[34px] font-extrabold tabular-nums leading-none ${dashStats.loaded ? "text-white" : "text-white/50"}`}>
               {dashStats.loaded ? dashStats.totalPoints : "…"}
             </div>
             <div className="hud-label mt-1">PUNTI</div>

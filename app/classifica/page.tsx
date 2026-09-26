@@ -195,8 +195,8 @@ function RivaliContent() {
                 </div>
                 <div className="text-[13px] text-white/80 mt-3">
                   {ahead ? <><span className="text-[#E8002D] font-bold">−{(mode === "reale" ? ahead.realPoints - me.realPoints : ahead.points - me.points)}</span> da {ahead.tpName}</> : <span className="text-[#2ee59d] font-bold">Sei in testa</span>}
-                  {behind && <><span className="text-white/25"> · </span><span className="text-[#2ee59d] font-bold">+{(mode === "reale" ? me.realPoints - behind.realPoints : me.points - behind.points)}</span> su {behind.tpName}</>}
-                  {leader && ahead && leader.userId !== ahead.userId && <><span className="text-white/25"> · </span>−{(mode === "reale" ? leader.realPoints - me.realPoints : leader.points - me.points)} dal leader</>}
+                  {behind && <><span className="text-white/50"> · </span><span className="text-[#2ee59d] font-bold">+{(mode === "reale" ? me.realPoints - behind.realPoints : me.points - behind.points)}</span> su {behind.tpName}</>}
+                  {leader && ahead && leader.userId !== ahead.userId && <><span className="text-white/50"> · </span>−{(mode === "reale" ? leader.realPoints - me.realPoints : leader.points - me.points)} dal leader</>}
                 </div>
                 {provMine && mode === "somma" && (
                   <div className="text-[12px] text-[#ffb000] mt-1">Weekend in corso: {provMine.points > 0 ? "+" : ""}{provMine.points} provvisori, non ancora in classifica</div>
@@ -235,7 +235,7 @@ function RivaliContent() {
                         <div className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[16px] tabular-nums leading-none">{value}</div>
                         {gapMe !== null && <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] mt-0.5 tabular-nums ${gapMe > 0 ? "text-[#E8002D]" : "text-[#2ee59d]"}`}>{gapMe > 0 ? `+${gapMe}` : gapMe} vs te</div>}
                       </div>
-                      <ChevronRight size={14} className="text-white/30 shrink-0" />
+                      <ChevronRight size={14} className="text-white/50 shrink-0" />
                     </button>
                   );
                 })}

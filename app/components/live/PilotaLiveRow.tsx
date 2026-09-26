@@ -82,7 +82,7 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
             </span>
           )}
           <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
-            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/45"
           }`}>
             {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
           </span>
@@ -104,14 +104,14 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
                   <div key={i} className="flex items-center justify-between text-[12px]">
                     <span className="text-white/40">{item.label}</span>
                     <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
+                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/45"
                     }`}>
                       {item.value > 0 ? "+" : ""}{item.value}
                     </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/30">Subtotale</span>
+                  <span className="text-white/50">Subtotale</span>
                   <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/40">
                     {section.breakdown.finalTotal > 0 ? "+" : ""}{section.breakdown.finalTotal}
                   </span>
@@ -147,7 +147,7 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
                   <div className="flex items-center justify-between text-[13px] mt-1">
                     <span className="text-white/70 font-bold">Totale Weekend</span>
                     <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                      p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+                      p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/45"
                     }`}>
                       {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
                     </span>

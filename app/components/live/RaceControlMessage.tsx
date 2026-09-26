@@ -22,7 +22,7 @@ export function RaceControlMessage({ rc }: { rc: LiveRaceControl }) {
 
   return (
     <div className={`flex items-start gap-2 p-2 border-l-2 mb-1 text-[11px] ${borderColor}`}>
-      <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 min-w-[40px]">{time}</span>
+      <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/45 min-w-[40px]">{time}</span>
       <span className="text-white/60">{rc.message}</span>
     </div>
   );

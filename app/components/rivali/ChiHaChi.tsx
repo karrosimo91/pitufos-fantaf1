@@ -42,7 +42,7 @@ export function ChiHaChi({ players, roundLabel }: { players: MatrixPlayer[]; rou
                 const cap = p.captain === d.number;
                 return (
                   <td key={p.userId} className="text-center py-1.5">
-                    {has ? (cap ? <Crown size={12} className="inline text-white" /> : <span className={`inline-block w-2 h-2 rounded-full ${p.isMe ? "bg-white" : "bg-white/50"}`} />) : <span className="text-white/15">·</span>}
+                    {has ? (cap ? <Crown size={12} className="inline text-white" /> : <span className={`inline-block w-2 h-2 rounded-full ${p.isMe ? "bg-white" : "bg-white/50"}`} />) : <span className="text-white/45">·</span>}
                   </td>
                 );
               })}

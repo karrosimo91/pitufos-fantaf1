@@ -24,7 +24,7 @@ export function ConfermaBar({
             {modified && (
               <span className="flex items-center gap-1.5 text-[#ffb000] font-bold"><AlertTriangle size={13} /> Modifiche non confermate</span>
             )}
-            {modified && penaltyLine && <span className="text-white/25">·</span>}
+            {modified && penaltyLine && <span className="text-white/50">·</span>}
             {penaltyLine && <span className="text-[#ffb000]">{penaltyLine}</span>}
           </div>
         )}

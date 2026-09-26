@@ -42,9 +42,9 @@ export function SessionBar({
       <div className="flex items-center gap-2 min-w-0">
         <span className="font-bold text-white">{SESSION_LABEL[kind]}</span>
         {(kind === "race" || kind === "sprint") && currentLap != null && (
-          <><span className="text-white/25">·</span><span className="text-white/80">GIRO {currentLap}</span></>
+          <><span className="text-white/50">·</span><span className="text-white/80">GIRO {currentLap}</span></>
         )}
-        <span className="text-white/25">·</span>
+        <span className="text-white/50">·</span>
         <span className={`font-bold ${FLAG_CLASS[flag]} truncate`}>{FLAG_LABEL[flag]}</span>
       </div>
       <div className={`shrink-0 flex items-center gap-1.5 ${stale ? "text-[#ffb000]" : "text-white/55"}`}>

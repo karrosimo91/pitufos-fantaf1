@@ -48,11 +48,11 @@ export function PlayerDetailModal({
         <>
           <div className="min-w-0">
             <div className="font-bold text-base truncate">{entry.tpName}</div>
-            <div className="text-[11px] text-white/30 truncate">{entry.scuderiaName}</div>
+            <div className="text-[11px] text-white/50 truncate">{entry.scuderiaName}</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D]">{entry.points}</span>
-            <button onClick={onClose} className="text-white/30 hover:text-white/60 p-1">
+            <button onClick={onClose} className="text-white/50 hover:text-white/60 p-1">
               <X size={20} />
             </button>
           </div>
@@ -141,7 +141,7 @@ function PrevisioniGrid({
               : "border-white/[0.06] bg-white/[0.02]"
             }`}>
               <div className="text-[10px] text-white/40">{p.label}</div>
-              <div className={`font-bold ${isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/30"}`}>
+              <div className={`font-bold ${isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/50"}`}>
                 {p.value === true ? "SI" : p.value === false ? "NO" : "—"}
                 {isCorrect ? " ✓" : isWrong ? " ✗" : ""}
               </div>
@@ -156,7 +156,7 @@ function PrevisioniGrid({
           <div className="text-[10px] text-white/40">N. DNF</div>
           <div className={`font-bold ${
             previsioniRow.numero_dnf !== null && previsioniRow.numero_dnf === events.total_dnf
-              ? "text-green-400" : "text-white/30"
+              ? "text-green-400" : "text-white/50"
           }`}>
             {previsioniRow.numero_dnf ?? "—"}
             {previsioniRow.numero_dnf !== null && previsioniRow.numero_dnf === events.total_dnf ? " ✓" : ""}

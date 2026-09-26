@@ -25,7 +25,7 @@ function VoteButton({
 }) {
   const base = active
     ? `${color} ring-1 ring-current`
-    : "bg-white/[0.04] text-white/30 hover:bg-white/[0.08]";
+    : "bg-white/[0.04] text-white/50 hover:bg-white/[0.08]";
   return (
     <button onClick={onClick} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${base}`}>
       {icon}
@@ -51,7 +51,7 @@ function QuestionCard({
     <div className="py-3 border-b border-white/[0.04] last:border-0">
       <div className="text-[13px] font-medium mb-1">{question.label}</div>
       {question.detail && (
-        <div className="text-[11px] text-white/30 mb-2">{question.detail}</div>
+        <div className="text-[11px] text-white/50 mb-2">{question.detail}</div>
       )}
 
       <div className="flex gap-2 mb-2">
@@ -105,15 +105,15 @@ function SectionAccordion({
           {complete && <Check size={14} className="text-emerald-400" />}
           <span className="text-sm font-bold">{title}</span>
           {badge && (
-            <span className="text-[10px] font-[family-name:var(--font-jetbrains)] text-white/30 bg-white/[0.05] px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-[family-name:var(--font-jetbrains)] text-white/50 bg-white/[0.05] px-1.5 py-0.5 rounded">
               {badge}
             </span>
           )}
         </div>
         {open ? (
-          <ChevronDown size={16} className="text-white/30" />
+          <ChevronDown size={16} className="text-white/50" />
         ) : (
-          <ChevronRight size={16} className="text-white/30" />
+          <ChevronRight size={16} className="text-white/50" />
         )}
       </button>
       {open && (
@@ -161,12 +161,12 @@ export default function CdaPage() {
       <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
         <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
-          <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
+          <Link href="/altro" className="flex items-center gap-1 text-white/50 text-xs mb-4 hover:text-white/50 transition-all">
             <ArrowLeft size={14} /> Altro
           </Link>
           <div className="text-center py-16">
-            <div className="text-white/20 text-sm">Sezione riservata al CDA</div>
-            <div className="text-white/10 text-xs mt-1">Devi essere membro della lega &quot;Los Pitufos F1 Championship&quot;</div>
+            <div className="text-white/45 text-sm">Sezione riservata al CDA</div>
+            <div className="text-white/40 text-xs mt-1">Devi essere membro della lega &quot;Los Pitufos F1 Championship&quot;</div>
           </div>
         </main>
         <BottomNav />
@@ -190,7 +190,7 @@ export default function CdaPage() {
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
-        <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
+        <Link href="/altro" className="flex items-center gap-1 text-white/50 text-xs mb-4 hover:text-white/50 transition-all">
           <ArrowLeft size={14} /> Altro
         </Link>
 
@@ -201,7 +201,7 @@ export default function CdaPage() {
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)]">
             {CDA_QUESTIONNAIRE_V2_LABEL.toUpperCase()}
           </h1>
-          <p className="text-white/30 text-xs mt-1">Vota le modifiche proposte ai punteggi</p>
+          <p className="text-white/50 text-xs mt-1">Vota le modifiche proposte ai punteggi</p>
         </div>
 
         {/* Progress */}
@@ -219,7 +219,7 @@ export default function CdaPage() {
             />
           </div>
           {totalMembers > 0 && (
-            <div className="text-[10px] text-white/20 mt-2">
+            <div className="text-[10px] text-white/45 mt-2">
               {totalMembers} {totalMembers === 1 ? "membro ha" : "membri hanno"} votato
             </div>
           )}
@@ -266,7 +266,7 @@ export default function CdaPage() {
                 ? "bg-[#E8002D] text-white hover:bg-[#c5002a] shadow-lg shadow-[#E8002D]/20"
                 : submitted && !hasChanges
                   ? "bg-emerald-500/20 text-emerald-400 cursor-default"
-                  : "bg-white/[0.05] text-white/20 cursor-not-allowed"
+                  : "bg-white/[0.05] text-white/45 cursor-not-allowed"
             }`}
           >
             {submitting ? (

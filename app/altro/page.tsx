@@ -5,15 +5,17 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
-import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock, BarChart3 } from "lucide-react";
+import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock, BarChart3, CalendarDays, Receipt } from "lucide-react";
 import { APP_VERSION } from "../lib/types";
 import { useCdaMembership } from "../lib/use-cda";
 import { CHANGELOG } from "../lib/changelog-data";
 
 const MENU_ITEMS = [
+  { href: "/risultati", label: "Recap dei weekend", desc: "Scontrino, rimpianti, classifica di ogni GP", icon: Receipt },
+  { href: "/calendario", label: "Calendario", desc: "Date, orari e chiusura formazione di ogni round", icon: CalendarDays },
   { href: "/statistiche", label: "Statistiche", desc: "Grafici e andamento del campionato", icon: BarChart3 },
-  { href: "/campionati", label: "Leghe", desc: "Crea o unisciti a una lega", icon: Users },
-  { href: "/info", label: "Info / Regolamento", desc: "Punteggi, previsioni, aggiornamenti", icon: Info },
+  { href: "/campionati", label: "Leghe", desc: "Crea, unisciti, invita con un link", icon: Users },
+  { href: "/info", label: "Regolamento", desc: "Punteggi, previsioni, aggiornamenti dalla fabbrica", icon: Info },
   { href: "/profilo", label: "Profilo", desc: "Modifica nome e scuderia", icon: User },
   { href: "/changelog", label: "Changelog", desc: "Cosa c'è di nuovo nell'app", icon: FileClock },
 ];
@@ -50,7 +52,7 @@ export default function AltroPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
         <div className="mb-6">
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[11px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
             MENU
           </div>
           <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">Altro</h1>
@@ -67,9 +69,9 @@ export default function AltroPage() {
               </div>
               <div className="flex-1">
                 <div className="text-sm font-bold">CDA Los Pitufos</div>
-                <div className="text-[11px] text-white/30">Sezione riservata ai membri di Los Pitufos</div>
+                <div className="text-[11px] text-white/50">Sezione riservata ai membri di Los Pitufos</div>
               </div>
-              <ChevronRight size={16} className="text-white/20" />
+              <ChevronRight size={16} className="text-white/45" />
             </Link>
           )}
           {MENU_ITEMS.map((item) => {
@@ -85,9 +87,9 @@ export default function AltroPage() {
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold">{item.label}</div>
-                  <div className="text-[11px] text-white/30">{item.desc}</div>
+                  <div className="text-[11px] text-white/50">{item.desc}</div>
                 </div>
-                <ChevronRight size={16} className="text-white/20" />
+                <ChevronRight size={16} className="text-white/45" />
               </Link>
             );
           })}
@@ -102,7 +104,7 @@ export default function AltroPage() {
           </div>
           <div className="text-left flex-1">
             <div className="text-sm font-bold text-red-400/80">Esci</div>
-            <div className="text-[11px] text-white/20">{profile?.email || user.email}</div>
+            <div className="text-[11px] text-white/45">{profile?.email || user.email}</div>
           </div>
         </button>
 
@@ -140,12 +142,12 @@ export default function AltroPage() {
           <div className="hud-label mb-3">INFO APP</div>
           <div className="grid grid-cols-2 gap-3 text-[12px]">
             <div>
-              <div className="text-white/30 text-[10px] tracking-[1px] uppercase mb-0.5">Sviluppata da</div>
+              <div className="text-white/50 text-[10px] tracking-[1px] uppercase mb-0.5">Sviluppata da</div>
               <div className="font-bold text-white/85">Simone Carroccia</div>
               <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35">@karrosimo91</div>
             </div>
             <div>
-              <div className="text-white/30 text-[10px] tracking-[1px] uppercase mb-0.5">Versione</div>
+              <div className="text-white/50 text-[10px] tracking-[1px] uppercase mb-0.5">Versione</div>
               <div className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[#E8002D] text-[18px] tabular-nums leading-none">{APP_VERSION}</div>
             </div>
           </div>

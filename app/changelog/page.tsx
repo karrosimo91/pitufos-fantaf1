@@ -59,7 +59,7 @@ export default function ChangelogPage() {
         </Link>
 
         <div className="mb-6">
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[11px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
             VERSIONE CORRENTE · {APP_VERSION}
           </div>
           <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">Changelog</h1>
@@ -77,7 +77,7 @@ export default function ChangelogPage() {
                       {release.version}
                     </span>
                     {isLatest && (
-                      <span className="font-[family-name:var(--font-jetbrains)] text-[8px] font-bold tracking-[1.5px] px-1.5 py-0.5 rounded bg-[#E8002D]/15 border border-[#E8002D]/35 text-[#E8002D]">
+                      <span className="font-[family-name:var(--font-jetbrains)] text-[10px] font-bold tracking-[1.5px] px-1.5 py-0.5 rounded bg-[#E8002D]/15 border border-[#E8002D]/35 text-[#E8002D]">
                         ATTUALE
                       </span>
                     )}
@@ -97,7 +97,7 @@ export default function ChangelogPage() {
           })}
         </div>
 
-        <div className="text-center mt-8 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 tracking-[1.5px] uppercase">
+        <div className="text-center mt-8 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/45 tracking-[1.5px] uppercase">
           Fine · Los Pitufos FantaF1 · {APP_VERSION}
         </div>
       </main>

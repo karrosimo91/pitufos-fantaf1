@@ -97,8 +97,8 @@ export default function DriverTile({
               <span className="shrink-0 tabular-nums" title="Punti base negli ultimi weekend">
                 {form.map((f, i) => (
                   <span key={f.round}>
-                    {i > 0 && <span className="text-white/25"> · </span>}
-                    <span className={!f.raced ? "text-white/30" : f.points > 0 ? "text-[#2ee59d]" : f.points < 0 ? "text-[#E8002D]" : "text-white/45"}>
+                    {i > 0 && <span className="text-white/50"> · </span>}
+                    <span className={!f.raced ? "text-white/50" : f.points > 0 ? "text-[#2ee59d]" : f.points < 0 ? "text-[#E8002D]" : "text-white/45"}>
                       {f.raced ? (f.points > 0 ? `+${f.points}` : f.points) : "—"}
                     </span>
                   </span>
@@ -109,9 +109,9 @@ export default function DriverTile({
           {(metaLine || roleHint || proposedHint) && (
             <div className="mt-1 text-[11px] leading-snug">
               {roleHint && <span className="text-white/70">{roleHint}</span>}
-              {roleHint && (metaLine || proposedHint) && <span className="text-white/25"> · </span>}
+              {roleHint && (metaLine || proposedHint) && <span className="text-white/50"> · </span>}
               {proposedHint && <span className="text-[#ffb000]">{proposedHint}</span>}
-              {proposedHint && metaLine && <span className="text-white/25"> · </span>}
+              {proposedHint && metaLine && <span className="text-white/50"> · </span>}
               {metaLine && <span className="text-white/45">{metaLine}</span>}
             </div>
           )}

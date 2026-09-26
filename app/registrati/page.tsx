@@ -1,10 +1,15 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../lib/auth";
+import { savePendingLega } from "../lib/pending-lega";
 
-export default function RegistratiPage() {
+export default function RegistratiPageWrapper() {
+  return <Suspense><RegistratiPage /></Suspense>;
+}
+
+function RegistratiPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [teamPrincipal, setTeamPrincipal] = useState("");
@@ -12,8 +17,14 @@ export default function RegistratiPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { signUp } = useAuth();
+  const params = useSearchParams();
+  const legaCode = params.get("lega");
+
+  // Link d'invito: il codice lega si tiene da parte e si applica al primo accesso.
+  useEffect(() => {
+    if (legaCode) savePendingLega(legaCode);
+  }, [legaCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +52,8 @@ export default function RegistratiPage() {
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)] mb-2">
             REGISTRAZIONE COMPLETATA
           </h1>
-          <p className="text-white/40 text-sm mb-6">
-            Controlla la tua email per confermare l&apos;account, poi accedi.
+          <p className="text-white/60 text-sm mb-6">
+            Controlla la tua email per confermare l&apos;account, poi accedi.{legaCode ? " Al primo accesso entrerai nella lega dell'invito." : ""}
           </p>
           <Link
             href="/login"
@@ -68,7 +79,10 @@ export default function RegistratiPage() {
           <h1 className="text-2xl font-black font-[family-name:var(--font-oswald)] mt-4">
             REGISTRATI
           </h1>
-          <p className="text-white/30 text-sm mt-1">Crea la tua scuderia</p>
+          <p className="text-white/50 text-sm mt-1">Crea la tua scuderia</p>
+          {legaCode && (
+            <div className="mt-3 pill pill-green">INVITO · LEGA {legaCode.toUpperCase()}</div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -81,7 +95,7 @@ export default function RegistratiPage() {
               value={teamPrincipal}
               onChange={(e) => setTeamPrincipal(e.target.value)}
               required
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="es. Simone"
             />
           </div>
@@ -95,7 +109,7 @@ export default function RegistratiPage() {
               value={scuderiaName}
               onChange={(e) => setScuderiaName(e.target.value)}
               required
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="es. Pitufos Racing"
             />
           </div>
@@ -107,7 +121,7 @@ export default function RegistratiPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="la-tua@email.com"
             />
           </div>
@@ -120,7 +134,7 @@ export default function RegistratiPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#E8002D]/30 transition-all"
+              className="w-full hud-card px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-[#E8002D]/30 transition-all"
               placeholder="Min. 6 caratteri"
             />
           </div>
@@ -140,7 +154,7 @@ export default function RegistratiPage() {
           </button>
         </form>
 
-        <p className="text-center text-white/30 text-sm mt-6">
+        <p className="text-center text-white/50 text-sm mt-6">
           Hai gia un account?{" "}
           <Link href="/login" className="text-[#E8002D] hover:text-[#ff4466] font-semibold">
             Accedi

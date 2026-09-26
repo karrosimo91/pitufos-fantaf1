@@ -123,8 +123,8 @@ export function WeekendRecap({
             </div>
             <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 tracking-[1px] uppercase mt-3">
               PILOTI <span className="text-white/85 ml-1">{recap.pilotiPoints}</span>
-              <span className="mx-2 text-white/25">·</span>PREVISIONI <span className="text-white/85 ml-1">{recap.previsioniPoints}</span>
-              {recap.penalitaCambi > 0 && (<><span className="mx-2 text-white/25">·</span>CAMBI <span className="text-[#ffb000] ml-1">−{recap.penalitaCambi}</span></>)}
+              <span className="mx-2 text-white/50">·</span>PREVISIONI <span className="text-white/85 ml-1">{recap.previsioniPoints}</span>
+              {recap.penalitaCambi > 0 && (<><span className="mx-2 text-white/50">·</span>CAMBI <span className="text-[#ffb000] ml-1">−{recap.penalitaCambi}</span></>)}
             </div>
             <button onClick={onShare} className="btn-secondary w-full mt-3"><Share2 size={14} /> CONDIVIDI NEL GRUPPO</button>
           </div>

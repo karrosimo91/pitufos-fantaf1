@@ -44,13 +44,13 @@ export function LiveHero({
       </div>
       <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 tracking-[1px] uppercase mt-3">
         PILOTI <span className="text-white/85 ml-1">{piloti}</span>
-        {isRace && (<><span className="mx-2 text-white/25">·</span>PREVISIONI <span className="text-white/85 ml-1">{previsioni}</span></>)}
-        {penalita > 0 && (<><span className="mx-2 text-white/25">·</span>CAMBI <span className="text-[#ffb000] ml-1">−{penalita}</span></>)}
+        {isRace && (<><span className="mx-2 text-white/50">·</span>PREVISIONI <span className="text-white/85 ml-1">{previsioni}</span></>)}
+        {penalita > 0 && (<><span className="mx-2 text-white/50">·</span>CAMBI <span className="text-[#ffb000] ml-1">−{penalita}</span></>)}
       </div>
       {me && (ahead || behind) && (
         <div className="mt-2 text-[13px] text-white/80">
           {ahead && <span><span className="text-[#E8002D] font-bold">−{ahead.points - me.points}</span> da {ahead.tpName}</span>}
-          {ahead && behind && <span className="text-white/25"> · </span>}
+          {ahead && behind && <span className="text-white/50"> · </span>}
           {behind && <span><span className="text-[#2ee59d] font-bold">+{me.points - behind.points}</span> su {behind.tpName}</span>}
           {!ahead && behind && <span className="text-white/55"> · sei in testa</span>}
         </div>

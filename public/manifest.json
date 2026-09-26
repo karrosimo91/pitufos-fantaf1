@@ -2,11 +2,17 @@
   "name": "Pitufos FantaF1",
   "short_name": "Pitufos",
   "description": "Fantasy F1 ibrido: fantasy manager + pronostici. Gratuito e aperto a tutti.",
+  "id": "/dashboard",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#050507",
   "theme_color": "#E8002D",
   "orientation": "portrait",
+  "shortcuts": [
+    { "name": "Muretto", "url": "/dashboard" },
+    { "name": "Gara", "url": "/gara" },
+    { "name": "Mercato", "url": "/mercato" }
+  ],
   "icons": [
     {
       "src": "/icon.svg",

@@ -49,10 +49,10 @@ export function ClassificaGeneraleLive({
   }, [season, liveWeekendPoints, roundSalvato, userId]);
 
   if (loading && rows.length === 0) {
-    return <div className="text-center py-8 text-white/20 text-sm">Caricamento classifica…</div>;
+    return <div className="text-center py-8 text-white/45 text-sm">Caricamento classifica…</div>;
   }
   if (rows.length === 0) {
-    return <div className="text-center py-8 text-white/20 text-sm">Nessuna classifica disponibile</div>;
+    return <div className="text-center py-8 text-white/45 text-sm">Nessuna classifica disponibile</div>;
   }
 
   return (
@@ -68,7 +68,7 @@ export function ClassificaGeneraleLive({
           >
             <div className="flex items-center gap-2.5">
               <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
-                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/30"
+                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/50"
               }`}>
                 {i + 1}
               </div>

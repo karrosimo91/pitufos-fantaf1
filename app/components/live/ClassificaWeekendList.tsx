@@ -27,7 +27,7 @@ export function ClassificaWeekendList({
           >
             <div className="flex items-center gap-2.5">
               <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
-                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/30"
+                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/50"
               }`}>
                 {i + 1}
               </div>

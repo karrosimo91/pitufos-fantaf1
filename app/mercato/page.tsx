@@ -259,7 +259,7 @@ export default function MercatoPage() {
           {([["tutti", "TUTTI"], ["rosa", `IN ROSA ${squadra.driverNumbers.length}`], ["cassa", `≤ ${cassa} S`]] as const).map(([id, label]) => (
             <button key={id} type="button" onClick={() => setFilter(id)} className={`pill shrink-0 ${filter === id ? "border-white/60 text-white bg-white/[0.08]" : ""}`}>{label}</button>
           ))}
-          <span className="text-white/20 shrink-0">|</span>
+          <span className="text-white/45 shrink-0">|</span>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as Sort)} className="pill bg-[#0e0e14] shrink-0 appearance-none pr-2">
             <option value="prezzo">PREZZO</option>
             <option value="forma">FORMA</option>

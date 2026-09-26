@@ -13,7 +13,7 @@ export function TopBar({ right }: { right?: React.ReactNode }) {
       </Link>
       <div className="flex items-center gap-2">
         {right ?? (
-          <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[2px]">
+          <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 tracking-[2px]">
             STAGIONE 2026
           </span>
         )}

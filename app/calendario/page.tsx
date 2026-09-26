@@ -1,83 +1,65 @@
 "use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
-import { RACES_2026, getNextRace } from "../lib/races";
-import { APP_VERSION } from "../lib/types";
+import { RACES_2026, getNextRace, raceEndDate, formatDateTimeLocal } from "../lib/races";
+import { useAllWeekendResults } from "../lib/use-weekend-results";
+import { ChevronRight } from "lucide-react";
 
 export default function CalendarioPage() {
   const nextRace = getNextRace();
+  const [mounted, setMounted] = useState(false);
+  const { rows } = useAllWeekendResults();
+  const archived = new Set(rows.filter((r) => (r.data.race?.length ?? 0) > 0 || (r.data.qualifying?.length ?? 0) > 0).map((r) => r.round));
+  useEffect(() => { setMounted(true); }, []);
   const now = new Date();
 
   return (
     <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
-
-      <main className="max-w-3xl mx-auto px-4 py-8 pb-bottomnav">
-        <div className="mb-8">
-          <div className="text-[10px] tracking-[4px] text-[#E8002D] uppercase font-bold mb-1">
-            Stagione 2026 — 24 Gran Premi
-          </div>
-          <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-            CALENDARIO
-          </h1>
+      <main className="max-w-3xl mx-auto px-4 py-5 pb-bottomnav">
+        <div className="mb-5">
+          <div className="hud-label text-[#E8002D] mb-1">STAGIONE 2026 · 24 GRAN PREMI · 6 SPRINT</div>
+          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] leading-none">Calendario</h1>
+          <div className="text-[12px] text-white/55 mt-2">Orari nella tua ora locale. La formazione chiude prima delle qualifiche, nei weekend sprint prima della Sprint Shootout (venerdì).</div>
         </div>
 
         <div className="space-y-2">
           {RACES_2026.map((race) => {
-            const raceDate = new Date(race.date);
-            const isPast = raceDate <= now;
+            const isPast = raceEndDate(race) <= now;
             const isNext = race.round === nextRace.round;
-
-            return (
-              <div
-                key={race.round}
-                className={`flex items-center justify-between rounded-xl px-4 py-4 transition-all ${
-                  isNext
-                    ? "bg-[#E8002D]/10 border border-[#E8002D]/30"
-                    : isPast
-                    ? "bg-white/[0.01] border border-white/[0.03] opacity-50"
-                    : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05]"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm w-8 ${isNext ? "text-[#E8002D]" : "text-white/30"}`}>
-                    {String(race.round).padStart(2, "0")}
-                  </div>
-                  <CountryFlag countryCode={race.countryCode} size={24} />
-                  <div>
-                    <div className={`text-sm font-semibold ${isNext ? "text-white" : ""}`}>{race.name}</div>
-                    <div className="text-[11px] text-white/30">{race.circuit}</div>
-                  </div>
-                </div>
-
-                <div className="text-right flex items-center gap-3">
-                  {race.sprint && (
-                    <span className="bg-[#E8002D]/20 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-wider">
-                      SPRINT
-                    </span>
-                  )}
-                  <div>
-                    <div className="text-xs font-[family-name:var(--font-jetbrains)] text-white/60">
-                      {raceDate.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+            const hasRecap = archived.has(race.round);
+            const inner = (
+              <>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`font-[family-name:var(--font-jetbrains)] font-bold text-[13px] w-7 ${isNext ? "text-[#E8002D]" : "text-white/50"}`}>{String(race.round).padStart(2, "0")}</div>
+                  <CountryFlag countryCode={race.countryCode} size={22} />
+                  <div className="min-w-0">
+                    <div className={`text-[14px] font-bold truncate ${isNext ? "text-white" : ""}`}>{race.name}</div>
+                    <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 mt-0.5">
+                      {mounted ? `Gara ${formatDateTimeLocal(race.date)}` : race.date.slice(0, 10)}
+                      {mounted && !isPast && <span className="text-white/40"> · chiude {formatDateTimeLocal(race.deadline)}</span>}
                     </div>
-                    {isNext && (
-                      <div className="text-[9px] text-[#E8002D] font-bold tracking-wider">PROSSIMA</div>
-                    )}
-                    {isPast && (
-                      <div className="text-[9px] text-white/20 tracking-wider">COMPLETATO</div>
-                    )}
                   </div>
                 </div>
-              </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {race.sprint && <span className="pill pill-accent text-[10px] px-1.5 py-0">SPRINT</span>}
+                  {isNext && <span className="pill pill-green text-[10px] px-1.5 py-0">PROSSIMA</span>}
+                  {hasRecap && <ChevronRight size={14} className="text-white/45" />}
+                </div>
+              </>
+            );
+            const cls = `flex items-center justify-between rounded-lg px-3.5 py-3 border ${isNext ? "bg-[#E8002D]/[0.06] border-[#E8002D]/35" : isPast ? "bg-[#0e0e14] border-[#1c1c26] opacity-70" : "bg-[#0e0e14] border-[#1c1c26]"}`;
+            return hasRecap ? (
+              <Link key={race.round} href={`/risultati?round=${race.round}`} className={`${cls} tap`}>{inner}</Link>
+            ) : (
+              <div key={race.round} className={cls}>{inner}</div>
             );
           })}
         </div>
       </main>
-
-      <footer className="text-center py-8 pb-bottomnav text-white/10 text-[10px] tracking-[3px] uppercase">
-        Los Pitufos FantaF1 — Stagione 2026 — {APP_VERSION}
-      </footer>
       <BottomNav />
     </div>
   );

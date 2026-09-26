@@ -86,7 +86,7 @@ export function MurettoHero({
           {steps.map((s) => (
             <div key={s.label} className={`rounded px-2 py-2 border text-center ${s.done ? "border-[#2ee59d]/35 bg-[#2ee59d]/[0.06]" : s.optional ? "border-[#1c1c26] bg-black/30" : "border-[#ffb000]/30 bg-[#ffb000]/[0.05]"}`}>
               <div className="flex justify-center mb-1">
-                {s.done ? <Check size={13} className="text-[#2ee59d]" /> : <Circle size={13} className={s.optional ? "text-white/30" : "text-[#ffb000]"} />}
+                {s.done ? <Check size={13} className="text-[#2ee59d]" /> : <Circle size={13} className={s.optional ? "text-white/50" : "text-[#ffb000]"} />}
               </div>
               <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] leading-tight tracking-[0.3px] ${s.done ? "text-[#2ee59d]" : s.optional ? "text-white/45" : "text-[#ffb000]"}`}>{s.label}</div>
             </div>

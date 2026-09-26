@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.11.0 — 26 Settembre 2026
+
+### Nuova esperienza (proposta UX del 26/09, tutto tranne le notifiche)
+- **Muretto a fasi**: una card dice cosa fare adesso e quanto manca (chiusura formazione in ora locale, relativa accanto, rossa sotto le 24 ore), quattro tappe, stato reale; un solo **CONFERMA WEEKEND** per formazione e previsioni; Primo Pilota riproposto dal round prima ("come a Baku"); riga pilota tap-to-captain; aggiornamenti dalla fabbrica con i due usi, scadenza e regola al tocco; previsioni con frequenza stagionale e ultimo GP; recap del GP precedente in Home fino alla deadline successiva.
+- **Mercato**: scheda pilota unica (quotazione con delta, forma ultimi 3 GP, chi lo ha in lega, non ha corso l'ultimo GP), filtri e ordinamenti, SCAMBIA a rosa piena con la cassa risultante prima di confermare, vendita del capitano con scelta del successore, Wildcard dal cambio a pagamento, listino aggiornato, barra "rosa modificata".
+- **Gara**: barra di sessione (giro, bandiera, freschezza), rivale (posizione e distacchi nel weekend), eventi race_control tradotti con l'effetto sui miei punti, previsioni vive in tre stati con payoff condizionale, delta e flash sulla riga pilota, formazioni svelate con "vs te" e condivisione, provvisorio toccabile, copy per ogni stato.
+- **Recap** (`/risultati?round=`): tre timbri (ufficiale/provvisoria/attesa per sessione), scontrino completo, migliore e peggiore scelta, "se avessi" (capitano giusto, rosa perfetta entro 100 Soldini, previsioni possibili), condivisione testo. Link dal Muretto, dal Calendario e da Rivali.
+- **Rivali** (`/classifica`): la mia riga con distacchi e movimento, forma, scheda rivale con testa a testa, toggle Somma punti / Classifica Reale, rail dei round, matrice chi ha chi.
+- Stato condiviso (`WeekendProvider`): squadra, previsioni e sessione live vivono una volta sola; Toast in basso con tre colori; tipografia minima 11px e grigi ≥ 40%; nav MURETTO · GARA · MERCATO · RIVALI · ALTRO con pallino rosso sul Muretto e verde su Gara in live; inviti alle leghe con link (`/registrati?lega=CODICE`); calendario con orari locali e chiusura; `/previsioni` rimosso; manifest con scorciatoie; regolamento corretto (−20) e Classifica Reale.
+
+### Fix
+- Punteggio live personale con i ritiri ufficiali (`session_result`), come la classifica.
+- "Pole vince" live: fallback al P1 della qualifica in archivio senza griglia.
+- Provvisori salvati per tutti i giocatori, non per la lega del primo client.
+- `/api/live-session` ignora sessioni cancellate e fuori dalla finestra del round corrente (Kuala Lumpur 4/10).
+- `usePrevisioni` si azzera al cambio round; la vendita pulisce capitano e bersaglio Boost anche nel DB; doppio tap acquisto bloccato; scambio atomico in un salvataggio.
+
 ## v1.10.1 — 25 Settembre 2026
 
 ### Fix

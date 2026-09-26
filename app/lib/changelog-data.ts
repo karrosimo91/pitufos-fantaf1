@@ -15,6 +15,95 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.11.0",
+    date: "26 Settembre 2026",
+    summary: "L'app cambia faccia: Muretto a fasi con un solo Conferma, Mercato con forma e scambio in un gesto, Gara come secondo schermo, Recap del weekend, Rivali.",
+    sections: [
+      {
+        title: "Muretto (Home)",
+        items: [
+          "Una card sola che dice cosa devi fare adesso e quanto manca: chiusura formazione in ora locale (es. VEN 9 OTT · 14:30), quattro tappe (piloti, Primo Pilota, previsioni, aggiornamenti), stato reale (da completare, confermato, modifiche non confermate).",
+          "Un solo bottone CONFERMA WEEKEND per formazione e previsioni insieme; se manca qualcosa dice cosa.",
+          "Il Primo Pilota del round prima ti viene riproposto (\"come a Baku\"): basta riconfermare. Tocca un pilota per farlo capitano.",
+          "Aggiornamenti dalla fabbrica: ogni chip mostra i due usi (prima e dopo la pausa estiva), quando scade e la regola al tocco su \"?\". Tile \"Nessuno\" esplicita.",
+          "Previsioni con contesto: quante volte l'evento è successo quest'anno e cos'è successo all'ultimo GP; dopo la gara l'esito e i punti presi.",
+          "Il weekend appena concluso resta in Home fino alla chiusura del successivo.",
+        ],
+      },
+      {
+        title: "Mercato",
+        items: [
+          "Scheda pilota unica: quotazione con variazione, forma degli ultimi 3 GP, quanti in lega lo hanno (i nomi a formazione chiusa), avviso se non ha corso l'ultimo GP; tocca per la scheda completa.",
+          "A rosa piena il bottone è SCAMBIA: scegli chi esce vedendo la cassa risultante, tutto in un gesto.",
+          "Vendere il Primo Pilota chiede chi diventa capitano; vendere il bersaglio del Boost avvisa.",
+          "Wildcard attivabile direttamente dal cambio a pagamento. Listino aggiornato con le variazioni dei tuoi piloti. Filtri IN ROSA e ≤ CASSA, ordinamento per forma.",
+          "Barra in basso quando la rosa è modificata e non confermata, con il link al Muretto.",
+        ],
+      },
+      {
+        title: "Gara",
+        items: [
+          "Barra di sessione: sessione, giro, bandiera (pista libera, Safety Car, VSC, rossa, scacchi), freschezza dei dati.",
+          "Un numero e un rivale: posizione nel weekend, distacco da chi ti precede e da chi ti segue.",
+          "Eventi per te: Safety Car, ritiri, penalità e bandiere tradotti in italiano con l'effetto sui tuoi punti (\"Norris ritirato: −20, Primo Pilota\").",
+          "Previsioni vive in tre stati: in attesa (con quanto vale se resta così), presa, sbagliata. Niente più ✗ dal primo giro.",
+          "Formazioni svelate: alla chiusura, la rosa di tutti con Primo Pilota, chip e previsioni, e il confronto \"vs te\"; condivisibile nel gruppo.",
+          "Provvisorio con righe toccabili (punti per sessione). Copy chiaro in ogni stato (formazione aperta, weekend in corso, gara conclusa in attesa dei punteggi).",
+        ],
+      },
+      {
+        title: "Recap e Rivali",
+        items: [
+          "Recap del weekend (Altro → Recap, e dal Muretto): sessioni ufficiali o provvisorie, scontrino con ogni voce per pilota e previsione, migliore e peggiore scelta, \"se avessi\": capitano giusto, rosa perfetta entro 100 Soldini, punti previsioni lasciati sul tavolo; testo da incollare nel gruppo.",
+          "Rivali (ex Classifica): la tua riga con distacchi e movimento, forma di tutti, scheda del rivale con il testa a testa weekend per weekend, toggle Somma punti / Classifica Reale, rail dei round, matrice \"chi ha chi\".",
+        ],
+      },
+      {
+        title: "Fix",
+        items: [
+          "Il punteggio live personale conta i ritiri ufficiali come la classifica; \"pole vince\" usa la qualifica in archivio finché non c'è la griglia; i provvisori si salvano per tutti i giocatori; il live non si accende su gare fuori calendario (Kuala Lumpur) o cancellate.",
+          "Formazione, previsioni e pallino della barra in basso condividono lo stesso stato: dopo la conferma tutto si aggiorna insieme. Il pallino rosso ora è sul Muretto, quello verde su Gara quando c'è una sessione.",
+          "Il lunedì le previsioni ripartono vuote (prima restavano quelle del round finito). Vendere un pilota pulisce capitano e bersaglio Boost anche nel DB. Doppio tap sull'acquisto bloccato.",
+          "Regolamento: esempio del ritiro del Primo Pilota corretto (−20), aggiunta la Classifica Reale. Inviti alle leghe con link. Calendario con orari e chiusura in ora locale. Testi più leggibili (niente più 8-9 px e grigi sotto il 40%).",
+        ],
+      },
+    ],
+  },
+  {
+    version: "v1.10.1",
+    date: "25 Settembre 2026",
+    summary: "Penalità cambi extra anche nel live e punteggi del weekend a sessione finita.",
+    sections: [
+      {
+        title: "Fix",
+        items: [
+          "La penalità cambi (−10 dal terzo cambio) vale dal primo calcolo del weekend ovunque: post-gara, live di ogni sessione, vista a sessione finita.",
+          "Il dettaglio degli altri Team Principal scorre fino in fondo anche su mobile (modale sopra la barra di navigazione).",
+          "La Classifica Generale live non conta due volte le sessioni già calcolate; i provvisori della gara non spariscono più prima del calcolo ufficiale.",
+        ],
+      },
+      {
+        title: "Novità",
+        items: ["Dalla deadline al lunedì, senza sessione live, la pagina Gara mostra la classifica weekend e generale di tutti con il dettaglio per giocatore."],
+      },
+    ],
+  },
+  {
+    version: "v1.10.0",
+    date: "13 Settembre 2026",
+    summary: "Ricalcolo della stagione (round 2-16) con le regole approvate il 13/09: griglia reale, qualifica non fatta = −5, non partito = ritiro.",
+    sections: [
+      {
+        title: "Regole",
+        items: [
+          "Posizioni guadagnate e perse contate sulla griglia di partenza reale, non sulla qualifica.",
+          "Chi non fa la qualifica (escluso, senza tempo, assente) prende −5 e basta; in shootout −3. La pole per \"pole vince\" è chi parte primo in griglia.",
+          "Un pilota non partito per guasto in griglia è un ritiro (−10 in gara, −5 in sprint); la forza maggiore (pilota rimosso dal weekend) vale 0.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.9.1",
     date: "29 Agosto 2026",
     summary: "Fix al DNF live: il malus da ritiro non veniva applicato quando il pilota spariva dalle posizioni.",
