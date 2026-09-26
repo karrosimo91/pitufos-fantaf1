@@ -24,14 +24,16 @@ export function SessionBar({
   connected: boolean;
   mode?: "init" | "mqtt" | "polling";
 }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   useEffect(() => {
+    // Tick al secondo per "aggiornato N s fa"; il primo valore arriva al
+    // primo tick, così il render iniziale resta puro.
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
   const kind = classifySession(sessionType);
   const flag = latestFlag(raceControl);
-  const ageS = lastDataAt > 0 ? Math.max(0, Math.round((now - lastDataAt) / 1000)) : null;
+  const ageS = lastDataAt > 0 && now > 0 ? Math.max(0, Math.round((now - lastDataAt) / 1000)) : null;
   const fresh = ageS !== null && ageS <= 20;
   const stale = ageS !== null && ageS > 60;
 

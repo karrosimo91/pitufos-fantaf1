@@ -20,7 +20,6 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
   // silenzio e non si capiva cosa fosse successo.
   const prevRef = useRef<number | null>(null);
   const [delta, setDelta] = useState<number | null>(null);
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (prevRef.current !== null && prevRef.current !== p.puntiFinali) {
       setDelta(p.puntiFinali - prevRef.current);
@@ -30,7 +29,6 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
     }
     prevRef.current = p.puntiFinali;
   }, [p.puntiFinali]);
-  /* eslint-enable react-hooks/set-state-in-effect */
   const isPrimo = p.driver_number === primoPilota;
   const isBoosted = chipPiloti === "boost" && p.moltiplicatore === 3;
   const isScudo = isPrimo && chipPiloti === "scudo";

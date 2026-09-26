@@ -56,7 +56,6 @@ export function SwapSheet({
     >
       <div className="space-y-2 pt-1">
         {roster.map((n) => {
-          const d = getDriverByNumber(n);
           const pOut = priceOf(n);
           const after = cassa + pOut - priceIn;
           const ok = after >= 0;

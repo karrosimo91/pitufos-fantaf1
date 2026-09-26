@@ -112,13 +112,16 @@ export default function LiveTab({
   }), [data.ws.raceControl, driverNumbers, primoPilota, chipPiloti, previsioni, isRace, isSprint]);
 
   // Chi parte in pole (griglia → qualifica in archivio) e se è in testa ora
+  const gridPositions = data.gridPositions;
+  const previousResults = data.previousResults;
+  const wsPositions = data.ws.positions;
   const pole = useMemo(() => {
     let n: number | null = null;
-    for (const [drv, gp] of data.gridPositions) if (gp === 1) { n = drv; break; }
+    for (const [drv, gp] of gridPositions) if (gp === 1) { n = drv; break; }
     if (n == null) n = qualifyingPole ?? null;
-    if (n == null && data.previousResults) n = poleDriverNumber([], data.previousResults.qualifying ?? []);
-    return { number: n, name: n != null ? getDriverByNumber(n)?.name.split(" ").pop() ?? `#${n}` : null, leading: n != null ? (data.ws.positions.get(n)?.position === 1) : null };
-  }, [data.gridPositions, qualifyingPole, data.previousResults, data.ws.positions]);
+    if (n == null && previousResults) n = poleDriverNumber([], previousResults.qualifying ?? []);
+    return { number: n, name: n != null ? getDriverByNumber(n)?.name.split(" ").pop() ?? `#${n}` : null, leading: n != null ? (wsPositions.get(n)?.position === 1) : null };
+  }, [gridPositions, qualifyingPole, previousResults, wsPositions]);
 
   const selectedFormazione = selectedPlayer ? data.formazioni.find((f) => f.user_id === selectedPlayer) : null;
   const selectedEntry = selectedPlayer ? classifica.find((c) => c.userId === selectedPlayer) : null;
