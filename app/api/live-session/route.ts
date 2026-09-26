@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
+import { getNextRace } from "../../lib/races";
 
 const OPENF1 = "https://api.openf1.org/v1";
+
+// Finestra del round corrente: dalle 4 giorni prima della gara a 1 giorno
+// dopo. OpenF1 elenca anche gare cancellate (is_cancelled) e gare che non
+// sono nel nostro calendario (Kuala Lumpur 4/10/2026, fra Baku e Singapore):
+// senza questo filtro il live si sarebbe acceso su una gara che non giochiamo.
+const WINDOW_BEFORE_MS = 4 * 24 * 60 * 60 * 1000;
+const WINDOW_AFTER_MS = 1 * 24 * 60 * 60 * 1000;
 
 async function getToken(): Promise<string | null> {
   const username = process.env.OPENF1_USERNAME;
@@ -42,6 +50,10 @@ export async function GET() {
 
     const sessions = await res.json();
     const now = new Date();
+    const race = getNextRace();
+    const raceStart = new Date(race.date).getTime();
+    const windowStart = raceStart - WINDOW_BEFORE_MS;
+    const windowEnd = raceStart + WINDOW_AFTER_MS;
 
     // Buffer pre-sessione molto stretto (2 min): copre solo drift d'orario
     // negli annunci OpenF1, NON blocca il mercato troppo presto.
@@ -64,6 +76,9 @@ export async function GET() {
 
     for (const s of sessions) {
       if (!s.date_start || !s.date_end) continue;
+      if (s.is_cancelled) continue;
+      const startMs = new Date(s.date_start).getTime();
+      if (!Number.isFinite(startMs) || startMs < windowStart || startMs > windowEnd) continue;
 
       // Le prove libere (FP1/FP2/FP3) NON attivano il "live": niente punteggio,
       // niente blocco. Il live parte solo da Qualifica / Sprint Shootout in poi.

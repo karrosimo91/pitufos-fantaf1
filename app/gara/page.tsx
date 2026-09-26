@@ -1,20 +1,23 @@
 "use client";
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import CountryFlag from "../components/CountryFlag";
-import { useSquadra, usePrevisioni, useLegaPreferita } from "../lib/store";
+import { ProvisionalView } from "../components/live/ProvisionalView";
+import { useLegaPreferita } from "../lib/store";
+import { useWeekend } from "../lib/weekend-context";
 import { useAuth } from "../lib/auth";
-import { getNextRace, getCurrentRound, isAfterDeadline } from "../lib/races";
-import { useLiveSession } from "../lib/use-live-session";
 import { useProvisionalScores } from "../lib/provisional-scores";
+import { useWeekendResults } from "../lib/use-weekend-results";
+import { useLegaMembers } from "../lib/use-lega-members";
+import { formatDateTimeLocal, formatRelative } from "../lib/races";
+import { ChevronRight } from "lucide-react";
 
 const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
 const WeekendArchivioTab = dynamic(() => import("../components/WeekendArchivioTab"), { ssr: false });
-
-const PUNTI_REALE = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
 export default function GaraPageWrapper() {
   return (
@@ -27,23 +30,16 @@ export default function GaraPageWrapper() {
 function GaraPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const currentRound = getCurrentRound();
-  const race = getNextRace();
-
-  const sq = useSquadra(currentRound);
-  const prev = usePrevisioni(currentRound);
-  const { isLive: realIsLive, session: realLiveSession } = useLiveSession();
+  const { round, race, phase, locked, now, live, recapRace, squadra: sq, previsioni: prev } = useWeekend();
   const { legaId } = useLegaPreferita();
+  const { members } = useLegaMembers(legaId);
   const searchParams = useSearchParams();
   const debugLive = searchParams.get("debug_live") === "true";
-  const isLive = realIsLive || debugLive;
-  const liveSession = realLiveSession || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
-  const { provisional } = useProvisionalScores(isLive, currentRound);
+  const isLive = live.isLive || debugLive;
+  const liveSession = live.session || (debugLive ? { sessionKey: 9999, sessionName: "Race", sessionType: "Race", meetingKey: 1 } : null);
+  const { provisional } = useProvisionalScores(isLive, round);
+  const wr = useWeekendResults(round);
   const showProvisional = !isLive && !!provisional;
-  // Weekend in corso (dalla deadline al lunedì dopo la gara, finché
-  // getNextRace resta su questo round) ma nessuna sessione live: si vedono
-  // comunque i punteggi di tutti, dalle sessioni già calcolate.
-  const showArchivio = !isLive && !showProvisional && isAfterDeadline(race);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -53,57 +49,59 @@ function GaraPage() {
     return (
       <div className="min-h-screen bg-[#050507] text-white bg-grid">
         <Navbar />
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-        </div>
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-3"><div className="skeleton h-24" /><div className="skeleton h-40" /></div>
         <BottomNav />
       </div>
     );
+  }
+
+  // Cosa mostrare: live → provvisorio → archivio del round → (prima della
+  // deadline) recap del GP precedente → attesa.
+  const showRecapOfPrevious = !isLive && !showProvisional && !locked && !!recapRace && recapRace.round !== round;
+  const headerRace = showRecapOfPrevious && recapRace ? recapRace : race;
+  const raceStarted = now >= new Date(race.date);
+
+  let emptyTitle = "";
+  let emptyText = "";
+  if (locked && !wr.anyArchived) {
+    emptyTitle = raceStarted ? "Gara conclusa, punteggi in arrivo" : race.sprint ? "Weekend sprint in corso" : "Weekend in corso";
+    emptyText = raceStarted
+      ? "Il calcolo ufficiale (griglia reale, Driver of the Day, penalità) arriva poco dopo la bandiera a scacchi."
+      : `Durante ogni sessione qui vedi il punteggio in tempo reale. Gara ${formatDateTimeLocal(race.date)}.`;
   }
 
   return (
     <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-4 pb-bottomnav">
-        {/* ═══ HEADER GARA ═══ */}
         <div className="hud-card hud-card-accent mb-4">
           <div className="hud-card-head">
-            <div className="hud-label">ROUND {String(race.round).padStart(2, "0")} / 24</div>
+            <div className="hud-label">ROUND {String(headerRace.round).padStart(2, "0")} / 24{showRecapOfPrevious ? " · APPENA CONCLUSO" : ""}</div>
             <div className="flex items-center gap-1.5">
-              {race.sprint && (
-                <span className="font-[family-name:var(--font-jetbrains)] bg-[#E8002D]/15 border border-[#E8002D]/30 text-[#E8002D] px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">SPRINT</span>
-              )}
-              {isLive && (
-                <span className="live-pill">
-                  <span className="live-pill-dot" />
-                  LIVE
-                </span>
-              )}
-              {showProvisional && (
-                <span className="font-[family-name:var(--font-jetbrains)] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[9px] font-bold tracking-[1.5px]">PROVVISORIO</span>
-              )}
+              {headerRace.sprint && <span className="pill pill-accent">SPRINT</span>}
+              {isLive && <span className="live-pill"><span className="live-pill-dot" />LIVE</span>}
+              {showProvisional && <span className="pill pill-amber">PROVVISORIO</span>}
+              {!isLive && !showProvisional && wr.raceArchived && <span className="pill pill-green">UFFICIALE</span>}
             </div>
           </div>
-          <div className="p-4">
-            <div className="flex items-start gap-3">
-              <CountryFlag countryCode={race.countryCode} size={36} />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.4px]">{race.name}</h1>
-                <p className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/35 tracking-[0.5px] uppercase mt-1 truncate">{race.circuit}</p>
-              </div>
+          <div className="p-4 flex items-start gap-3">
+            <CountryFlag countryCode={headerRace.countryCode} size={34} />
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[22px] font-extrabold leading-[1.1] tracking-[-0.4px]">{headerRace.name}</h1>
+              <p className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 tracking-[0.5px] uppercase mt-1 truncate">{headerRace.circuit} · gara {formatDateTimeLocal(headerRace.date)}</p>
             </div>
           </div>
         </div>
 
-        {/* ═══ LIVE ═══ */}
         {isLive && liveSession ? (
           <LiveTab
             sessionKey={liveSession.sessionKey}
             sessionType={liveSession.sessionName}
             meetingKey={liveSession.meetingKey}
-            round={currentRound}
-            userId={user?.id}
+            round={round}
+            userId={user.id}
             legaId={legaId}
+            raceName={race.name}
             driverNumbers={sq.driverNumbers}
             primoPilota={sq.primoPilota}
             chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}
@@ -112,74 +110,41 @@ function GaraPage() {
             debug={debugLive}
           />
         ) : showProvisional && provisional ? (
-          /* ═══ PROVVISORIO (sessione finita, risultati non ancora ufficiali) ═══ */
-          <div>
-            <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/[0.03] border border-amber-500/15 rounded-2xl p-4 text-center mb-4">
-              <div className="text-[9px] tracking-[3px] text-amber-400/60 uppercase mb-1">Punteggio weekend provvisorio</div>
-              <div className="font-[family-name:var(--font-jetbrains)] text-[32px] font-bold leading-none text-amber-400">
-                {provisional.scores.find((s) => s.userId === user?.id)?.points ?? "—"}
-              </div>
-              {provisional.sessions.length > 0 && (
-                <div className="flex justify-center gap-3 mt-2 text-[10px] text-white/30">
-                  {provisional.sessions.map((sess) => {
-                    const myPts = sess.scores[user?.id || ""] ?? 0;
-                    return (
-                      <span key={sess.sessionName}>
-                        {sess.sessionName}: <span className="font-[family-name:var(--font-jetbrains)] text-amber-400/60">{myPts}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-              <div className="text-[10px] text-white/20 mt-2">In attesa dei risultati ufficiali</div>
+          <ProvisionalView provisional={provisional} userId={user.id} members={members} />
+        ) : locked ? (
+          <WeekendArchivioTab
+            round={round}
+            userId={user.id}
+            legaId={legaId}
+            raceName={race.name}
+            emptyTitle={emptyTitle}
+            emptyText={emptyText}
+            showRecapLink
+          />
+        ) : showRecapOfPrevious && recapRace ? (
+          <>
+            <WeekendArchivioTab
+              round={recapRace.round}
+              userId={user.id}
+              legaId={legaId}
+              raceName={recapRace.name}
+              emptyTitle="Nessun punteggio in archivio"
+              emptyText="Il weekend non è stato calcolato."
+              showRecapLink
+            />
+            <div className="hud-card p-4 mt-4">
+              <div className="hud-label mb-1">PROSSIMO · {race.name.toUpperCase()}</div>
+              <div className="text-[13px] text-white/80">Chiusura formazione {formatDateTimeLocal(race.deadline)}{formatRelative(race.deadline, now) ? ` · ${formatRelative(race.deadline, now)}` : ""}</div>
+              <Link href="/dashboard" className="btn-secondary w-full mt-3">PREPARA IL WEEKEND <ChevronRight size={14} /></Link>
             </div>
-
-            <div className="hud-label mb-2">Classifica Weekend Provvisoria</div>
-            <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl overflow-hidden mb-4">
-              {provisional.scores.map((entry, i) => {
-                const isMe = entry.userId === user?.id;
-                return (
-                  <div
-                    key={entry.userId}
-                    className={`flex items-center justify-between px-3.5 py-2.5 transition-all ${
-                      i < provisional.scores.length - 1 ? "border-b border-white/[0.04]" : ""
-                    } ${isMe ? "bg-amber-500/[0.05] border-l-[3px] border-l-amber-500" : ""}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
-                        i === 0 ? "text-amber-400" : isMe ? "text-amber-400" : "text-white/30"
-                      }`}>
-                        {i + 1}
-                      </div>
-                      <div>
-                        <div className={`text-[13px] font-semibold ${isMe ? "text-white" : ""}`}>{entry.scuderiaName}</div>
-                        <div className={`text-[10px] ${isMe ? "text-amber-400/50" : "text-white/25"}`}>@{entry.tpName}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${isMe ? "text-white" : "text-white/70"}`}>
-                        {entry.points}
-                      </span>
-                      {i < 10 && (
-                        <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">+{PUNTI_REALE[i]} CR</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : showArchivio ? (
-          /* ═══ WEEKEND A SESSIONE FINITA (risultati ufficiali) ═══ */
-          <WeekendArchivioTab round={currentRound} userId={user?.id} legaId={legaId} />
+          </>
         ) : (
-          /* ═══ NESSUNA SESSIONE LIVE ═══ */
-          <div className="hud-card p-10 text-center">
-            <div className="text-white/30 text-sm font-semibold">Nessuna sessione live al momento</div>
-            <div className="text-white/15 text-[12px] mt-2">
-              Durante il weekend di gara qui vedrai il punteggio in tempo reale.
-              Imposta formazione e previsioni dalla Home.
+          <div className="hud-card p-6 text-center">
+            <div className="text-[15px] font-bold">{phase === "prepara" ? "Il weekend non è ancora iniziato" : "Nessuna sessione in corso"}</div>
+            <div className="text-[13px] text-white/60 mt-1.5">
+              Chiusura formazione {formatDateTimeLocal(race.deadline)}{formatRelative(race.deadline, now) ? ` (${formatRelative(race.deadline, now)})` : ""}. Dalle qualifiche in poi qui vedi il punteggio in tempo reale e le formazioni di tutti.
             </div>
+            <Link href="/dashboard" className="btn-primary mt-4">PREPARA IL WEEKEND <ChevronRight size={14} /></Link>
           </div>
         )}
       </main>

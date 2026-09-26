@@ -55,6 +55,10 @@ export function useLiveWebSocket(sessionKey: number | null) {
   const [stints, setStints] = useState<LiveStint[]>([]);
   const [connected, setConnected] = useState(false);
   const [mode, setMode] = useState<"init" | "mqtt" | "polling">("init");
+  // Giro corrente (massimo lap_number visto) e istante dell'ultimo dato
+  // applicato: servono alla barra di sessione (GIRO 23 · aggiornato 3 s fa).
+  const [currentLap, setCurrentLap] = useState<number | null>(null);
+  const [lastDataAt, setLastDataAt] = useState<number>(0);
   const clientRef = useRef<mqtt.MqttClient | null>(null);
   const fastestRef = useRef<number>(Infinity);
   // Timestamp dell'ultimo dato live applicato (MQTT o REST). Serve al "safety check":
@@ -73,6 +77,8 @@ export function useLiveWebSocket(sessionKey: number | null) {
     setStints([]);
     fastestRef.current = Infinity;
     lastDataAtRef.current = 0;
+    setCurrentLap(null);
+    setLastDataAt(0);
     setMode("init");
   }, [sessionKey]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -86,6 +92,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
   }) => {
     if (data.positions?.length || data.raceControl?.length || data.laps?.length || data.stints?.length) {
       lastDataAtRef.current = Date.now();
+      setLastDataAt(lastDataAtRef.current);
     }
     if (data.positions?.length) {
       const posMap = new Map<number, LivePosition>();
@@ -110,6 +117,9 @@ export function useLiveWebSocket(sessionKey: number | null) {
         fastestRef.current = fastest;
         setFastestLap({ driver_number: fastestDriver, duration: fastest });
       }
+      let maxLap = 0;
+      for (const l of data.laps) if (l.lap_number && l.lap_number > maxLap) maxLap = l.lap_number;
+      if (maxLap > 0) setCurrentLap((prev) => (prev == null || maxLap > prev ? maxLap : prev));
     }
     if (data.stints?.length) setStints(data.stints);
   }, []);
@@ -228,6 +238,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
             // Dato valido della nostra sessione: aggiorna la freschezza (così il
             // safety-net non fa polling inutile) e segna la modalità "mqtt" push.
             lastDataAtRef.current = Date.now();
+            setLastDataAt(lastDataAtRef.current);
             setMode("mqtt");
 
             const topic = _topic.replace(/^\//, "");
@@ -255,6 +266,11 @@ export function useLiveWebSocket(sessionKey: number | null) {
                 date: msg.date || new Date().toISOString(),
                 category: msg.category,
               }]);
+            }
+
+            if (topic === "v1/laps" && msg.lap_number) {
+              const ln = Number(msg.lap_number);
+              if (ln > 0) setCurrentLap((prev) => (prev == null || ln > prev ? ln : prev));
             }
 
             if (topic === "v1/laps" && msg.lap_duration && msg.lap_duration > 0) {
@@ -300,5 +316,5 @@ export function useLiveWebSocket(sessionKey: number | null) {
     };
   }, [sessionKey, fetchLiveData]);
 
-  return { positions, raceControl, fastestLap, stints, connected, mode };
+  return { positions, raceControl, fastestLap, stints, connected, mode, currentLap, lastDataAt };
 }

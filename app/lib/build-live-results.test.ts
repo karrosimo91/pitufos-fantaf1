@@ -453,3 +453,18 @@ describe("ritirati da session_result", () => {
     expect(events.totalDnf).toBe(0);
   });
 });
+
+describe("pole vince: fallback alla qualifica in archivio", () => {
+  it("senza griglia né pole passata usa il P1 della qualifica salvata", () => {
+    const positions = new Map([[3, { driver_number: 3, position: 1, date: "d" }], [1, { driver_number: 1, position: 2, date: "d" }]]);
+    const snap = { positions, raceControl: [], fastestLap: null, stints: [] };
+    const previous = {
+      qualifying: [{ driver_number: 3, position: 1 }, { driver_number: 1, position: 2 }],
+      race: [],
+      events: { safety_car: false, virtual_safety_car: false, red_flag: false, wet_tyres: false, pole_won: false, total_dnf: 0 },
+    };
+    const events = detectLiveEvents(snap);
+    const r = buildLiveWeekendResults("Race", snap, events, new Map(), previous);
+    expect(r.events.pole_won).toBe(true);
+  });
+});

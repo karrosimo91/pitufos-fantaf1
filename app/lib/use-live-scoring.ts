@@ -50,6 +50,9 @@ export function useLiveScoring(
   qualifyingPole?: number | null,
   gridPositions?: Map<number, number>,
   previousResults?: RaceWeekendResults | null,
+  /** Ritirati ufficiali (session_result via /api/live-retired): senza, il
+   *  punteggio personale ignorava i ritiri che race_control non annuncia. */
+  retiredDrivers?: Set<number>,
 ) {
   // Riusa la connessione WebSocket condivisa (passata dall'esterno) invece di
   // aprirne una propria: una sola connessione per sessione evita che due client
@@ -71,7 +74,7 @@ export function useLiveScoring(
     };
     if (!sessionKey || positions.size === 0) return empty;
 
-    const snap = { positions, raceControl, fastestLap, stints };
+    const snap = { positions, raceControl, fastestLap, stints, retiredDrivers };
     const events = detectLiveEvents(snap);
     const kind = classifySession(sessionType);
     const isRace = kind === "race";
@@ -172,5 +175,5 @@ export function useLiveScoring(
     };
   }, [sessionKey, sessionType, positions, raceControl, fastestLap, stints, connected, mode,
     myDriverNumbers, primoPilota, chipPiloti, chipPrevisioni, myPrevisioni,
-    qualifyingPole, gridPositions, previousResults]);
+    qualifyingPole, gridPositions, previousResults, retiredDrivers]);
 }

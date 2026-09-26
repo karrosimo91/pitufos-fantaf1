@@ -35,7 +35,7 @@ export function ClassificaWeekendList({
                 <div className={`text-[13px] font-semibold ${entry.isMe ? "text-white" : ""}`}>
                   {entry.scuderiaName}
                 </div>
-                <div className={`text-[10px] ${entry.isMe ? "text-[#E8002D]/50" : "text-white/25"}`}>
+                <div className={`text-[11px] ${entry.isMe ? "text-[#E8002D]/70" : "text-white/45"}`}>
                   @{entry.tpName}
                 </div>
               </div>
@@ -47,8 +47,8 @@ export function ClassificaWeekendList({
                 {entry.points}
               </span>
               {i < 10 && (
-                <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">
-                  +{PUNTI_REALE[i]} CR
+                <span className="pill pill-muted text-[10px] px-1.5 py-0" title="Punti Classifica Reale del weekend">
+                  {PUNTI_REALE[i]} REALE
                 </span>
               )}
             </div>

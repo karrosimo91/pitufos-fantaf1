@@ -1,32 +1,28 @@
 "use client";
 import type { LivePrevisioneStatus } from "../../lib/use-live-scoring";
+import type { PrevisioneViva } from "../../lib/previsioni-live";
 
-export function PrevisioneLiveCard({ p }: { p: LivePrevisioneStatus }) {
-  const isCorrect = p.correct === true;
-  const isWrong = p.correct === false;
-
-  const borderClass = isCorrect
-    ? "border-green-500/30 bg-green-500/[0.06]"
-    : isWrong
-      ? "border-red-500/15 bg-red-500/[0.04]"
-      : "border-white/[0.06] bg-white/[0.02]";
+/** Previsione viva: in attesa (neutra), presa (verde), sbagliata (rossa). */
+export function PrevisioneLiveCard({ p, viva }: { p: LivePrevisioneStatus; viva: PrevisioneViva }) {
+  const cls = viva.state === "presa"
+    ? "border-[#2ee59d]/40 bg-[#2ee59d]/[0.06]"
+    : viva.state === "sbagliata"
+      ? "border-[#E8002D]/30 bg-[#E8002D]/[0.04]"
+      : "border-[#1c1c26] bg-[#0e0e14]";
+  const valueCls = viva.state === "presa" ? "text-[#2ee59d]" : viva.state === "sbagliata" ? "text-[#E8002D]" : "text-white/85";
+  const value = p.key === "numeroDnf"
+    ? (p.prediction ?? "—")
+    : p.prediction === true ? "SÌ" : p.prediction === false ? "NO" : "—";
+  const tag = viva.state === "presa" ? "PRESA" : viva.state === "sbagliata" ? "SBAGLIATA" : viva.state === "pending" ? "IN ATTESA" : "";
 
   return (
-    <div className={`rounded-xl p-3 border transition-all ${borderClass}`}>
-      <div className="text-[10px] font-bold text-white/50 mb-1">{p.label}</div>
-      <div className={`font-[family-name:var(--font-jetbrains)] text-sm font-bold ${
-        isCorrect ? "text-green-400" : isWrong ? "text-red-400" : "text-white/20"
-      }`}>
-        {p.key === "numeroDnf"
-          ? `${p.prediction ?? "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
-          : `${p.prediction === true ? "SI" : p.prediction === false ? "NO" : "—"} ${isCorrect ? "✓" : isWrong ? "✗" : ""}`
-        }
+    <div className={`rounded-lg p-3 border ${cls}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-bold text-white/70 truncate">{p.label}</div>
+        {tag && <span className={`font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] ${valueCls}`}>{tag}</span>}
       </div>
-      <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-0.5 ${
-        isCorrect ? "text-green-400/60" : isWrong ? "text-red-400/40" : "text-white/10"
-      }`}>
-        {isCorrect ? `+${p.points} pts` : isWrong ? "0 pts" : ""}
-      </div>
+      <div className={`font-[family-name:var(--font-jetbrains)] text-[16px] font-extrabold mt-0.5 ${valueCls}`}>{value}</div>
+      <div className={`text-[11px] mt-0.5 leading-snug ${viva.state === "pending" ? "text-white/55 italic" : valueCls}`}>{viva.payoff}</div>
     </div>
   );
 }
