@@ -16,9 +16,12 @@
   --amber: #ffb000;
   --purple: #b026ff;
   --text-1: #f0f0f5;
-  --text-2: rgba(240, 240, 245, 0.55);
-  --text-3: rgba(240, 240, 245, 0.28);
-  --text-4: rgba(240, 240, 245, 0.1);
+  /* Scala di lettura: text-2 per etichette e meta, text-3 per didascalie,
+     text-4 solo per hairline e decorazione (mai parole). */
+  --text-2: rgba(240, 240, 245, 0.62);
+  --text-3: rgba(240, 240, 245, 0.45);
+  --text-4: rgba(240, 240, 245, 0.28);
+  --green-2: #2ee59d;
   --grid-line: rgba(255, 255, 255, 0.035);
 }
 
@@ -34,6 +37,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .safe-area-bottom {
@@ -85,18 +90,18 @@ body {
   border-bottom: 1px dashed var(--border);
 }
 
-/* Telemetry label (uppercase tracked mono) */
+/* Telemetry label (uppercase tracked mono) — 11px minimo, leggibile */
 .hud-label {
   font-family: var(--font-jetbrains), monospace;
-  font-size: 9px;
-  color: var(--text-3);
-  letter-spacing: 2px;
+  font-size: 11px;
+  color: var(--text-2);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   font-weight: 700;
 }
 .hud-meta {
   font-family: var(--font-jetbrains), monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-2);
 }
 
@@ -203,4 +208,133 @@ body {
 /* Subtle hairline divider with optional label */
 .hairline {
   border-top: 1px dashed var(--border);
+}
+
+/* ─── Interazione mobile ─── */
+.tap {
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+.tap:active {
+  transform: scale(0.98);
+}
+
+/* Toast: entra dal basso */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+/* Flash verde/rosso quando un punteggio live cambia */
+@keyframes flash-up {
+  0% { background-color: rgba(46, 229, 157, 0.28); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-dn {
+  0% { background-color: rgba(232, 0, 45, 0.28); }
+  100% { background-color: transparent; }
+}
+.flash-up { animation: flash-up 1.2s ease-out; }
+.flash-dn { animation: flash-dn 1.2s ease-out; }
+
+/* Skeleton shimmer per i caricamenti */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--panel) 0%, var(--panel-2) 50%, var(--panel) 100%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+/* Pillola di stato (etichetta piccola ma leggibile) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-hi);
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+.pill-accent { color: var(--accent); border-color: rgba(232, 0, 45, 0.4); background: rgba(232, 0, 45, 0.08); }
+.pill-green { color: var(--green-2); border-color: rgba(46, 229, 157, 0.4); background: rgba(46, 229, 157, 0.08); }
+.pill-amber { color: var(--amber); border-color: rgba(255, 176, 0, 0.4); background: rgba(255, 176, 0, 0.08); }
+.pill-muted { color: var(--text-3); border-color: var(--border); background: transparent; }
+
+/* Bottone primario / secondario */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 15px 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hi);
+  background: transparent;
+  color: var(--text-1);
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+.btn-secondary:active { transform: scale(0.98); }
+.btn-secondary:disabled { color: var(--text-3); cursor: not-allowed; }
+
+/* Barra fissa sopra la bottom nav (conferma weekend, riepilogo mercato) */
+.sticky-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  z-index: 45;
+  background: rgba(5, 5, 7, 0.94);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+}
+.pb-stickybar {
+  padding-bottom: 170px;
+}
+
+/* Riduzione movimento */
+@media (prefers-reduced-motion: reduce) {
+  .toast-in, .flash-up, .flash-dn, .skeleton, .animate-live-pulse, .live-pill-dot { animation: none; }
+  .tap:active, .btn-primary:active, .btn-secondary:active { transform: none; }
 }

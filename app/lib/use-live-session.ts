@@ -12,11 +12,12 @@ export interface LiveSession {
  * Hook che rileva se c'è una sessione F1 attiva.
  * Chiama il nostro API route /api/live-session (server-side, no CORS).
  */
-export function useLiveSession() {
+export function useLiveSession(enabled = true) {
   const [session, setSession] = useState<LiveSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkSession = useCallback(async () => {
+    if (!enabled) { setSession(null); setLoading(false); return; }
     try {
       const res = await fetch("/api/live-session", { cache: "no-store" });
       if (!res.ok) { setLoading(false); return; }
@@ -31,9 +32,10 @@ export function useLiveSession() {
 
   useEffect(() => {
     checkSession();
+    if (!enabled) return;
     const interval = setInterval(checkSession, 60_000);
     return () => clearInterval(interval);
-  }, [checkSession]);
+  }, [checkSession, enabled]);
 
   return {
     isLive: !!session,

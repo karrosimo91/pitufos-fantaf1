@@ -111,6 +111,11 @@ export function useSquadra(round: number) {
   const [loaded, setLoaded] = useState(false);
   // Chip piloti già confermati in ALTRI round (per limite metà stagione)
   const [chipPilotiUsedOther, setChipPilotiUsedOther] = useState<{ chip: string; round: number }[]>([]);
+  // Ultima formazione confermata di un round precedente: round e Primo
+  // Pilota. Serve per proporre il capitano "come a Baku" nel nuovo round.
+  const [prevInfo, setPrevInfo] = useState<{ round: number; primoPilota: number | null } | null>(null);
+  // Guardia contro il doppio tap: un'operazione di mercato alla volta.
+  const busyRef = useRef(false);
 
   // Carica formazione del round (o copia dal precedente)
   useEffect(() => {
@@ -121,6 +126,7 @@ export function useSquadra(round: number) {
     setState({ driverNumbers: [], primoPilota: null, sestoUomo: null, chipPiloti: null, chipPilotiTarget: null, confirmed: false });
     setRosaBase([]);
     setChipPilotiUsedOther([]);
+    setPrevInfo(null);
 
     if (!user || !isSupabaseConfigured) {
       setLoaded(true);
@@ -167,7 +173,7 @@ export function useSquadra(round: number) {
         // Questo garantisce che la prima formazione sia sempre modificabile liberamente.
         const { data: prev } = await supabase
           .from("formazioni")
-          .select("driver_numbers")
+          .select("round, driver_numbers, primo_pilota")
           .eq("user_id", user.id)
           .eq("confirmed", true)
           .lt("round", round)
@@ -175,13 +181,15 @@ export function useSquadra(round: number) {
           .limit(1)
           .single();
         setRosaBase(prev?.driver_numbers ? (prev.driver_numbers as number[]).map(Number) : []);
+        if (prev) setPrevInfo({ round: prev.round as number, primoPilota: prev.primo_pilota ?? null });
       } else if (!error || error.code === "PGRST116") {
         // Nessuna formazione per questo round: copia dal round precedente
         const { data: prev } = await supabase
           .from("formazioni")
-          .select("driver_numbers, cassa")
+          .select("round, driver_numbers, cassa, primo_pilota")
           .eq("user_id", user.id)
           .eq("confirmed", true)
+          .lt("round", round)
           .order("round", { ascending: false })
           .limit(1)
           .single();
@@ -190,9 +198,15 @@ export function useSquadra(round: number) {
           const prevDrivers = (prev.driver_numbers as number[]).map(Number);
           // La cassa si porta avanti invariata (nessun trade fra i round).
           const prevCassa = prev.cassa != null ? prev.cassa : initialCassa(prevDrivers);
-          setState((s) => ({ ...s, driverNumbers: prevDrivers }));
+          // Il Primo Pilota si porta avanti come PROPOSTA: la riga resta non
+          // confermata, quindi il lunedì il Muretto mostra "come a Baku" e
+          // chiede un tap di riconferma invece di ripartire da zero.
+          const prevPrimo = prev.primo_pilota != null && prevDrivers.includes(Number(prev.primo_pilota))
+            ? Number(prev.primo_pilota) : null;
+          setState((s) => ({ ...s, driverNumbers: prevDrivers, primoPilota: prevPrimo }));
           setRosaBase(prevDrivers);
           setCassa(prevCassa);
+          setPrevInfo({ round: prev.round as number, primoPilota: prev.primo_pilota ?? null });
 
           // Crea la riga in DB per questo round (non confermata)
           await supabase.from("formazioni").upsert({
@@ -200,6 +214,7 @@ export function useSquadra(round: number) {
             round,
             driver_numbers: prevDrivers,
             cassa: prevCassa,
+            primo_pilota: prevPrimo,
             confirmed: false,
           }, { onConflict: "user_id,round" });
         }
@@ -230,7 +245,7 @@ export function useSquadra(round: number) {
     })();
   }, [user, round]);
 
-  const { prices: dynamicPrices } = useDriverPrices(round);
+  const { prices: dynamicPrices, loaded: pricesLoaded } = useDriverPrices(round);
 
   const drivers: OwnedDriver[] = state.driverNumbers
     .map((n) => driverNumberToOwned(n, dynamicPrices))
@@ -256,7 +271,11 @@ export function useSquadra(round: number) {
 
   // Salva driver_numbers + cassa in DB (auto-save)
   const saveDrivers = useCallback(
-    async (newDrivers: number[], newCassa: number) => {
+    async (
+      newDrivers: number[],
+      newCassa: number,
+      patch: Partial<{ primo_pilota: number | null; chip_piloti_target: number | null; sesto_uomo: number | null }> = {},
+    ) => {
       if (!user || !isSupabaseConfigured) return;
       const supabase = createClient()!;
       const { error } = await supabase.from("formazioni").upsert({
@@ -264,6 +283,7 @@ export function useSquadra(round: number) {
         round,
         driver_numbers: newDrivers,
         cassa: newCassa,
+        ...patch,
         confirmed: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,round" });
@@ -296,62 +316,155 @@ export function useSquadra(round: number) {
     [user, round]
   );
 
+  // Registra un cambio di mercato (conta per la penalità dal 3° in poi) se il
+  // pilota che entra NON era nella rosa base del round.
+  const registraCambio = useCallback(
+    async (driverIn: number, driverOut: number | null, prezzoIn: number, prezzoOut: number | null) => {
+      if (!user) return;
+      const supabase = createClient()!;
+      const { error } = await supabase.from("mercato_cambi").insert({
+        user_id: user.id, round, driver_in: driverIn, driver_out: driverOut ?? 0,
+        prezzo_in: prezzoIn, prezzo_out: prezzoOut,
+      });
+      if (error) console.error("[squadra] mercato_cambi insert error:", error);
+      else setCambiRound((prev) => prev + 1);
+    },
+    [user, round]
+  );
+
   const acquista = useCallback(
     async (driverNumber: number): Promise<{ ok: boolean; error?: string }> => {
       if (!user || !isSupabaseConfigured) return { ok: false, error: "Non loggato" };
+      if (busyRef.current) return { ok: false, error: "Operazione in corso" };
 
       const current = state.driverNumbers;
       if (current.length >= 5) return { ok: false, error: "Squadra piena (5/5)" };
-      if (current.includes(driverNumber)) return { ok: false, error: "Pilota gia' in squadra" };
+      if (current.includes(driverNumber)) return { ok: false, error: "Pilota già in squadra" };
 
       const driverData = getDriverByNumber(driverNumber);
       if (!driverData) return { ok: false, error: "Pilota non trovato" };
 
       const priceOf = (n: number) => getDriverPrice(dynamicPrices, n);
       const newPrice = priceOf(driverNumber);
-      if (cassa < newPrice) return { ok: false, error: "Budget insufficiente" };
+      if (cassa < newPrice) return { ok: false, error: `Ti mancano ${newPrice - cassa} Soldini` };
 
-      const newDrivers = [...current, driverNumber];
-      const newCassa = cassa - newPrice; // paghi la quotazione ATTUALE
+      busyRef.current = true;
+      try {
+        const newDrivers = [...current, driverNumber];
+        const newCassa = cassa - newPrice; // paghi la quotazione ATTUALE
 
-      // Conta come cambio se il pilota NON era nella rosa base
-      // (wildcard annulla la penalita' solo al calcolo post-gara, i cambi si registrano sempre)
-      if (rosaBase.length > 0 && !rosaBase.includes(driverNumber)) {
-        const supabase = createClient()!;
-        const venduti = rosaBase.filter((n) => !current.includes(n));
-        const driverOut = venduti[0] ?? 0;
-        await supabase.from("mercato_cambi").insert({
-          user_id: user.id, round, driver_in: driverNumber, driver_out: driverOut,
-          prezzo_in: newPrice, prezzo_out: driverOut ? priceOf(driverOut) : null,
-        });
-        setCambiRound((prev) => prev + 1);
+        // Conta come cambio se il pilota NON era nella rosa base
+        // (wildcard annulla la penalita' solo al calcolo post-gara, i cambi si registrano sempre)
+        if (rosaBase.length > 0 && !rosaBase.includes(driverNumber)) {
+          const venduti = rosaBase.filter((n) => !current.includes(n));
+          const driverOut = venduti[0] ?? null;
+          await registraCambio(driverNumber, driverOut, newPrice, driverOut ? priceOf(driverOut) : null);
+        }
+
+        // Se era il Sesto Uomo, ora è titolare: il chip perde il bersaglio.
+        const wasSesto = state.sestoUomo === driverNumber;
+        setState((prev) => ({
+          ...prev,
+          driverNumbers: newDrivers,
+          sestoUomo: wasSesto ? null : prev.sestoUomo,
+          confirmed: false,
+        }));
+        setCassa(newCassa);
+        await saveDrivers(newDrivers, newCassa, wasSesto ? { sesto_uomo: null } : {});
+        return { ok: true };
+      } finally {
+        busyRef.current = false;
       }
-
-      setState((prev) => ({ ...prev, driverNumbers: newDrivers, confirmed: false }));
-      setCassa(newCassa);
-      await saveDrivers(newDrivers, newCassa);
-      return { ok: true };
     },
-    [user, state.driverNumbers, rosaBase, round, saveDrivers, dynamicPrices, cassa]
+    [user, state.driverNumbers, state.sestoUomo, rosaBase, saveDrivers, dynamicPrices, cassa, registraCambio]
   );
 
   const vendi = useCallback(
     async (driverNumber: number): Promise<boolean> => {
       if (!user || !isSupabaseConfigured) return false;
-      const newDrivers = state.driverNumbers.filter((n) => n !== driverNumber);
-      // Incassi la quotazione ATTUALE del pilota venduto.
-      const newCassa = cassa + getDriverPrice(dynamicPrices, driverNumber);
-      setState((prev) => ({
-        ...prev,
-        driverNumbers: newDrivers,
-        primoPilota: prev.primoPilota === driverNumber ? null : prev.primoPilota,
-        confirmed: false,
-      }));
-      setCassa(newCassa);
-      await saveDrivers(newDrivers, newCassa);
-      return true;
+      if (busyRef.current) return false;
+      if (!state.driverNumbers.includes(driverNumber)) return false;
+      busyRef.current = true;
+      try {
+        const newDrivers = state.driverNumbers.filter((n) => n !== driverNumber);
+        // Incassi la quotazione ATTUALE del pilota venduto.
+        const newCassa = cassa + getDriverPrice(dynamicPrices, driverNumber);
+        const wasCaptain = state.primoPilota === driverNumber;
+        const wasTarget = state.chipPilotiTarget === driverNumber;
+        setState((prev) => ({
+          ...prev,
+          driverNumbers: newDrivers,
+          primoPilota: wasCaptain ? null : prev.primoPilota,
+          chipPilotiTarget: wasTarget ? null : prev.chipPilotiTarget,
+          confirmed: false,
+        }));
+        setCassa(newCassa);
+        // Anche il DB perde il capitano / bersaglio: prima restava in riga il
+        // numero di un pilota che non era più in rosa.
+        await saveDrivers(newDrivers, newCassa, {
+          ...(wasCaptain ? { primo_pilota: null } : {}),
+          ...(wasTarget ? { chip_piloti_target: null } : {}),
+        });
+        return true;
+      } finally {
+        busyRef.current = false;
+      }
     },
-    [user, state.driverNumbers, saveDrivers, dynamicPrices, cassa]
+    [user, state.driverNumbers, state.primoPilota, state.chipPilotiTarget, saveDrivers, dynamicPrices, cassa]
+  );
+
+  // Scambio in un gesto: esce `driverOut`, entra `driverIn`, un solo
+  // salvataggio. Se esce il Primo Pilota, `nuovoPrimoPilota` lo sostituisce
+  // (o resta vuoto, da scegliere nel Muretto).
+  const scambia = useCallback(
+    async (
+      driverOut: number,
+      driverIn: number,
+      nuovoPrimoPilota: number | null = null,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      if (!user || !isSupabaseConfigured) return { ok: false, error: "Non loggato" };
+      if (busyRef.current) return { ok: false, error: "Operazione in corso" };
+      const current = state.driverNumbers;
+      if (!current.includes(driverOut)) return { ok: false, error: "Pilota non in rosa" };
+      if (current.includes(driverIn)) return { ok: false, error: "Pilota già in squadra" };
+      if (!getDriverByNumber(driverIn)) return { ok: false, error: "Pilota non trovato" };
+
+      const priceOf = (n: number) => getDriverPrice(dynamicPrices, n);
+      const newCassa = cassa + priceOf(driverOut) - priceOf(driverIn);
+      if (newCassa < 0) return { ok: false, error: `Ti mancano ${-newCassa} Soldini` };
+
+      busyRef.current = true;
+      try {
+        const newDrivers = current.map((n) => (n === driverOut ? driverIn : n));
+        if (rosaBase.length > 0 && !rosaBase.includes(driverIn)) {
+          await registraCambio(driverIn, driverOut, priceOf(driverIn), priceOf(driverOut));
+        }
+        const wasCaptain = state.primoPilota === driverOut;
+        const wasTarget = state.chipPilotiTarget === driverOut;
+        const wasSesto = state.sestoUomo === driverIn;
+        const nextPrimo = wasCaptain
+          ? (nuovoPrimoPilota && newDrivers.includes(nuovoPrimoPilota) ? nuovoPrimoPilota : null)
+          : state.primoPilota;
+        setState((prev) => ({
+          ...prev,
+          driverNumbers: newDrivers,
+          primoPilota: nextPrimo,
+          chipPilotiTarget: wasTarget ? null : prev.chipPilotiTarget,
+          sestoUomo: wasSesto ? null : prev.sestoUomo,
+          confirmed: false,
+        }));
+        setCassa(newCassa);
+        await saveDrivers(newDrivers, newCassa, {
+          primo_pilota: nextPrimo,
+          ...(wasTarget ? { chip_piloti_target: null } : {}),
+          ...(wasSesto ? { sesto_uomo: null } : {}),
+        });
+        return { ok: true };
+      } finally {
+        busyRef.current = false;
+      }
+    },
+    [user, state.driverNumbers, state.primoPilota, state.chipPilotiTarget, state.sestoUomo, rosaBase, saveDrivers, dynamicPrices, cassa, registraCambio]
   );
 
   // Setters locali
@@ -397,7 +510,7 @@ export function useSquadra(round: number) {
           // Round 14: Hadjar rimosso per forza maggiore (sostituzione sedile),
           // rimborsato in cassa. Finché non ricomprano un 5° pilota, permetti
           // la conferma anche con 4 piloti (invece di richiederne esattamente 5).
-          const minDrivers = round === 14 ? 4 : 5;
+          const minDrivers = minDriversForRound(round);
           if (current.driverNumbers.length < minDrivers || current.driverNumbers.length > 5) { resolve(false); return current; }
           if (!current.primoPilota) { resolve(false); return current; }
           // Limite metà stagione: blocca la conferma se il chip è già stato
@@ -441,16 +554,32 @@ export function useSquadra(round: number) {
     [user, round]
   );
 
+  // Il capitano è "proposto" (copiato dal round precedente, non ancora
+  // riconfermato) se la formazione non è confermata e coincide con quello
+  // dell'ultima formazione confermata.
+  const primoPilotaProposto = !state.confirmed && prevInfo?.primoPilota != null && state.primoPilota === prevInfo.primoPilota
+    ? { driver: state.primoPilota, fromRound: prevInfo.round }
+    : null;
+
   return {
     ...state,
-    drivers, budget, loaded,
-    acquista, vendi,
+    drivers, budget, loaded, pricesLoaded,
+    prices: dynamicPrices,
+    rosaBase,
+    prevRound: prevInfo?.round ?? null,
+    primoPilotaProposto,
+    acquista, vendi, scambia,
     setPrimoPilota, setSestoUomo, setChipPiloti, setChipPilotiTarget,
     conferma,
     cambiRound, cambiGratisRimasti, penalitaProssimoCambio, penalitaTotale,
     CAMBI_GRATIS, PENALITA_CAMBIO_EXTRA,
     chipPilotiUnavailable,
   };
+}
+
+/** Piloti minimi per confermare: round 14 (Hadjar rimosso per forza maggiore) accetta 4. */
+export function minDriversForRound(round: number): number {
+  return round === 14 ? 4 : 5;
 }
 
 // Alias retrocompatibili
@@ -496,6 +625,15 @@ export function usePrevisioni(round = 1) {
   chipPrevUnavailRef.current = chipPrevisioniUnavailable;
 
   useEffect(() => {
+    // Reset al cambio round (o utente): senza, il lunedì il nuovo round
+    // partiva con le previsioni e il "confermato" del round appena finito.
+    setLoaded(false);
+    setPrevisioniState({ safetyCar: null, virtualSafetyCar: null, redFlag: null, gommeWet: null, poleVince: null, numeroDnf: null });
+    setChipAttivoState(null);
+    setChipTargetState(null);
+    setConfirmed(false);
+    setChipPrevUsedOther([]);
+
     if (!user || !isSupabaseConfigured) {
       setLoaded(true);
       return;
@@ -1019,6 +1157,12 @@ export interface DashboardStats {
   gareGiocate: number;
   mediaPunti: number | null;
   lastWeekendPoints: number;
+  /** Distacco dal primo (0 se sei primo) */
+  gapLeader: number;
+  /** Chi ti precede e di quanto (null se sei primo) */
+  ahead: { name: string; gap: number } | null;
+  /** Chi ti segue e di quanto (null se sei ultimo) */
+  behind: { name: string; gap: number } | null;
   loaded: boolean;
 }
 
@@ -1026,7 +1170,8 @@ export function useDashboardStats(legaId: string = LEGA_GENERALE_ID) {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalPoints: 0, position: null, totalPlayers: 0,
-    gareGiocate: 0, mediaPunti: null, lastWeekendPoints: 0, loaded: false,
+    gareGiocate: 0, mediaPunti: null, lastWeekendPoints: 0,
+    gapLeader: 0, ahead: null, behind: null, loaded: false,
   });
 
   useEffect(() => {
@@ -1054,6 +1199,8 @@ export function useDashboardStats(legaId: string = LEGA_GENERALE_ID) {
       const myEntry = posIndex >= 0 ? classifica[posIndex] : null;
       const total = myEntry?.total_points ?? 0;
 
+      const aheadEntry = posIndex > 0 ? classifica[posIndex - 1] : null;
+      const behindEntry = posIndex >= 0 && posIndex < classifica.length - 1 ? classifica[posIndex + 1] : null;
       setStats({
         totalPoints: total,
         position: posIndex >= 0 ? posIndex + 1 : null,
@@ -1061,6 +1208,9 @@ export function useDashboardStats(legaId: string = LEGA_GENERALE_ID) {
         gareGiocate: gare,
         mediaPunti: gare > 0 ? Math.round((total / gare) * 10) / 10 : null,
         lastWeekendPoints: myEntry?.last_weekend_points ?? 0,
+        gapLeader: classifica.length > 0 ? classifica[0].total_points - total : 0,
+        ahead: aheadEntry ? { name: aheadEntry.team_principal_name, gap: aheadEntry.total_points - total } : null,
+        behind: behindEntry ? { name: behindEntry.team_principal_name, gap: total - behindEntry.total_points } : null,
         loaded: true,
       });
     });
