@@ -64,7 +64,8 @@ export default function LiveTab({
 
   // Prima della chiusura (finestra di pre-buffer di /api/live-session) la
   // classifica live rivelerebbe le rose degli altri: resta vuota.
-  const classifica = debug ? MOCK_CLASSIFICA : locked ? data.classifica : [];
+  const dataClassifica = data.classifica;
+  const classifica = useMemo(() => (debug ? MOCK_CLASSIFICA : locked ? dataClassifica : []), [debug, locked, dataClassifica]);
   const kind = classifySession(sessionType);
   const isRace = kind === "race";
   const isSprint = kind === "sprint";

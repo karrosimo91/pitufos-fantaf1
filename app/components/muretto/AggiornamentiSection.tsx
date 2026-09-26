@@ -78,7 +78,7 @@ export function AggiornamentiSection({
             </span>
           </div>
           <div className="text-[12px] text-white/70 mt-1 leading-snug">{c.desc}</div>
-          <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-1.5 ${usedRound != null ? "text-[#ffb000]" : "text-white/45"}`}>
+          <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-1.5 pr-6 ${usedRound != null ? "text-[#ffb000]" : "text-white/45"}`}>
             {active ? "Attivo questo weekend" : chipStatusText(round, usedRound)}
           </div>
         </button>
