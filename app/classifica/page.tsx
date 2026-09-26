@@ -1,681 +1,300 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
-import { BottomSheet } from "../components/ui/BottomSheet";
+import CountryFlag from "../components/CountryFlag";
+import { FormSpark } from "../components/rivali/FormSpark";
+import { PlayerSeasonSheet, type SeasonRow } from "../components/rivali/PlayerSeasonSheet";
+import { ChiHaChi, type MatrixPlayer } from "../components/rivali/ChiHaChi";
+import { ClassificaWeekendList } from "../components/live/ClassificaWeekendList";
+import { PlayerDetailModal } from "../components/live/PlayerDetailModal";
 import { useLeghe, useClassificaLega, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
-import { createClient, isSupabaseConfigured } from "../lib/supabase";
-import { getDriverByNumber } from "../lib/drivers-data";
-import { ChevronDown, X, Eye, Shield, BarChart3 } from "lucide-react";
-import { RACES_2026, getRaceByRound, isAfterDeadline, getCurrentRound } from "../lib/races";
+import { useWeekend } from "../lib/weekend-context";
+import { useStatistiche } from "../lib/use-statistiche";
+import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import { useProvisionalScores } from "../lib/provisional-scores";
-import {
-  calcolaPuntiWeekend,
-  type RaceWeekendResults,
-  type PilotaDettaglio,
-  type ChipPilotiConfig,
-  type ChipPrevisioniConfig,
-} from "../lib/scoring";
+import { RACES_2026, getRaceByRound, isAfterDeadline } from "../lib/races";
+import type { LiveSnapshot } from "../lib/build-live-results";
+import { ChevronDown, BarChart3, ChevronRight, Eye } from "lucide-react";
 
 const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
+const EMPTY_SNAP: LiveSnapshot = { positions: new Map(), raceControl: [], fastestLap: null, stints: [] };
+const EMPTY_GRID = new Map<number, number>();
 
 export default function ClassificaPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#050507] text-white bg-grid flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-      </div>
-    }>
-      <ClassificaContent />
+    <Suspense fallback={<div className="min-h-screen bg-[#050507] text-white bg-grid" />}>
+      <RivaliContent />
     </Suspense>
   );
 }
 
-// ─── Dati squadra di un giocatore ───
-interface PlayerSquadData {
-  userId: string;
-  teamPrincipalName: string;
-  scuderiaName: string;
-  driverNumbers: number[];
-  primoPilota: number | null;
-  sestoUomo: number | null;
-  chipPiloti: string | null;
-  chipPilotiTarget: number | null;
-  previsioni: {
-    safety_car: boolean | null;
-    virtual_safety_car: boolean | null;
-    red_flag: boolean | null;
-    gomme_wet: boolean | null;
-    pole_vince: boolean | null;
-    numero_dnf: number | null;
-  } | null;
-  chipPrevisioni: string | null;
-  chipPrevisioniTarget: string | null;
-  // Esiti reali del weekend, per mostrare quali previsioni sono state azzeccate
-  events: RaceWeekendResults["events"] | null;
-  // Score calcolato (se weekend_results disponibili)
-  score: {
-    pilotiPoints: number;
-    previsioniPoints: number;
-    penalitaCambi: number;
-    total: number;
-    pilotiDettaglio: (PilotaDettaglio & { name: string })[];
-    previsioniDettaglio: Record<string, number>;
-  } | null;
-}
+type Mode = "somma" | "reale";
 
-const CHIP_LABELS: Record<string, { label: string; icon: string }> = {
-  boost: { label: "Boost Mode x3", icon: "⚡" },
-  halo: { label: "Halo", icon: "🛡️" },
-  sesto: { label: "Sesto Uomo", icon: "👤" },
-  wildcard: { label: "Wildcard", icon: "🃏" },
-  sicura: { label: "Prev. Sicura", icon: "✅" },
-  doppia: { label: "Prev. Doppia", icon: "✨" },
-};
-
-type EventKey = keyof RaceWeekendResults["events"];
-
-const PREVISIONI_LABELS: { key: string; label: string; event: EventKey | null; scoreKey: string }[] = [
-  { key: "safety_car", label: "Safety Car", event: "safety_car", scoreKey: "safetyCar" },
-  { key: "virtual_safety_car", label: "Virtual SC", event: "virtual_safety_car", scoreKey: "virtualSafetyCar" },
-  { key: "red_flag", label: "Red Flag", event: "red_flag", scoreKey: "redFlag" },
-  { key: "gomme_wet", label: "Gomme Wet", event: "wet_tyres", scoreKey: "gommeWet" },
-  { key: "pole_vince", label: "Pole vince", event: "pole_won", scoreKey: "poleVince" },
-  { key: "numero_dnf", label: "N° DNF", event: null, scoreKey: "numeroDnf" },
-];
-
-const PREVISIONE_SCORE_LABELS: Record<string, string> = {
-  safetyCar: "Safety Car",
-  virtualSafetyCar: "Virtual SC",
-  redFlag: "Red Flag",
-  gommeWet: "Gomme Wet",
-  poleVince: "Pole vince",
-  numeroDnf: "N° DNF",
-};
-
-function ClassificaContent() {
+function RivaliContent() {
   const searchParams = useSearchParams();
   const legaParam = searchParams.get("lega");
   const { user } = useAuth();
+  const { round: currentRound, locked, recapRace } = useWeekend();
   const { leghe, loaded: legheLoaded } = useLeghe();
   const { legaId: legaPreferita, loaded: legaPrefLoaded } = useLegaPreferita();
-  const defaultLega = legaParam || (legaPrefLoaded ? legaPreferita : LEGA_GENERALE_ID);
-  const [selectedLega, setSelectedLega] = useState(defaultLega);
-  const [selectedRound, setSelectedRound] = useState<number | null>(null);
-  const [playerModal, setPlayerModal] = useState<PlayerSquadData | null>(null);
-  const [loadingPlayer, setLoadingPlayer] = useState(false);
+  const [selectedLega, setSelectedLega] = useState<string>(legaParam || LEGA_GENERALE_ID);
   const [initialized, setInitialized] = useState(false);
+  const [mode, setMode] = useState<Mode>("somma");
+  const [viewRound, setViewRound] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<string | null>(null);
+  const [roundPlayer, setRoundPlayer] = useState<string | null>(null);
+  const [showMatrix, setShowMatrix] = useState(false);
 
-  // Imposta la lega preferita come default (una sola volta al mount, quando le
-  // preferenze async sono caricate). Init di stato intenzionale e una-tantum.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (initialized) return;
-    if (!legaPrefLoaded) return;
-    if (legaParam) {
-      setSelectedLega(legaParam);
-    } else {
-      setSelectedLega(legaPreferita);
-    }
+    if (initialized || !legaPrefLoaded) return;
+    setSelectedLega(legaParam || legaPreferita);
     setInitialized(true);
   }, [legaParam, legaPreferita, legaPrefLoaded, initialized]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const { classifica: rawClassifica, loading } = useClassificaLega(selectedLega, selectedRound);
   const currentLega = leghe.find((l) => l.id === selectedLega);
-  const currentRound = getCurrentRound();
-  // La classifica generale NON mostra il punteggio in tempo reale: durante una
-  // sessione live resta al provvisorio di fine sessione (e agli ufficiali post-gara).
-  // La classifica live in tempo reale vive nel tab Live di /gara.
-  const { provisional } = useProvisionalScores(false, currentRound);
-
-  // Classifica con punti provvisori (fine sessione) aggiunti
-  const hasProvisionalData = !!provisional && !selectedRound;
-
-  const classifica = useMemo(() => {
-    if (selectedRound) return rawClassifica;
-
-    // Punti provvisori (ultima sessione conclusa, risultati non ancora ufficiali)
-    if (hasProvisionalData && provisional) {
-      const provMap = new Map<string, number>();
-      for (const s of provisional.scores) provMap.set(s.userId, s.points);
-
-      return rawClassifica.map((entry) => {
-        const provBonus = provMap.get(entry.user_id) || 0;
-        return { ...entry, total_points: entry.total_points + provBonus, last_weekend_points: provBonus };
-      }).sort((a, b) => b.total_points - a.total_points);
-    }
-
-    return rawClassifica;
-  }, [rawClassifica, hasProvisionalData, provisional, selectedRound]);
-
-  // Può vedere le squadre? Solo lega non-generale, round selezionato, dopo deadline
-  const canViewSquads = (() => {
-    if (!currentLega || currentLega.is_generale) return false;
-    if (!selectedRound) return false;
-    const race = getRaceByRound(selectedRound);
-    if (!race) return false;
-    return isAfterDeadline(race);
-  })();
-
-  const openPlayerModal = useCallback(async (entry: { user_id: string; team_principal_name: string; scuderia_name: string }) => {
-    if (!canViewSquads || !selectedRound || !isSupabaseConfigured) return;
-    setLoadingPlayer(true);
-
-    const supabase = createClient()!;
-
-    const [formRes, prevRes, wrRes, scoreRes] = await Promise.all([
-      supabase
-        .from("formazioni")
-        .select("driver_numbers, primo_pilota, sesto_uomo, chip_piloti, chip_piloti_target")
-        .eq("user_id", entry.user_id)
-        .eq("round", selectedRound)
-        .eq("confirmed", true)
-        .single(),
-      supabase
-        .from("previsioni")
-        .select("safety_car, virtual_safety_car, red_flag, gomme_wet, pole_vince, numero_dnf, chip_attivo, chip_target")
-        .eq("user_id", entry.user_id)
-        .eq("round", selectedRound)
-        .eq("confirmed", true)
-        .single(),
-      supabase
-        .from("weekend_results")
-        .select("data")
-        .eq("round", selectedRound)
-        .single(),
-      // La penalità cambi NON è ricalcolabile lato client: mercato_cambi è
-      // leggibile solo dal proprietario (RLS). La ricaviamo dal punteggio
-      // ufficiale già salvato dal post-gara, che è al netto della penalità.
-      supabase
-        .from("weekend_scores")
-        .select("total_points")
-        .eq("user_id", entry.user_id)
-        .eq("round", selectedRound)
-        .maybeSingle(),
-    ]);
-
-    const form = formRes.data;
-    const prev = prevRes.data;
-    const weekendResults: RaceWeekendResults | null = wrRes.data?.data ?? null;
-    const driverNumbers = form?.driver_numbers ? (form.driver_numbers as number[]).map(Number) : [];
-    const officialTotal = scoreRes.data ? Number(scoreRes.data.total_points) : null;
-
-    // Calcola score se ci sono risultati e formazione
-    let score: PlayerSquadData["score"] = null;
-    if (weekendResults && driverNumbers.length > 0) {
-      const chipPiloti: ChipPilotiConfig = {
-        chipPiloti: form?.chip_piloti ?? null,
-        chipPilotiTarget: form?.chip_piloti_target ?? null,
-        sestoUomo: form?.sesto_uomo ?? null,
-      };
-      const garaCalcolata = weekendResults.race.length > 0;
-      const previsioniPerCalcolo = garaCalcolata && prev ? {
-        safetyCar: prev.safety_car,
-        virtualSafetyCar: prev.virtual_safety_car,
-        redFlag: prev.red_flag,
-        gommeWet: prev.gomme_wet,
-        poleVince: prev.pole_vince,
-        numeroDnf: prev.numero_dnf,
-      } : {
-        safetyCar: null, virtualSafetyCar: null, redFlag: null,
-        gommeWet: null, poleVince: null, numeroDnf: null,
-      };
-      const chipPrevisioni: ChipPrevisioniConfig = garaCalcolata && prev
-        ? { chipAttivo: prev.chip_attivo || null, chipTarget: prev.chip_target || null }
-        : { chipAttivo: null, chipTarget: null };
-
-      const calc = calcolaPuntiWeekend(driverNumbers, form?.primo_pilota ?? null, previsioniPerCalcolo, weekendResults, chipPiloti, chipPrevisioni);
-      // Delta tra punti lordi e punteggio ufficiale = penalità cambi applicata
-      const penalitaCambi = officialTotal !== null ? Math.max(0, calc.total - officialTotal) : 0;
-      score = {
-        pilotiPoints: calc.pilotiPoints,
-        previsioniPoints: calc.previsioniPoints,
-        penalitaCambi,
-        total: officialTotal !== null ? officialTotal : calc.total,
-        pilotiDettaglio: calc.pilotiDettaglio.map((d) => ({
-          ...d,
-          name: getDriverByNumber(d.driver_number)?.name || `#${d.driver_number}`,
-        })),
-        previsioniDettaglio: calc.previsioniDettaglio,
-      };
-    }
-
-    setPlayerModal({
-      userId: entry.user_id,
-      teamPrincipalName: entry.team_principal_name,
-      scuderiaName: entry.scuderia_name,
-      driverNumbers,
-      primoPilota: form?.primo_pilota ?? null,
-      sestoUomo: form?.sesto_uomo ?? null,
-      chipPiloti: form?.chip_piloti ?? null,
-      chipPilotiTarget: form?.chip_piloti_target ?? null,
-      previsioni: prev ? {
-        safety_car: prev.safety_car,
-        virtual_safety_car: prev.virtual_safety_car,
-        red_flag: prev.red_flag,
-        gomme_wet: prev.gomme_wet,
-        pole_vince: prev.pole_vince,
-        numero_dnf: prev.numero_dnf,
-      } : null,
-      chipPrevisioni: prev?.chip_attivo ?? null,
-      chipPrevisioniTarget: prev?.chip_target ?? null,
-      events: weekendResults?.race.length ? weekendResults.events : null,
-      score,
-    });
-
-    setLoadingPlayer(false);
-  }, [canViewSquads, selectedRound]);
-
-  // Lo scroll-lock della pagina sotto il modale lo fa BottomSheet.
-
-  // Round disponibili per la lega selezionata
   const roundStart = currentLega?.round_start ?? 1;
   const roundEnd = currentLega?.round_end ?? 24;
-  const availableRounds = RACES_2026.filter(
-    (r) => r.round >= roundStart && r.round <= roundEnd && isAfterDeadline(r)
-  );
+  const { classifica: totals, loading } = useClassificaLega(selectedLega, null);
+  const stats = useStatistiche(selectedLega, roundStart, roundEnd);
+  const { provisional } = useProvisionalScores(false, currentRound);
 
-  const selectedRace = selectedRound ? RACES_2026.find((r) => r.round === selectedRound) : null;
-  const isSeasonView = selectedRound === null;
+  // Round della matrice "chi ha chi": il corrente se chiuso, altrimenti l'ultimo concluso
+  const matrixRound = locked ? currentRound : (recapRace?.round ?? stats.rounds[stats.rounds.length - 1] ?? null);
+
+  const rows = useMemo<SeasonRow[]>(() => {
+    const byId = new Map(stats.summaries.map((s) => [s.userId, s]));
+    const seasonRows = totals.map((t, i) => {
+      const s = byId.get(t.user_id);
+      const sp = stats.season.get(t.user_id);
+      const chips = stats.chipUsage.find((c) => c.userId === t.user_id);
+      const rosterForm = matrixRound ? stats.formazioni.find((f) => f.user_id === t.user_id && f.round === matrixRound) : undefined;
+      return {
+        userId: t.user_id,
+        tpName: t.team_principal_name,
+        scuderiaName: t.scuderia_name,
+        points: t.total_points,
+        realPoints: s?.realPoints ?? 0,
+        position: i + 1,
+        prevPosition: s?.prevPosition ?? null,
+        gp: s?.gp ?? 0,
+        wins: s?.wins ?? 0,
+        podiums: s?.podiums ?? 0,
+        best: s?.best ?? null,
+        worst: s?.worst ?? null,
+        avg: s?.avg ?? null,
+        perRound: sp ? sp.perRound.map((r) => (r ? Number(r.total_points) : null)) : [],
+        chipsPiloti: chips?.piloti ?? [],
+        chipsPrevisioni: chips?.previsioni ?? [],
+        roster: rosterForm && matrixRound && (locked || matrixRound !== currentRound)
+          ? { drivers: (rosterForm.driver_numbers ?? []).map(Number), captain: rosterForm.primo_pilota, round: matrixRound }
+          : null,
+      };
+    });
+    if (mode === "reale") {
+      return [...seasonRows].sort((a, b) => b.realPoints - a.realPoints || b.points - a.points).map((r, i) => ({ ...r, position: i + 1 }));
+    }
+    return seasonRows;
+  }, [totals, stats.summaries, stats.season, stats.chipUsage, stats.formazioni, matrixRound, locked, currentRound, mode]);
+
+  const me = user ? rows.find((r) => r.userId === user.id) ?? null : null;
+  const leader = rows[0] ?? null;
+  const ahead = me && me.position > 1 ? rows[me.position - 2] : null;
+  const behind = me && me.position < rows.length ? rows[me.position] : null;
+  const provMine = user && provisional ? provisional.scores.find((s) => s.userId === user.id) ?? null : null;
+
+  const matrixPlayers = useMemo<MatrixPlayer[]>(() => {
+    if (!matrixRound) return [];
+    if (matrixRound === currentRound && !locked) return [];
+    const memberIds = new Set(totals.map((t) => t.user_id));
+    return stats.formazioni
+      .filter((f) => f.round === matrixRound && memberIds.has(f.user_id))
+      .map((f) => ({ userId: f.user_id, name: totals.find((t) => t.user_id === f.user_id)?.team_principal_name ?? "—", drivers: (f.driver_numbers ?? []).map(Number), captain: f.primo_pilota, isMe: f.user_id === user?.id }))
+      .sort((a, b) => (a.isMe ? -1 : b.isMe ? 1 : a.name.localeCompare(b.name)));
+  }, [stats.formazioni, matrixRound, currentRound, locked, totals, user?.id]);
+
+  const availableRounds = RACES_2026.filter((r) => r.round >= roundStart && r.round <= roundEnd && isAfterDeadline(r) && stats.rounds.includes(r.round)).map((r) => r.round).sort((a, b) => b - a);
+  const sheetRow = sheet ? rows.find((r) => r.userId === sheet) ?? null : null;
 
   return (
     <div className="min-h-screen bg-[#050507] text-white bg-grid">
       <Navbar />
-
-      <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
-        <div className="mb-5">
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
-            RANKING · STAGIONE 2026
+      <main className="max-w-3xl mx-auto px-4 py-5 pb-bottomnav">
+        <div className="flex items-end justify-between gap-3 mb-3">
+          <div>
+            <div className="hud-label text-[#E8002D] mb-1">RIVALI · STAGIONE 2026</div>
+            <h1 className="text-[26px] font-extrabold tracking-[-0.6px] leading-none">Classifica</h1>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">
-              Classifica
-            </h1>
-            {hasProvisionalData && !selectedRound && (
-              <span className="font-[family-name:var(--font-jetbrains)] inline-flex items-center bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-1 rounded text-[9px] font-bold tracking-[1.5px]">
-                PROVVISORIO
-              </span>
-            )}
-          </div>
+          <Link href="/statistiche" className="btn-secondary py-2 px-3 text-[10px]"><BarChart3 size={12} /> STATISTICHE</Link>
         </div>
 
-        {/* Selettore lega */}
-        {legheLoaded && leghe.length > 0 && (
-          <div className="mb-3">
-            <div className="hud-label mb-1.5">LEGA</div>
-            <div className="relative">
-              <select
-                value={selectedLega}
-                onChange={(e) => { setSelectedLega(e.target.value); setSelectedRound(null); }}
-                className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.3px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
-              >
-                {leghe.map((l) => (
-                  <option key={l.id} value={l.id} className="bg-[#050507]">
-                    {l.name} (R{l.round_start}–R{l.round_end})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
-            </div>
-            {currentLega && !currentLega.is_generale && (
-              <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 mt-2 px-1 tracking-[0.5px] uppercase">
-                R{currentLega.round_start} → R{currentLega.round_end} · {currentLega.is_public ? "PUBBLICA" : "PRIVATA"}
-              </div>
-            )}
+        {legheLoaded && leghe.length > 1 && (
+          <div className="relative mb-3">
+            <select
+              value={selectedLega}
+              onChange={(e) => { setSelectedLega(e.target.value); setViewRound(null); }}
+              className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-2.5 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] outline-none appearance-none pr-10"
+            >
+              {leghe.map((l) => <option key={l.id} value={l.id} className="bg-[#050507]">{l.name} (R{l.round_start}–R{l.round_end})</option>)}
+            </select>
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
           </div>
         )}
 
-        {/* Filtro round */}
-        <div className="mb-5">
-          <div className="hud-label mb-1.5">ROUND</div>
-          <div className="relative">
-            <select
-              value={selectedRound ?? ""}
-              onChange={(e) => setSelectedRound(e.target.value ? Number(e.target.value) : null)}
-              className="w-full bg-[#0e0e14] border border-[#1c1c26] rounded px-4 py-3 text-white text-[13px] font-bold font-[family-name:var(--font-jetbrains)] tracking-[0.3px] outline-none focus:border-[#E8002D]/50 appearance-none pr-10"
-            >
-              <option value="" className="bg-[#050507]">STAGIONE COMPLETA</option>
-              {availableRounds.map((race) => (
-                <option key={race.round} value={race.round} className="bg-[#050507]">
-                  R{race.round} — {race.flag} {race.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#E8002D] pointer-events-none" />
-          </div>
+        {/* Rail round */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-3">
+          <button onClick={() => setViewRound(null)} className={`pill shrink-0 ${viewRound === null ? "border-white/60 text-white bg-white/[0.08]" : ""}`}>STAGIONE</button>
+          {availableRounds.map((r) => {
+            const race = getRaceByRound(r);
+            return (
+              <button key={r} onClick={() => setViewRound(r)} className={`pill shrink-0 ${viewRound === r ? "border-white/60 text-white bg-white/[0.08]" : ""}`}>
+                {race && <CountryFlag countryCode={race.countryCode} size={10} />} R{r}
+              </button>
+            );
+          })}
         </div>
 
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-          </div>
-        ) : classifica.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-white/20 text-sm">
-              {isSeasonView ? "Nessun giocatore in questa lega" : "Nessun risultato per questo round"}
-            </div>
-            <p className="text-white/10 text-xs mt-2">
-              {isSeasonView ? "La classifica si popolera' con i primi risultati" : "I punteggi verranno calcolati dopo la gara"}
-            </p>
-          </div>
-        ) : (
+        {viewRound === null ? (
           <>
-            {/* Podio (solo se almeno 3 giocatori con punti) */}
-            {classifica.filter((e) => e.total_points > 0).length >= 3 && (
-              <div className="grid grid-cols-3 gap-2 mb-6 items-end">
-                {[classifica[1], classifica[0], classifica[2]].map((entry, i) => {
-                  const podiumPos = [2, 1, 3][i];
-                  const heights = ["h-24", "h-32", "h-20"];
-                  const colors = ["text-gray-300", "text-[#E8002D]", "text-amber-600"];
-                  const labels = ["SILVER", "GOLD", "BRONZE"];
-                  return (
-                    <div key={entry.user_id} className="flex flex-col items-center">
-                      <div className="text-[11px] font-bold text-white/70 mb-0.5 truncate max-w-full">{entry.team_principal_name}</div>
-                      <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/30 mb-2 truncate max-w-full tracking-[0.5px] uppercase">{entry.scuderia_name}</div>
-                      <div
-                        className={`w-full ${heights[i]} bg-[#0e0e14] border border-[#1c1c26] ${i === 1 ? "border-[#E8002D]/30 shadow-[0_-2px_24px_rgba(232,0,45,0.15)]" : ""} rounded-t flex flex-col items-center justify-center relative`}
-                      >
-                        <div className="font-[family-name:var(--font-jetbrains)] text-[8px] tracking-[2px] text-white/30 absolute top-1.5">{labels[i]}</div>
-                        <div className={`text-[34px] font-extrabold font-[family-name:var(--font-jetbrains)] ${colors[i]} leading-none`}>
-                          {podiumPos}
-                        </div>
-                        <div className="font-[family-name:var(--font-jetbrains)] text-[13px] font-extrabold mt-1.5 tabular-nums">
-                          {entry.total_points}
-                        </div>
-                      </div>
+            {/* Toggle somma / reale */}
+            <div className="flex gap-1 mb-3">
+              {([["somma", "SOMMA PUNTI"], ["reale", "CLASSIFICA REALE"]] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setMode(id)}
+                  className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${mode === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mode === "reale" && (
+              <div className="text-[12px] text-white/55 mb-3">Ogni weekend i primi 10 prendono 25-18-15-12-10-8-6-4-2-1, come in F1. Somma dei weekend calcolati.</div>
+            )}
+
+            {/* Hero: la mia riga */}
+            {me && (
+              <div className="hud-card hud-card-accent p-4 mb-3">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <div className="hud-label mb-1">TU · {me.tpName.toUpperCase()}</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-[family-name:var(--font-jetbrains)] text-[34px] font-extrabold tabular-nums leading-none">{me.position}°</span>
+                      <span className="text-[13px] text-white/55">su {rows.length}</span>
+                      {me.prevPosition && me.prevPosition !== me.position && (
+                        <span className={`font-[family-name:var(--font-jetbrains)] text-[12px] font-bold ${me.prevPosition > me.position ? "text-[#2ee59d]" : "text-[#E8002D]"}`}>{me.prevPosition > me.position ? "▲" : "▼"} {Math.abs(me.prevPosition - me.position)}</span>
+                      )}
                     </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-[family-name:var(--font-jetbrains)] text-[26px] font-extrabold tabular-nums leading-none">{mode === "reale" ? me.realPoints : me.points}</div>
+                    <div className="hud-label mt-1">{mode === "reale" ? "PUNTI REALE" : "PUNTI"}</div>
+                  </div>
+                </div>
+                <div className="text-[13px] text-white/80 mt-3">
+                  {ahead ? <><span className="text-[#E8002D] font-bold">−{(mode === "reale" ? ahead.realPoints - me.realPoints : ahead.points - me.points)}</span> da {ahead.tpName}</> : <span className="text-[#2ee59d] font-bold">Sei in testa</span>}
+                  {behind && <><span className="text-white/25"> · </span><span className="text-[#2ee59d] font-bold">+{(mode === "reale" ? me.realPoints - behind.realPoints : me.points - behind.points)}</span> su {behind.tpName}</>}
+                  {leader && ahead && leader.userId !== ahead.userId && <><span className="text-white/25"> · </span>−{(mode === "reale" ? leader.realPoints - me.realPoints : leader.points - me.points)} dal leader</>}
+                </div>
+                {provMine && mode === "somma" && (
+                  <div className="text-[12px] text-[#ffb000] mt-1">Weekend in corso: {provMine.points > 0 ? "+" : ""}{provMine.points} provvisori, non ancora in classifica</div>
+                )}
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="hud-label">FORMA</span>
+                  <FormSpark values={me.perRound.slice(-6)} />
+                </div>
+              </div>
+            )}
+
+            {/* Tabella */}
+            {loading && rows.length === 0 ? (
+              <div className="space-y-2"><div className="skeleton h-14" /><div className="skeleton h-14" /><div className="skeleton h-14" /></div>
+            ) : rows.length === 0 ? (
+              <div className="hud-card p-6 text-center text-[13px] text-white/55">Nessun giocatore in questa lega.</div>
+            ) : (
+              <div className="hud-card overflow-hidden">
+                {rows.map((r, i) => {
+                  const isMe = r.userId === user?.id;
+                  const value = mode === "reale" ? r.realPoints : r.points;
+                  const gapMe = me && !isMe ? value - (mode === "reale" ? me.realPoints : me.points) : null;
+                  const delta = r.prevPosition && r.prevPosition !== r.position ? r.prevPosition - r.position : 0;
+                  return (
+                    <button key={r.userId} onClick={() => setSheet(r.userId)} className={`w-full flex items-center gap-3 px-3.5 py-3 text-left tap ${i < rows.length - 1 ? "border-b border-[#1c1c26]" : ""} ${isMe ? "bg-white/[0.04]" : ""}`}>
+                      <div className="w-8 shrink-0">
+                        <div className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[16px] tabular-nums leading-none ${i === 0 ? "text-[#E8002D]" : "text-white"}`}>{r.position}</div>
+                        {delta !== 0 && <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] mt-0.5 ${delta > 0 ? "text-[#2ee59d]" : "text-[#E8002D]"}`}>{delta > 0 ? "▲" : "▼"}{Math.abs(delta)}</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[14px] font-bold truncate">{r.tpName}{isMe ? " · tu" : ""}</div>
+                        <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/50 uppercase tracking-[0.3px] truncate">{r.scuderiaName}</div>
+                      </div>
+                      <FormSpark values={r.perRound.slice(-5)} />
+                      <div className="text-right w-16 shrink-0">
+                        <div className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[16px] tabular-nums leading-none">{value}</div>
+                        {gapMe !== null && <div className={`font-[family-name:var(--font-jetbrains)] text-[10px] mt-0.5 tabular-nums ${gapMe > 0 ? "text-[#E8002D]" : "text-[#2ee59d]"}`}>{gapMe > 0 ? `+${gapMe}` : gapMe} vs te</div>}
+                      </div>
+                      <ChevronRight size={14} className="text-white/30 shrink-0" />
+                    </button>
                   );
                 })}
               </div>
             )}
 
-            {/* Tabella completa */}
-            <div className="hud-card overflow-hidden">
-              <div className={`grid ${selectedRound ? "grid-cols-[44px_1fr_auto_auto_auto]" : "grid-cols-[44px_1fr_auto_auto]"} gap-3 px-3.5 py-2.5 hud-label border-b border-[#1c1c26]`}>
-                <span>POS</span>
-                <span>TEAM PRINCIPAL</span>
-                {selectedRound && <span className="text-right">PILOTI</span>}
-                {selectedRound && <span className="text-right">PREV</span>}
-                {!selectedRound && <span className="text-right">WEEKEND</span>}
-                <span className="text-right">{selectedRound ? "TOT" : "TOTALE"}</span>
-              </div>
-
-              {classifica.map((entry, i) => {
-                const leaderPoints = classifica[0]?.total_points ?? 0;
-                const previousPoints = i > 0 ? classifica[i - 1].total_points : null;
-                const gapLeader = i === 0 ? null : entry.total_points - leaderPoints; // negativo
-                const gapPrev = previousPoints === null ? null : entry.total_points - previousPoints; // negativo o 0
-                return (
-                <div
-                  key={entry.user_id}
-                  onClick={() => canViewSquads ? openPlayerModal(entry) : undefined}
-                  className={`grid ${selectedRound ? "grid-cols-[44px_1fr_auto_auto_auto]" : "grid-cols-[44px_1fr_auto_auto]"} gap-3 px-3.5 py-3 items-center transition-colors hover:bg-white/[0.025] ${
-                    i < classifica.length - 1 ? "border-b border-[#1c1c26]" : ""
-                  } ${canViewSquads ? "cursor-pointer active:bg-white/[0.05]" : ""} ${i === 0 ? "bg-[#E8002D]/[0.04]" : ""}`}
-                >
-                  <div className="flex flex-col items-start">
-                    <span
-                      className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums leading-none ${
-                        i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/30"
-                      }`}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    {gapLeader !== null && !selectedRound && (
-                      <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/25 tabular-nums mt-1 tracking-[-0.3px]">
-                        {gapLeader}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-bold truncate leading-tight">{entry.team_principal_name}</div>
-                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 truncate tracking-[0.5px] uppercase mt-0.5">{entry.scuderia_name}</div>
-                    </div>
-                    {canViewSquads && (
-                      <Eye size={12} className="text-white/15 shrink-0" />
-                    )}
-                  </div>
-                  {selectedRound ? (
-                    <>
-                      <div className="text-right">
-                        <span className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/40 tabular-nums">
-                          {entry.piloti_points}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/40 tabular-nums">
-                          {entry.previsioni_points}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-right">
-                      <span className={`font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tabular-nums ${
-                        hasProvisionalData ? "text-amber-400" : "text-white/40"
-                      }`}>
-                        +{entry.last_weekend_points}
-                      </span>
-                    </div>
-                  )}
-                  <div className="text-right flex flex-col items-end">
-                    <span className="font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums leading-none">
-                      {entry.total_points}
-                    </span>
-                    {gapPrev !== null && !selectedRound && (
-                      <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/35 tabular-nums mt-1 tracking-[-0.3px]">
-                        {gapPrev === 0 ? "= " : ""}{gapPrev}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-        {/* Hint: come vedere le squadre degli altri */}
-        {classifica.length > 0 && (
-          canViewSquads ? (
-            <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
-              <Eye size={11} />
-              Tocca un giocatore per la sua squadra
-            </div>
-          ) : !selectedRound && currentLega && !currentLega.is_generale ? (
-            <div className="text-center mt-4 font-[family-name:var(--font-jetbrains)] text-[10px] text-white/20 flex items-center justify-center gap-1.5 tracking-[1px] uppercase">
-              <Eye size={11} />
-              Scegli un round per vedere le squadre degli altri
-            </div>
-          ) : null
-        )}
-
-        {/* Link alle statistiche */}
-        <Link
-          href="/statistiche"
-          className="flex items-center justify-center gap-2 bg-[#E8002D]/10 text-[#E8002D] font-bold text-[11px] tracking-wider uppercase py-3 rounded-xl hover:bg-[#E8002D]/20 transition-all mt-4"
-        >
-          <BarChart3 size={14} /> Statistiche e grafici
-        </Link>
-      </main>
-
-      {/* Loading overlay */}
-      {loadingPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-        </div>
-      )}
-
-      {/* Modal squadra giocatore */}
-      {playerModal && (
-        <BottomSheet
-          onClose={() => setPlayerModal(null)}
-          header={
-            <>
-              <div className="min-w-0">
-                <div className="font-bold text-base truncate">{playerModal.teamPrincipalName}</div>
-                <div className="text-[11px] text-white/30 truncate">{playerModal.scuderiaName} — R{selectedRound}</div>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {playerModal.score && (
-                  <span className="font-[family-name:var(--font-jetbrains)] text-xl font-bold text-[#E8002D] tabular-nums">
-                    {playerModal.score.total}
-                  </span>
-                )}
-                <button onClick={() => setPlayerModal(null)} className="text-white/30 hover:text-white/60 transition-colors p-1">
-                  <X size={20} />
-                </button>
-              </div>
-            </>
-          }
-        >
-          <div className="space-y-5">
-            {/* Riepilogo punti (solo a risultati disponibili) */}
-            {playerModal.score && (
-              <div className={`grid ${playerModal.score.penalitaCambi > 0 ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold tabular-nums">{playerModal.score.pilotiPoints}</div>
-                  <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PILOTI</div>
-                </div>
-                <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold tabular-nums">{playerModal.score.previsioniPoints}</div>
-                  <div className="text-[8px] tracking-[2px] text-white/30 mt-0.5">PREVISIONI</div>
-                </div>
-                {playerModal.score.penalitaCambi > 0 && (
-                  <div className="bg-black/20 rounded-lg p-3 text-center">
-                    <div className="font-[family-name:var(--font-jetbrains)] text-lg font-bold text-amber-400 tabular-nums">−{playerModal.score.penalitaCambi}</div>
-                    <div className="text-[8px] tracking-[2px] text-amber-400/50 mt-0.5">PENALITÀ</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Rosa piloti — sempre visibile, con i punti se già calcolati */}
-            <div>
-              <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Rosa Piloti</div>
-              <div className="space-y-1.5">
-                {playerModal.driverNumbers.length > 0 ? playerModal.driverNumbers.map((num) => {
-                  const d = getDriverByNumber(num);
-                  const det = playerModal.score?.pilotiDettaglio.find((x) => x.driver_number === num);
-                  const isPP = num === playerModal.primoPilota;
-                  const isSesto = num === playerModal.sestoUomo;
-                  const isBoostTarget = playerModal.chipPiloti === "boost" && num === playerModal.chipPilotiTarget;
-                  const color = d ? `#${d.teamColour}` : "#666";
-                  return (
-                    <div
-                      key={num}
-                      className={`flex items-center gap-3 p-3 rounded-xl border ${
-                        isPP ? "border-[#E8002D]/40 bg-[#E8002D]/5"
-                        : isBoostTarget ? "border-amber-400/40 bg-amber-400/5"
-                        : isSesto ? "border-blue-400/30 bg-blue-400/5"
-                        : "border-white/[0.06] bg-white/[0.02]"
-                      }`}
-                    >
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                        style={{ backgroundColor: `${color}30`, color }}>
-                        <span className="font-[family-name:var(--font-jetbrains)] tabular-nums">{num}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-sm truncate">{d?.name ?? `#${num}`}</div>
-                        <div className="text-[10px] text-white/30 truncate">{d?.team ?? "—"}</div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isPP && <span className="text-[8px] tracking-wider font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded">x2</span>}
-                        {isBoostTarget && <span className="text-[8px] tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">x3</span>}
-                        {isSesto && <span className="text-[8px] tracking-wider font-bold text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">6°</span>}
-                        {det?.haloApplicato && <Shield size={12} className="text-green-400" />}
-                        {det && (
-                          <span className={`font-[family-name:var(--font-jetbrains)] font-bold text-sm tabular-nums w-9 text-right ${
-                            det.puntiFinali > 0 ? "text-green-400" : det.puntiFinali < 0 ? "text-red-400" : "text-white/20"
-                          }`}>
-                            {det.puntiFinali > 0 ? "+" : ""}{det.puntiFinali}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-white/20 text-sm text-center py-4">Nessuna formazione confermata</div>
-                )}
-              </div>
-            </div>
-
-            {/* Previsioni — sempre le risposte inserite, con esito se la gara è calcolata */}
-            <div>
-              <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Previsioni</div>
-              {playerModal.previsioni ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {PREVISIONI_LABELS.map(({ key, label, event, scoreKey }) => {
-                    const val = playerModal.previsioni![key as keyof typeof playerModal.previsioni];
-                    const happened = playerModal.events && event
-                      ? (playerModal.events[event] as boolean)
-                      : null;
-                    const isDnf = key === "numero_dnf";
-                    const correct = isDnf
-                      ? playerModal.events !== null && val !== null && val === playerModal.events.total_dnf
-                      : happened !== null && val !== null && val === happened;
-                    const wrong = isDnf
-                      ? playerModal.events !== null && val !== null && val !== playerModal.events.total_dnf
-                      : happened !== null && val !== null && val !== happened;
-                    const pts = playerModal.score?.previsioniDettaglio[scoreKey];
-                    return (
-                      <div key={key} className={`rounded-lg px-3 py-2 border ${
-                        correct ? "border-green-500/30 bg-green-500/[0.06]"
-                        : wrong ? "border-red-500/15 bg-red-500/[0.04]"
-                        : "border-white/[0.06] bg-white/[0.02]"
-                      }`}>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] text-white/40 truncate">{label}</span>
-                          {pts !== undefined && pts > 0 && (
-                            <span className="font-[family-name:var(--font-jetbrains)] text-[10px] font-bold text-green-400 tabular-nums shrink-0">+{pts}</span>
-                          )}
-                        </div>
-                        <div className={`font-bold text-[13px] ${correct ? "text-green-400" : wrong ? "text-red-400" : "text-white/30"}`}>
-                          {isDnf ? (val !== null ? val : "—") : val === true ? "SÌ" : val === false ? "NO" : "—"}
-                          {correct ? " ✓" : wrong ? " ✗" : ""}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-white/20 text-sm text-center py-4">Nessuna previsione confermata</div>
+            {/* Chi ha chi */}
+            <div className="mt-5">
+              <button onClick={() => setShowMatrix((v) => !v)} className="w-full flex items-center justify-between mb-2">
+                <h3 className="section-marker">Chi ha chi</h3>
+                <span className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 flex items-center gap-1"><Eye size={12} /> {showMatrix ? "NASCONDI" : "MOSTRA"}</span>
+              </button>
+              {showMatrix && (
+                <ChiHaChi players={matrixPlayers} roundLabel={matrixRound ? `R${matrixRound} ${getRaceByRound(matrixRound)?.circuit ?? ""}` : "—"} />
               )}
             </div>
+          </>
+        ) : (
+          <RoundView round={viewRound} legaId={selectedLega} userId={user?.id} onSelect={setRoundPlayer} selected={roundPlayer} onClose={() => setRoundPlayer(null)} />
+        )}
+      </main>
 
-            {/* Chip */}
-            {(playerModal.chipPiloti || playerModal.chipPrevisioni) && (
-              <div>
-                <div className="text-[9px] tracking-[3px] text-[#E8002D] uppercase font-bold mb-2">Aggiornamenti</div>
-                <div className="flex flex-wrap gap-2">
-                  {playerModal.chipPiloti && (
-                    <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                      <span className="text-sm">{CHIP_LABELS[playerModal.chipPiloti]?.icon || "🔧"}</span>
-                      <span className="text-xs font-bold text-amber-400">
-                        {CHIP_LABELS[playerModal.chipPiloti]?.label || playerModal.chipPiloti}
-                      </span>
-                    </div>
-                  )}
-                  {playerModal.chipPrevisioni && (
-                    <div className="inline-flex items-center gap-2 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
-                      <span className="text-sm">{CHIP_LABELS[playerModal.chipPrevisioni]?.icon || "🔧"}</span>
-                      <span className="text-xs font-bold text-amber-400">
-                        {CHIP_LABELS[playerModal.chipPrevisioni]?.label || playerModal.chipPrevisioni}
-                        {playerModal.chipPrevisioniTarget && ` · ${PREVISIONE_SCORE_LABELS[playerModal.chipPrevisioniTarget] || playerModal.chipPrevisioniTarget}`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </BottomSheet>
-      )}
-
+      {sheetRow && <PlayerSeasonSheet row={sheetRow} me={me} rounds={stats.rounds} onClose={() => setSheet(null)} />}
       <BottomNav />
+    </div>
+  );
+}
+
+/** Classifica di un singolo round con dettaglio al tocco e link al recap. */
+function RoundView({ round, legaId, userId, onSelect, selected, onClose }: { round: number; legaId: string; userId?: string; onSelect: (id: string) => void; selected: string | null; onClose: () => void }) {
+  const data = useWeekendClassifica({ round, sessionType: "", sessionKey: null, legaId, userId });
+  const race = getRaceByRound(round);
+  const selectedForm = selected ? data.formazioni.find((f) => f.user_id === selected) : null;
+  const selectedEntry = selected ? data.classifica.find((c) => c.userId === selected) : null;
+  if (!data.previousLoaded) return <div className="space-y-2"><div className="skeleton h-14" /><div className="skeleton h-14" /></div>;
+  return (
+    <div>
+      <Link href={`/risultati?round=${round}`} className="flex items-center gap-3 hud-card hud-card-accent p-3.5 mb-3 tap">
+        <div className="flex-1 text-[13px] font-bold">Recap di {race?.circuit ?? `R${round}`}: scontrino, rimpianti, condividi</div>
+        <ChevronRight size={16} className="text-white/45" />
+      </Link>
+      {data.classifica.length === 0 ? (
+        <div className="hud-card p-6 text-center text-[13px] text-white/55">Nessun punteggio per questo round.</div>
+      ) : (
+        <ClassificaWeekendList classifica={data.classifica} onSelect={onSelect} />
+      )}
+      {selectedForm && selectedEntry && (
+        <PlayerDetailModal
+          player={selectedForm}
+          entry={selectedEntry}
+          previsioniRow={data.previsioniByUser.get(selectedForm.user_id)}
+          snap={EMPTY_SNAP}
+          gridPositions={EMPTY_GRID}
+          previousResults={data.previousResults}
+          sessionType=""
+          penalitaCambi={data.penalitaByUser.get(selectedForm.user_id) ?? 0}
+          onClose={onClose}
+        />
+      )}
     </div>
   );
 }
