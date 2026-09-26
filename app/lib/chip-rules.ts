@@ -58,6 +58,26 @@ export function halfOf(round: number): "prima" | "dopo" {
   return round < PAUSA_ESTIVA_ROUND ? "prima" : "dopo";
 }
 
+/** Ultimo round della metà stagione a cui appartiene `round`. */
+export function halfEndRound(round: number, seasonEnd = 24): number {
+  return halfOf(round) === "prima" ? PAUSA_ESTIVA_ROUND - 1 : seasonEnd;
+}
+
+/** Usi rimasti di un chip nella metà stagione di `round`: 1 se libero, 0 se già usato. */
+export function chipRemaining(round: number, usedRound: number | null): 0 | 1 {
+  return usedRound != null ? 0 : 1;
+}
+
+/**
+ * Chip ancora disponibili nella metà stagione di `round`, dato l'elenco degli
+ * usi confermati (chip, round). Un uso nell'altra metà non conta: i contatori
+ * si azzerano alla pausa estiva.
+ */
+export function remainingChips(all: ChipRule[], used: { chip: string; round: number }[], round: number): ChipRule[] {
+  const usedHere = new Set(used.filter((u) => halfOf(u.round) === halfOf(round)).map((u) => u.chip));
+  return all.filter((c) => !usedHere.has(c.id));
+}
+
 /**
  * Testo dello stato di un chip nel round: disponibile, già usato in questa
  * metà, o scadenza. `usedRound` è il round in cui è già stato usato nella

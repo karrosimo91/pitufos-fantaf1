@@ -102,6 +102,7 @@ function GaraPage() {
             userId={user.id}
             legaId={legaId}
             raceName={race.name}
+            locked={locked}
             driverNumbers={sq.driverNumbers}
             primoPilota={sq.primoPilota}
             chipPiloti={sq.chipPiloti ? { chipPiloti: sq.chipPiloti, chipPilotiTarget: sq.chipPilotiTarget, sestoUomo: sq.sestoUomo } : null}

@@ -355,11 +355,13 @@ export function deriveStats(raw: StatsRaw, roundStart: number, roundEnd: number)
     .filter((p) => p.total > 0)
     .sort((a, b) => b.correct / b.total - a.correct / a.total);
 
-  // Chip usati
+  // Chip usati — solo nei round già calcolati: il chip scelto per il weekend
+  // in preparazione non deve uscire prima della chiusura della formazione.
+  const closedRounds = new Set<number>([...rounds, ...raw.results.keys()]);
   const chipUsage = raw.players.map((p) => ({
     userId: p.userId,
-    piloti: [...new Set(raw.formazioni.filter((f) => f.user_id === p.userId && f.chip_piloti).map((f) => f.chip_piloti!))],
-    previsioni: [...new Set(raw.previsioni.filter((f) => f.user_id === p.userId && f.chip_attivo).map((f) => f.chip_attivo!))],
+    piloti: [...new Set(raw.formazioni.filter((f) => f.user_id === p.userId && f.chip_piloti && closedRounds.has(f.round)).map((f) => f.chip_piloti!))],
+    previsioni: [...new Set(raw.previsioni.filter((f) => f.user_id === p.userId && f.chip_attivo && closedRounds.has(f.round)).map((f) => f.chip_attivo!))],
   }));
 
   // Eventi stagione

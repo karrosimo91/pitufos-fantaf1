@@ -22,6 +22,7 @@ export interface SeasonRow {
   avg: number | null;
   /** Punti weekend per round (null = non giocato), ordine dei round */
   perRound: (number | null)[];
+  /** Chip ancora disponibili nella metà stagione corrente */
   chipsPiloti: string[];
   chipsPrevisioni: string[];
   /** Rosa del round mostrato nella matrice (solo a formazione chiusa) */
@@ -130,12 +131,12 @@ export function PlayerSeasonSheet({ row, me, rounds, onClose }: { row: SeasonRow
         )}
 
         <div>
-          <div className="hud-label mb-2">Aggiornamenti già usati</div>
+          <div className="hud-label mb-2">Chip ancora disponibili · questa metà stagione</div>
           {row.chipsPiloti.length + row.chipsPrevisioni.length === 0 ? (
-            <div className="text-[12px] text-white/50">Nessuno: ha ancora tutti i chip.</div>
+            <div className="text-[12px] text-white/50">Nessuno: li ha usati tutti.</div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {[...row.chipsPiloti, ...row.chipsPrevisioni].map((c, i) => <span key={`${c}-${i}`} className="pill pill-muted">{chipLabel(c)}</span>)}
+              {[...row.chipsPiloti, ...row.chipsPrevisioni].map((c, i) => <span key={`${c}-${i}`} className="pill pill-green">{chipLabel(c)}</span>)}
             </div>
           )}
         </div>

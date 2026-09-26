@@ -18,6 +18,7 @@ import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import { useProvisionalScores } from "../lib/provisional-scores";
 import { RACES_2026, getRaceByRound, isAfterDeadline } from "../lib/races";
 import type { LiveSnapshot } from "../lib/build-live-results";
+import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, remainingChips } from "../lib/chip-rules";
 import { ChevronDown, BarChart3, ChevronRight, Eye } from "lucide-react";
 
 const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
@@ -72,7 +73,11 @@ function RivaliContent() {
     const seasonRows = totals.map((t, i) => {
       const s = byId.get(t.user_id);
       const sp = stats.season.get(t.user_id);
-      const chips = stats.chipUsage.find((c) => c.userId === t.user_id);
+      // Chip rimasti nella metà stagione corrente (gli usi dell'altra metà non contano)
+      // Solo round già chiusi: il chip scelto per il weekend in preparazione non si vede.
+      const closedRound = (r: number) => { const race = getRaceByRound(r); return !!race && isAfterDeadline(race); };
+      const usedPiloti = stats.formazioni.filter((f) => f.user_id === t.user_id && f.chip_piloti && closedRound(f.round)).map((f) => ({ chip: f.chip_piloti as string, round: f.round }));
+      const usedPrev = stats.previsioni.filter((p) => p.user_id === t.user_id && p.chip_attivo && closedRound(p.round)).map((p) => ({ chip: p.chip_attivo as string, round: p.round }));
       const rosterForm = matrixRound ? stats.formazioni.find((f) => f.user_id === t.user_id && f.round === matrixRound) : undefined;
       return {
         userId: t.user_id,
@@ -89,8 +94,8 @@ function RivaliContent() {
         worst: s?.worst ?? null,
         avg: s?.avg ?? null,
         perRound: sp ? sp.perRound.map((r) => (r ? Number(r.total_points) : null)) : [],
-        chipsPiloti: chips?.piloti ?? [],
-        chipsPrevisioni: chips?.previsioni ?? [],
+        chipsPiloti: remainingChips(CHIP_PILOTI_RULES, usedPiloti, currentRound).map((c) => c.id),
+        chipsPrevisioni: remainingChips(CHIP_PREVISIONI_RULES, usedPrev, currentRound).map((c) => c.id),
         roster: rosterForm && matrixRound && (locked || matrixRound !== currentRound)
           ? { drivers: (rosterForm.driver_numbers ?? []).map(Number), captain: rosterForm.primo_pilota, round: matrixRound }
           : null,
@@ -100,7 +105,7 @@ function RivaliContent() {
       return [...seasonRows].sort((a, b) => b.realPoints - a.realPoints || b.points - a.points).map((r, i) => ({ ...r, position: i + 1 }));
     }
     return seasonRows;
-  }, [totals, stats.summaries, stats.season, stats.chipUsage, stats.formazioni, matrixRound, locked, currentRound, mode]);
+  }, [totals, stats.summaries, stats.season, stats.formazioni, stats.previsioni, matrixRound, locked, currentRound, mode]);
 
   const me = user ? rows.find((r) => r.userId === user.id) ?? null : null;
   const leader = rows[0] ?? null;

@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { HelpCircle, X, Search } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import DriverTile from "../DriverTile";
-import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, chipStatusText, chipRule, type ChipRule } from "../../lib/chip-rules";
+import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, chipStatusText, chipRule, chipRemaining, halfEndRound, type ChipRule } from "../../lib/chip-rules";
 import { PAUSA_ESTIVA_ROUND, type ChipUsage } from "../../lib/store";
+import { getRaceByRound } from "../../lib/races";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import type { DriverInsight } from "../../lib/use-driver-insights";
 import { PREVISIONI_LABELS } from "./previsioni-config";
@@ -46,6 +47,8 @@ export function AggiornamentiSection({
   const [sestoSheet, setSestoSheet] = useState(false);
   const [search, setSearch] = useState("");
   const half = round < PAUSA_ESTIVA_ROUND ? "prima" : "dopo";
+  const halfEnd = halfEndRound(round);
+  const halfEndRace = getRaceByRound(halfEnd);
 
   const usageOf = (list: ChipUsage[], id: string) => list.find((u) => u.id === id);
 
@@ -57,8 +60,9 @@ export function AggiornamentiSection({
       .sort((a, b) => (prices.get(b.number) ?? b.price) - (prices.get(a.number) ?? a.price));
   }, [driverNumbers, search, prices]);
 
-  const renderChip = (c: ChipRule, active: boolean, usedRound: number | null, usage: ChipUsage | undefined, onSelect: () => void) => {
+  const renderChip = (c: ChipRule, active: boolean, usedRound: number | null, _usage: ChipUsage | undefined, onSelect: () => void) => {
     const disabled = usedRound != null && !active;
+    const left = chipRemaining(round, usedRound);
     return (
       <div key={c.id} className={`relative rounded-lg border p-3 tap ${active ? "bg-white/[0.06] border-white/45" : disabled ? "bg-[#0e0e14] border-[#1c1c26] opacity-50" : "bg-[#0e0e14] border-[#1c1c26]"}`}>
         <button
@@ -69,10 +73,9 @@ export function AggiornamentiSection({
         >
           <div className="flex items-center justify-between gap-2">
             <div className="font-[family-name:var(--font-jetbrains)] text-[12px] font-bold tracking-[1px] uppercase">{c.label}</div>
-            <div className="flex items-center gap-1" title="Usi: prima e dopo la pausa estiva">
-              <Dot used={usage ? !usage.availablePrePausa : false} current={half === "prima"} />
-              <Dot used={usage ? !usage.availablePostPausa : false} current={half === "dopo"} />
-            </div>
+            <span className={`pill text-[10px] px-1.5 py-0 ${active ? "pill-accent" : left > 0 ? "pill-green" : "pill-muted"}`} title={`Usi rimasti in questa metà stagione (round ${half === "prima" ? `1–${PAUSA_ESTIVA_ROUND - 1}` : `${PAUSA_ESTIVA_ROUND}–24`})`}>
+              {active ? "IN USO" : left > 0 ? "1 RIMASTO" : "0 RIMASTI"}
+            </span>
           </div>
           <div className="text-[12px] text-white/70 mt-1 leading-snug">{c.desc}</div>
           <div className={`font-[family-name:var(--font-jetbrains)] text-[11px] mt-1.5 ${usedRound != null ? "text-[#ffb000]" : "text-white/45"}`}>
@@ -111,7 +114,9 @@ export function AggiornamentiSection({
         <h3 className="section-marker">Aggiornamenti dalla fabbrica</h3>
         <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/55 tracking-[0.5px]">1 piloti + 1 previsioni</div>
       </div>
-      <div className="text-[12px] text-white/55 mb-3">Ogni chip ha due usi: uno prima e uno dopo la pausa estiva. Se non lo usi, scade.</div>
+      <div className="text-[12px] text-white/55 mb-3">
+        Un uso per chip in questa metà stagione ({half === "prima" ? `round 1–${PAUSA_ESTIVA_ROUND - 1}` : `round ${PAUSA_ESTIVA_ROUND}–24`}){halfEndRace ? `, scade dopo ${halfEndRace.circuit}` : ""}. Quelli non usati si perdono{half === "prima" ? "; dopo la pausa estiva tornano tutti disponibili" : ""}.
+      </div>
 
       <div className="hud-label mb-2">PILOTI</div>
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -199,7 +204,7 @@ export function AggiornamentiSection({
           }
         >
           <p className="text-[14px] text-white/85 leading-relaxed">{ruleSheet.rule}</p>
-          <p className="text-[12px] text-white/50 mt-3">Due usi a stagione: uno prima della pausa estiva (round 1–{PAUSA_ESTIVA_ROUND - 1}), uno dopo (round {PAUSA_ESTIVA_ROUND}–24). Massimo un chip piloti e un chip previsioni per weekend.</p>
+          <p className="text-[12px] text-white/50 mt-3">Un uso per metà stagione: uno nei round 1–{PAUSA_ESTIVA_ROUND - 1}, uno nei round {PAUSA_ESTIVA_ROUND}–24; alla pausa estiva i contatori si azzerano. Massimo un chip piloti e un chip previsioni per weekend.</p>
         </BottomSheet>
       )}
 
@@ -241,15 +246,6 @@ export function AggiornamentiSection({
         </BottomSheet>
       )}
     </section>
-  );
-}
-
-function Dot({ used, current }: { used: boolean; current: boolean }) {
-  return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full ${used ? "bg-white/70" : "border border-white/50"} ${current ? "ring-2 ring-white/20" : ""}`}
-      aria-hidden
-    />
   );
 }
 

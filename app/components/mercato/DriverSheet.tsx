@@ -9,7 +9,7 @@ import { driverFormByRound } from "../../lib/season-insights";
 
 /** Scheda pilota: forma round per round, storico quotazione, chi lo ha in lega. */
 export function DriverSheet({
-  driverNumber, price, insight, resultRows, locked, members, onClose, footer,
+  driverNumber, price, insight, resultRows, locked, members, ownershipLabel = "In lega", onClose, footer,
 }: {
   driverNumber: number;
   price: number;
@@ -17,6 +17,7 @@ export function DriverSheet({
   resultRows: RoundResults[];
   locked: boolean;
   members: number;
+  ownershipLabel?: string;
   onClose: () => void;
   footer?: React.ReactNode;
 }) {
@@ -103,16 +104,16 @@ export function DriverSheet({
         </div>
 
         <div>
-          <div className="hud-label mb-2">In lega</div>
+          <div className="hud-label mb-2">{ownershipLabel}</div>
           <div className="text-[13px] text-white/80">
-            {insight.owners === 0 ? "Nessuno lo ha in rosa" : `${insight.owners} su ${members} lo hanno in rosa`}
+            {insight.owners === 0 ? "Nessuno lo aveva in rosa" : `${insight.owners} su ${members} lo ${locked ? "hanno" : "avevano"} in rosa`}
             {insight.captains > 0 ? ` · capitano di ${insight.captains}` : ""}
           </div>
           {locked && insight.ownerNames.length > 0 && (
             <div className="text-[12px] text-white/55 mt-1">In rosa di: {insight.ownerNames.join(", ")}</div>
           )}
-          {!locked && insight.owners > 0 && (
-            <div className="text-[12px] text-white/45 mt-1">I nomi si vedono a formazione chiusa.</div>
+          {!locked && (
+            <div className="text-[12px] text-white/45 mt-1">Le rose di questo weekend si vedono dalle qualifiche in poi.</div>
           )}
         </div>
 

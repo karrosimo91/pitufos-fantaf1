@@ -184,6 +184,7 @@ export default function Muretto() {
         proposedFromRound={sq.primoPilotaProposto?.fromRound ?? null}
         lastRacedRound={ins.lastRacedRound}
         prices={sq.prices}
+        ownershipRound={ins.ownershipRound}
       />
 
       {locked ? (
