@@ -29,7 +29,7 @@ export function HBarChart({
   emptyLabel?: string;
 }) {
   if (items.length === 0) {
-    return <div className="text-center py-6 text-white/20 text-[12px]">{emptyLabel}</div>;
+    return <div className="text-center py-6 text-white/45 text-[12px]">{emptyLabel}</div>;
   }
   const top = max ?? Math.max(...items.map((i) => Math.abs(i.value)), 1);
 
@@ -43,7 +43,7 @@ export function HBarChart({
               <div className={`text-[12px] truncate leading-tight ${it.highlight ? "text-white font-bold" : "text-white/70"}`}>
                 {it.label}
               </div>
-              {it.sub && <div className="text-[9px] text-white/25 truncate leading-tight">{it.sub}</div>}
+              {it.sub && <div className="text-[11px] text-white/50 truncate leading-tight">{it.sub}</div>}
             </div>
             <div className="flex-1 h-2.5 rounded-full min-w-0" style={{ background: "rgba(255,255,255,0.04)" }}>
               <div

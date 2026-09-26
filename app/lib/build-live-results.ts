@@ -155,6 +155,13 @@ export function buildLiveWeekendResults(
     if (gp === 1) { poleDriver = drv; break; }
   }
   if (poleDriver == null) poleDriver = qualifyingPole ?? null;
+  // Ultimo fallback: il primo della qualifica in archivio. Senza, "pole
+  // vince" restava false per tutta la gara finché non arrivava la griglia,
+  // e chi aveva detto NO vedeva +7 che poi sparivano.
+  if (poleDriver == null) {
+    const q = previousResults?.qualifying?.find((r) => r.position === 1 && !r.dnf && !r.dns);
+    poleDriver = q?.driver_number ?? null;
+  }
   const poleWon = isMainRace && poleDriver != null
     ? snap.positions.get(poleDriver)?.position === 1
     : (previousResults?.events.pole_won ?? false);

@@ -169,7 +169,7 @@ export default function DebugPage() {
   return (
     <div className="min-h-screen bg-[#050507] text-white p-6 bg-grid">
       <h1 className="text-2xl font-extrabold mb-1 tracking-[-0.5px]">Debug DB</h1>
-      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[2px] mb-5 uppercase">
+      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 tracking-[2px] mb-5 uppercase">
         ADMIN CONSOLE · LOS PITUFOS FANTAF1
       </div>
 
@@ -182,7 +182,7 @@ export default function DebugPage() {
             value={adminKey}
             onChange={(e) => saveKey(e.target.value)}
             placeholder="Incolla qui la chiave (salvata in localStorage)"
-            className="flex-1 bg-black/40 border border-[#1c1c26] rounded px-3 py-2 font-[family-name:var(--font-jetbrains)] text-[12px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8002D]/40"
+            className="flex-1 bg-black/40 border border-[#1c1c26] rounded px-3 py-2 font-[family-name:var(--font-jetbrains)] text-[12px] text-white placeholder:text-white/35 focus:outline-none focus:border-[#E8002D]/40"
           />
           <button
             type="button"
@@ -201,7 +201,7 @@ export default function DebugPage() {
             </button>
           )}
         </div>
-        <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/30 mt-2 tracking-[0.5px]">
+        <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/50 mt-2 tracking-[0.5px]">
           Richiesta per "Panoramica" e "Post-Gara". Server-side bypassa RLS via service_role.
         </div>
       </div>
@@ -224,7 +224,7 @@ export default function DebugPage() {
       </div>
 
       <div className="hud-card p-4 font-[family-name:var(--font-jetbrains)] text-xs space-y-1 max-h-[60vh] overflow-y-auto">
-        {logs.length === 0 && <div className="text-white/20">Nessun log...</div>}
+        {logs.length === 0 && <div className="text-white/45">Nessun log...</div>}
         {logs.map((l, i) => (
           <div
             key={i}

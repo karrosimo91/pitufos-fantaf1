@@ -1,4 +1,4 @@
-const CACHE_NAME = "lp-fantaf1-v1";
+const CACHE_NAME = "lp-fantaf1-v2";
 
 // Installa: pre-cache delle risorse essenziali
 self.addEventListener("install", (event) => {

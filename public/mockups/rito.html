@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>Pitufos Devastante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f4f7;--surface:#ffffff;--line:#dedee6;--text:#15151d;--muted:#5d5d6e;--faint:#8b8b9c;--accent:#d10027;--ok:#1f8f5b;--code:#ececf2;
+  --display:"Oswald","Arial Narrow",Impact,sans-serif;--body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* app identity (phones are always dark, by choice) */
+  --p-bg:#050507;--p-bg2:#0a0a10;--p-panel:#0e0e14;--p-panel2:#14141c;--p-line:#1c1c26;--p-line2:#2a2a38;--p-accent:#E8002D;--p-green:#2ee59d;--p-amber:#ffb000;--p-blue:#5aa9ff;--p-purple:#b026ff;
+  --p-t1:#f0f0f5;--p-t2:rgba(240,240,245,.62);--p-t3:rgba(240,240,245,.36);--p-t4:rgba(240,240,245,.12);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0b0b12;--surface:#13131c;--line:#242430;--text:#f1f1f5;--muted:#a3a3b3;--faint:#6f6f80;--accent:#ff3355;--ok:#3ddc97;--code:#0e0e16}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0b0b12;--surface:#13131c;--line:#242430;--text:#f1f1f5;--muted:#a3a3b3;--faint:#6f6f80;--accent:#ff3355;--ok:#3ddc97;--code:#0e0e16}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-block:26px 70px;padding-inline:16px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(36px,7vw,64px);line-height:.98;margin:6px 0 10px;text-wrap:balance}
+.lead{font-size:17px;max-width:64ch;color:var(--muted);margin:0 0 10px}
+.thesis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0 8px}
+@media (max-width:760px){.thesis{grid-template-columns:1fr}}
+.thesis div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.thesis b{font-family:var(--display);font-weight:500;font-size:19px;display:block;margin-bottom:4px}
+.thesis p{margin:0;color:var(--muted);font-size:14px}
+nav.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line);margin:18px 0 6px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+nav.jump a{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);text-decoration:none;white-space:nowrap}
+nav.jump a:hover,nav.jump a:focus-visible{border-color:var(--text);color:var(--text);outline:none}
+section.screen{scroll-margin-top:64px;display:grid;grid-template-columns:400px 1fr;gap:28px;align-items:start;padding:34px 0 10px;border-bottom:1px solid var(--line)}
+@media (max-width:820px){section.screen{grid-template-columns:1fr}}
+.notes h2{font-family:var(--display);font-weight:500;font-size:30px;margin:0 0 4px;line-height:1.05}
+.notes .when{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.notes p{margin:0 0 10px;max-width:60ch}
+.notes ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.notes li{padding-left:16px;position:relative;max-width:60ch}
+.notes li::before{content:"";position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.notes .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin:16px 0 4px}
+.notes .eff{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;background:var(--code);color:var(--muted);margin-left:6px}
+
+/* ───── phone ───── */
+.phone{width:100%;max-width:390px;margin:0 auto;background:var(--p-bg);color:var(--p-t1);border-radius:44px;border:8px solid #17171e;box-shadow:0 30px 60px rgba(0,0,0,.35),inset 0 0 0 1px #2a2a34;overflow:hidden;font-family:var(--body);font-size:13px;line-height:1.4;position:relative;color-scheme:dark}
+.phone .sb{display:flex;justify-content:space-between;align-items:center;padding:14px 22px 0;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--p-t1)}
+.phone .sb .island{width:110px;height:30px;background:#000;border-radius:20px;position:absolute;left:50%;transform:translateX(-50%);top:10px}
+.phone .app{padding:12px 14px 0;min-height:760px;background:
+  linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:32px 32px}
+.top{display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px}
+.brand{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:14px;height:20px;background:var(--p-accent);transform:skewX(-18deg);border-radius:2px}
+.brand span{color:var(--p-accent)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--p-t3);font-weight:600}
+.card{background:var(--p-panel);border:1px solid var(--p-line);border-radius:10px;padding:12px;margin:0 0 10px;position:relative;overflow:hidden}
+.card.acc::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--p-accent),transparent)}
+.card.hero{padding:14px 14px 12px}
+.h{font-family:var(--display);font-weight:600;font-size:22px;line-height:1.05;letter-spacing:.01em}
+.h.big{font-size:30px}
+.big{font-family:var(--mono);font-weight:700;font-size:46px;line-height:1;letter-spacing:-.02em}
+.sub{color:var(--p-t2);font-size:12px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--p-line2);color:var(--p-t2)}
+.pill.red{background:rgba(232,0,45,.14);border-color:rgba(232,0,45,.5);color:#ff5c78}
+.pill.green{background:rgba(46,229,157,.1);border-color:rgba(46,229,157,.4);color:var(--p-green)}
+.pill.amber{background:rgba(255,176,0,.12);border-color:rgba(255,176,0,.45);color:var(--p-amber)}
+.pill.blue{background:rgba(90,169,255,.12);border-color:rgba(90,169,255,.45);color:var(--p-blue)}
+.pill.live::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff5c78;box-shadow:0 0 8px #ff5c78}
+.g{color:var(--p-green)}.r{color:#ff5c78}.a{color:var(--p-amber)}.b{color:var(--p-blue)}.t2{color:var(--p-t2)}.t3{color:var(--p-t3)}
+.row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;background:var(--p-panel2);border:1px solid var(--p-line);margin-bottom:6px}
+.row.me{border-color:rgba(232,0,45,.5);background:rgba(232,0,45,.06)}
+.row .bar{width:3px;height:30px;border-radius:2px;flex-shrink:0}
+.row .n{font-family:var(--mono);font-weight:700;font-size:12px;width:22px;text-align:center;flex-shrink:0}
+.row .name{flex:1;min-width:0}
+.row .name b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .name small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--p-t3)}
+.row .pts{font-family:var(--mono);font-weight:700;font-size:15px;text-align:right;font-variant-numeric:tabular-nums}
+.row .pts small{display:block;font-size:9.5px;color:var(--p-t3);font-weight:400}
+.av{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:12px;color:#fff;flex-shrink:0;position:relative}
+.av::after{content:"";position:absolute;inset:0;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:3px;background:var(--p-accent);color:#fff}
+.tag.amber{background:var(--p-amber);color:#000}.tag.blue{background:var(--p-blue);color:#000}.tag.dim{background:var(--p-line2);color:var(--p-t2)}
+.steps{display:flex;gap:6px;margin:10px 0 4px}
+.step{flex:1;text-align:center}
+.step .dot{height:4px;border-radius:2px;background:var(--p-line2);margin-bottom:6px}
+.step.done .dot{background:var(--p-green)}.step.now .dot{background:var(--p-accent);box-shadow:0 0 10px rgba(232,0,45,.6)}
+.step span{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--p-t3)}
+.step.done span,.step.now span{color:var(--p-t1)}
+.cta{display:flex;justify-content:center;align-items:center;gap:8px;background:var(--p-accent);color:#fff;font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.08em;text-transform:uppercase;padding:13px;border-radius:10px;margin:8px 0 4px;box-shadow:0 8px 24px rgba(232,0,45,.28)}
+.cta.ghost{background:transparent;border:1px solid var(--p-line2);color:var(--p-t2);box-shadow:none;font-size:13px;padding:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.kpi{background:var(--p-panel2);border:1px solid var(--p-line);border-radius:8px;padding:8px 10px}
+.kpi .v{font-family:var(--mono);font-weight:700;font-size:18px;line-height:1.1}
+.kpi .l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--p-t3);margin-top:3px}
+.prev{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.prev div{background:var(--p-panel2);border:1px solid var(--p-line);border-radius:8px;padding:8px 10px}
+.prev b{display:block;font-size:11.5px;font-weight:600;margin-bottom:2px}
+.prev .ans{font-family:var(--mono);font-weight:700;font-size:13px}
+.prev .ok{border-color:rgba(46,229,157,.45);background:rgba(46,229,157,.06)}
+.prev .ko{border-color:rgba(255,92,120,.45);background:rgba(255,92,120,.06)}
+.prev .wait{border-style:dashed}
+.bnav{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--p-line);background:rgba(5,5,7,.96);padding:10px 8px 22px;margin:8px -14px 0;position:relative}
+.bnav div{text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--p-t3);display:grid;gap:5px;justify-items:center}
+.bnav div i{display:block;width:18px;height:18px;border-radius:5px;border:1.6px solid currentColor;opacity:.9}
+.bnav div.on{color:var(--p-accent)}
+.bnav .dotb{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--p-accent);box-shadow:0 0 8px var(--p-accent)}
+.toast{background:#111119;border:1px solid var(--p-line2);border-left:3px solid var(--p-amber);border-radius:10px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:3;font-size:12.5px}
+.toast .lbl{color:var(--p-amber)}
+.tl{position:relative;padding-left:18px}
+.tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--p-line2)}
+.tl div{position:relative;padding:5px 0;font-size:12px;display:flex;gap:8px;align-items:baseline}
+.tl div::before{content:"";position:absolute;left:-16px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--p-line2)}
+.tl div.sc::before{background:var(--p-amber)}.tl div.go::before{background:var(--p-green)}.tl div.rf::before{background:#ff5c78}.tl div.me::before{background:var(--p-accent)}
+.tl .lap{font-family:var(--mono);font-size:10px;color:var(--p-t3);width:28px;flex-shrink:0}
+.h2h{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;text-align:center;padding:10px 6px}
+.h2h .who{font-family:var(--display);font-weight:600;font-size:15px}
+.h2h .v{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1}
+.h2h .vs{font-family:var(--mono);font-size:10px;color:var(--p-t3);letter-spacing:.14em}
+.gapbar{height:6px;border-radius:3px;background:var(--p-line2);position:relative;margin:8px 4px 2px;overflow:hidden}
+.gapbar i{position:absolute;top:0;bottom:0;background:var(--p-accent);left:0}
+.stack{display:flex;height:14px;border-radius:4px;overflow:hidden;margin:8px 0 6px}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:12px;font-family:var(--mono);font-size:9.5px;color:var(--p-t3);letter-spacing:.06em}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.spark{width:56px;height:20px;flex-shrink:0}
+.matrix{display:grid;grid-template-columns:auto repeat(4,1fr);gap:3px;font-family:var(--mono);font-size:9.5px;align-items:center}
+.matrix .hd{color:var(--p-t3);text-align:center;letter-spacing:.06em;font-size:8.5px;text-transform:uppercase}
+.matrix .dn{color:var(--p-t2);padding-right:6px;white-space:nowrap}
+.matrix .c{height:20px;border-radius:4px;background:var(--p-panel2);border:1px solid var(--p-line)}
+.matrix .c.y{background:rgba(232,0,45,.22);border-color:rgba(232,0,45,.5)}
+.matrix .c.me{outline:1px solid var(--p-accent);outline-offset:-1px}
+.share{background:linear-gradient(160deg,#141420,#0a0a10);border:1px solid var(--p-line2);border-radius:14px;padding:16px 14px;position:relative;overflow:hidden}
+.share::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(232,0,45,.35),transparent 65%)}
+.share .pos{font-family:var(--mono);font-weight:700;font-size:64px;line-height:.9;letter-spacing:-.03em}
+.share .pos small{font-size:20px;color:var(--p-t2);letter-spacing:0}
+.seg{display:flex;background:var(--p-panel2);border:1px solid var(--p-line);border-radius:8px;padding:3px;margin-bottom:10px}
+.seg div{flex:1;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:7px 4px;border-radius:6px;color:var(--p-t3)}
+.seg div.on{background:rgba(232,0,45,.16);color:#ff5c78;border:1px solid rgba(232,0,45,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#0f0f16;border-top:1px solid var(--p-line2);border-radius:18px 18px 0 0;padding:12px 14px 24px;box-shadow:0 -20px 40px rgba(0,0,0,.6);z-index:4}
+.sheet .handle{width:36px;height:4px;border-radius:2px;background:var(--p-line2);margin:0 auto 12px}
+.scrim{position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.38);z-index:3}
+.push{background:#1a1a22;border:1px solid var(--p-line2);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.push .ic{width:34px;height:34px;border-radius:9px;background:var(--p-accent);display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#fff;flex-shrink:0}
+.push b{display:block;font-size:12.5px}
+.push span{font-size:12px;color:var(--p-t2)}
+.push small{font-family:var(--mono);font-size:9.5px;color:var(--p-t3);margin-left:auto;flex-shrink:0}
+.onb .opt{border:1px solid var(--p-line2);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.onb .opt.sel{border-color:var(--p-accent);background:rgba(232,0,45,.06)}
+.onb .opt .radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--p-line2);flex-shrink:0}
+.onb .opt.sel .radio{border-color:var(--p-accent);box-shadow:inset 0 0 0 3px var(--p-bg),inset 0 0 0 9px var(--p-accent)}
+.roadmap{display:grid;gap:10px;margin-top:14px}
+.roadmap div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline}
+@media (max-width:560px){.roadmap div{grid-template-columns:auto 1fr}.roadmap div .eff{grid-column:2}}
+.roadmap .rk{font-family:var(--mono);font-weight:700;color:var(--accent)}
+.roadmap b{font-family:var(--display);font-weight:500;font-size:17px;display:block}
+.roadmap p{margin:2px 0 0;color:var(--muted);font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tablewrap{overflow-x:auto}
+h2.sec{scroll-margin-top:64px;font-family:var(--display);font-weight:500;font-size:30px;margin:44px 0 8px}
+footer{margin-top:40px;color:var(--faint);font-size:12px;font-family:var(--mono)}
+@media (prefers-reduced-motion:no-preference){.pill.live::before{animation:pulse 1.4s infinite}@keyframes pulse{50%{opacity:.35}}}
+</style>
+
+<div class="wrap">
+<div class="eyebrow">Los Pitufos FantaF1 · proposta UX con mockup</div>
+<h1>Pitufos Devastante</h1>
+<p class="lead">Sette schermate per trasformare l'app da "cruscotto di numeri" a rito settimanale fra amici: una cosa da fare ogni giorno della settimana di gara, un secondo schermo durante la corsa, un recap da condividere il lunedì. Stessa identità Pitwall, meno rumore, un numero eroe per schermata, dati veri di Baku.</p>
+
+<div class="thesis">
+  <div><b>Il rito</b><p>La Home dice sempre una cosa sola: cosa devi fare adesso e quanto manca. Un solo tasto Conferma, uno stato "confermato" che non mente, notifiche 2 ore prima della deadline.</p></div>
+  <div><b>Il secondo schermo</b><p>In gara guardi la TV e l'app ti dice solo ciò che la TV non sa: quanti punti stai facendo, contro chi, e cosa cambia a ogni Safety Car.</p></div>
+  <div><b>Il lunedì</b><p>Un recap del weekend che spiega ogni punto, scelte migliori e peggiori, e una card da mandare nel gruppo. È il momento in cui nasce la voglia del prossimo round.</p></div>
+</div>
+
+<nav class="jump" aria-label="Schermate">
+  <a href="#s1">1 Muretto</a><a href="#s2">2 Mercato</a><a href="#s7">3 Svelate</a><a href="#s3">4 Gara live</a><a href="#s4">5 Recap</a><a href="#s5">6 Rivali</a><a href="#s6">7 Onboarding</a><a href="#panel">Panel</a><a href="#roadmap">Roadmap</a>
+</nav>
+
+<!-- ═══════════════════ S1 MURETTO ═══════════════════ -->
+<section class="screen" id="s1">
+<div class="phone"><div class="sb"><span>09:41</span><span class="island"></span><span>●●● 5G</span></div><div class="app">
+  <div class="top"><div class="brand"><i></i>PITUFOS<span>.</span></div><span class="pill">R17 · Baku</span></div>
+  <div class="card hero acc">
+    <div class="lbl">Giovedì · deadline venerdì 14:00</div>
+    <div class="h big" style="margin:4px 0 2px">Manca <span class="mono" style="color:#ff5c78">1g 18h</span></div>
+    <div class="sub">Qualifica venerdì alle 14:00. Le prove libere le vedi, la squadra la chiudi prima.</div>
+    <div class="steps">
+      <div class="step done"><div class="dot"></div><span>Mercato</span></div>
+      <div class="step done"><div class="dot"></div><span>Capitano</span></div>
+      <div class="step now"><div class="dot"></div><span>Previsioni</span></div>
+      <div class="step"><div class="dot"></div><span>Conferma</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span class="lbl">La tua scuderia · KarrocHaas</span><span class="pill amber">Boost su Leclerc</span></div>
+    <div class="row me"><div class="bar" style="background:#E80020"></div><div class="av" style="background:#E80020">16</div><div class="name"><b>Leclerc <span class="tag amber">Boost x3</span></b><small>Ferrari · 36 · forma ▲</small></div><div class="pts">P2<small>qualifica ieri</small></div></div>
+    <div class="row"><div class="bar" style="background:#27F4D2"></div><div class="av" style="background:#27F4D2;color:#000">63</div><div class="name"><b>Russell <span class="tag">Primo Pilota x2</span></b><small>Mercedes · 43</small></div><div class="pts">P1<small>pole</small></div></div>
+    <div class="row"><div class="bar" style="background:#27F4D2"></div><div class="av" style="background:#27F4D2;color:#000">12</div><div class="name"><b>Antonelli</b><small>Mercedes · 43</small></div><div class="pts">P16<small>Q2</small></div></div>
+    <div class="row"><div class="bar" style="background:#B6BABD"></div><div class="av" style="background:#B6BABD;color:#000">87</div><div class="name"><b>Bearman</b><small>Haas · 5</small></div><div class="pts">P11<small>Q2</small></div></div>
+    <div class="row"><div class="bar" style="background:#FFD700"></div><div class="av" style="background:#FFD700;color:#000">11</div><div class="name"><b>Perez</b><small>Cadillac · 5</small></div><div class="pts">P20<small>Q1</small></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:6px"><span class="t2">Cassa <b class="mono" style="color:var(--p-t1)">1</b> Soldini</span><span class="t2">Cambi <b class="mono a">3</b> · il terzo costa <b class="mono a">−10</b></span></div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">Previsioni · 4 di 6</div>
+    <div class="prev">
+      <div class="ok"><b>Safety Car</b><span class="ans g">SI</span> <span class="t3 mono" style="font-size:10px">+4 · esce 7 volte su 10 a Baku</span></div>
+      <div class="ok"><b>Virtual SC</b><span class="ans g">NO</span> <span class="t3 mono" style="font-size:10px">+5</span></div>
+      <div class="ok"><b>Bandiera rossa</b><span class="ans g">SI</span> <span class="t3 mono" style="font-size:10px">+7</span></div>
+      <div class="ok"><b>Gomme wet</b><span class="ans g">NO</span> <span class="t3 mono" style="font-size:10px">+2</span></div>
+      <div class="wait"><b>Pole vince</b><span class="ans t3">Scegli</span> <span class="t3 mono" style="font-size:10px">SI +4 · NO +7</span></div>
+      <div class="wait"><b>Ritiri</b><span class="ans t3">Scegli</span> <span class="t3 mono" style="font-size:10px">media 2026: 4,6</span></div>
+    </div>
+  </div>
+  <div class="cta">Conferma tutto <span class="mono" style="font-size:12px;opacity:.8">2 mancanti</span></div>
+  <div class="card" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Gli altri</div><div style="font-size:12.5px">3 su 4 hanno già confermato</div></div><span class="pill">Rose visibili da ven 14:00</span></div>
+  <div class="bnav"><div class="on"><i></i>MURETTO<span class="dotb" style="top:6px;right:26%"></span></div><div><i></i>GARA</div><div><i></i>MERCATO</div><div><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Muretto: una cosa da fare, adesso</h2>
+  <div class="when">Home · giovedì e venerdì</div>
+  <p>Oggi la Home è un cruscotto (punti, posizione, media, prossima gara) e la gestione vive in tre tab con due bottoni di conferma. Qui il primo blocco risponde alla sola domanda del giovedì: cosa manca e quanto tempo ho. La barra a quattro tappe è lo stato reale del round, non un promemoria.</p>
+  <ul>
+    <li>Un solo Conferma tutto che salva formazione e previsioni insieme e dice quante cose mancano. Lo stato "confermato" viene dal server, non da tre istanze diverse dello store.</li>
+    <li>Ogni riga pilota porta l'ultimo dato utile (posizione in qualifica, forma, prezzo): la rosa non è una lista di nomi ma un'informazione.</li>
+    <li>Ogni previsione mostra il contesto per decidere: la Safety Car esce 7 volte su 10 a Baku, la media ritiri 2026 è 4,6. Sono numeri che l'app ha già in weekend_results.</li>
+    <li>"Gli altri": 3 su 4 hanno confermato, rose visibili dalla deadline. Pressione sociale leggera e la promessa di quello che vedrai dopo.</li>
+    <li>Il capitano passa al round nuovo come proposta ("come a Baku") da riconfermare, invece di sparire ogni lunedì; toccando la riga si apre la scelta con i numeri: media ultimi 5 GP per due, peggior GP, "DNF vale −20".</li>
+    <li>Nav rinominata sul rito: Muretto, Gara, Mercato, Rivali, Altro. Il pallino sulla tab dice che c'è un'azione pendente, e sta sulla tab dove puoi agire (oggi è sul LIVE).</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Muretto e Conferma unico: M. Contesti previsioni: S (query su weekend_results).</span>
+</div>
+</section>
+
+<!-- ═══════════════════ S2 MERCATO ═══════════════════ -->
+<section class="screen" id="s2">
+<div class="phone"><div class="sb"><span>09:41</span><span class="island"></span><span>●●● 5G</span></div><div class="app" style="position:relative">
+  <div class="top"><div class="brand"><i></i>MERCATO</div><span class="pill green">Aperto · 1g 18h</span></div>
+  <div class="grid3" style="margin-bottom:10px">
+    <div class="kpi"><div class="v">1</div><div class="l">Cassa</div></div>
+    <div class="kpi"><div class="v a">1/2</div><div class="l">Cambi gratis</div></div>
+    <div class="kpi"><div class="v">132</div><div class="l">Valore rosa</div></div>
+  </div>
+  <div class="seg"><div class="on">Tutti</div><div>In forma</div><div>Convenienti</div><div>Miei</div></div>
+  <div class="row"><div class="bar" style="background:#FF8000"></div><div class="av" style="background:#FF8000;color:#000">1</div><div class="name"><b>Norris</b><small>McLaren · 3 su 4 lo hanno</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,14 12,9 22,11 32,6 42,4 54,3"/></svg><div class="pts">44<small class="g">▲ +1</small></div></div>
+  <div class="row"><div class="bar" style="background:#3671C6"></div><div class="av" style="background:#3671C6">3</div><div class="name"><b>Verstappen</b><small>Red Bull · 1 su 4</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,12 12,13 22,8 32,9 42,5 54,4"/></svg><div class="pts">43<small class="g">▲ +2</small></div></div>
+  <div class="row me"><div class="bar" style="background:#27F4D2"></div><div class="av" style="background:#27F4D2;color:#000">63</div><div class="name"><b>Russell <span class="tag dim">Tuo</span></b><small>Mercedes · pole a Baku</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,10 12,7 22,9 32,5 42,6 54,2"/></svg><div class="pts">43<small class="g">▲ +1</small></div></div>
+  <div class="row"><div class="bar" style="background:#E80020"></div><div class="av" style="background:#E80020">44</div><div class="name"><b>Hamilton</b><small>Ferrari · 2 su 4 · DNF Madrid</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#ff5c78" stroke-width="1.6" points="2,6 12,5 22,9 32,8 42,12 54,17"/></svg><div class="pts">37<small class="r">▼ −1</small></div></div>
+  <div class="row"><div class="bar" style="background:#3671C6"></div><div class="av" style="background:#3671C6">6</div><div class="name"><b>Hadjar</b><small>Red Bull · rientra · P4 in qualifica</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,16 12,16 22,16 32,16 42,10 54,4"/></svg><div class="pts">24<small class="t3">=</small></div></div>
+  <div class="row" style="opacity:.55"><div class="bar" style="background:#6692FF"></div><div class="av" style="background:#6692FF;color:#000">22</div><div class="name"><b>Tsunoda <span class="tag dim">Non iscritto</span></b><small>Racing Bulls · non corre a Baku</small></div><div class="pts">9<small class="t3">0 pt</small></div></div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="lbl" style="margin-bottom:6px">Scambio</div>
+    <div class="h2h" style="padding:4px 0 8px">
+      <div><div class="lbl">Vendi</div><div class="who">Perez</div><div class="mono t2">+5</div></div>
+      <div class="vs">→</div>
+      <div><div class="lbl">Compra</div><div class="who">Hadjar</div><div class="mono t2">−24</div></div>
+    </div>
+    <div class="grid2" style="margin-bottom:8px">
+      <div class="kpi"><div class="v r">−18</div><div class="l">Cassa dopo · non basta</div></div>
+      <div class="kpi"><div class="v a">−10</div><div class="l">Punti weekend · 3° cambio</div></div>
+    </div>
+    <div class="sub" style="margin-bottom:8px">Ti mancano 18 Soldini. Vendi anche Bearman (5) e Antonelli (43)? Oppure prova <b class="t1">Lawson</b> (13): ti basta la cassa e resta gratis? No, è comunque il 3° cambio.</div>
+    <div class="cta" style="margin:0">Conferma scambio · −10 punti</div>
+  </div>
+</div></div>
+<div class="notes">
+  <h2>Mercato: decidere in un colpo d'occhio</h2>
+  <div class="when">Mercato · da lunedì a venerdì</div>
+  <p>Oggi la card pilota ha nome, team e prezzo. Per sentirsi bravi servono tre cose in più, tutte già calcolabili dai dati in archivio: la forma (punti degli ultimi 5 GP come sparkline), la variazione di prezzo rispetto al round scorso e quanti in lega lo hanno.</p>
+  <ul>
+    <li>Lo scambio è un gesto solo: vendi X per Y, con cassa dopo e costo in punti prima di confermare. Oggi sono due tap separati e la penalità compare solo dopo.</li>
+    <li>Il foglio spiega in italiano cosa non torna ("ti mancano 18 Soldini") e propone alternative invece di un errore secco.</li>
+    <li>Filtri che rispondono a come si sceglie davvero: in forma, convenienti, i miei. La ricerca resta ma non è il gesto principale.</li>
+    <li>I piloti non iscritti al weekend (Tsunoda) sono visibili ma spenti e marcati: oggi si comprano a 9 Soldini e valgono 0 in silenzio.</li>
+    <li>Il contatore "cambi" dice cosa costa il prossimo, non solo quanti ne hai fatti. E disfare un acquisto va detto chiaramente che conta comunque, finché la regola resta al lordo.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Forma e trend: S (weekend_results e driver_prices). Ownership: S (formazioni confermate del round precedente). Foglio scambio: M.</span>
+</div>
+</section>
+
+
+<!-- ═══════════════════ S7 FORMAZIONI SVELATE ═══════════════════ -->
+<section class="screen" id="s7">
+<div class="phone"><div class="sb"><span>14:02</span><span class="island"></span><span>●●● 5G</span></div><div class="app">
+  <div class="top"><div class="brand"><i></i>SVELATE</div><span class="pill red live">Chiuse 14:00</span></div>
+  <div class="card hero acc">
+    <div class="lbl">Baku · formazioni svelate</div>
+    <div class="h big" style="margin:4px 0 2px">4 su 4 in gioco</div>
+    <div class="sub">Qualifica fra <b class="mono" style="color:var(--p-t1)">58 min</b>. Ecco chi ha puntato su chi.</div>
+    <div class="grid3" style="margin-top:10px">
+      <div class="kpi"><div class="v">Russell</div><div class="l">Capitano più scelto · 2</div></div>
+      <div class="kpi"><div class="v g">SI 3/4</div><div class="l">Safety Car</div></div>
+      <div class="kpi"><div class="v">Boost ×2</div><div class="l">Chip giocati</div></div>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(232,0,45,.4)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span class="lbl">BrasGP · Brasseur · 1° in classifica</span><span class="pill amber">Scudo</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <div class="av" style="background:#3671C6">3</div><div class="av" style="background:#E80020">16</div><div class="av" style="background:#E80020">44</div><div class="av" style="background:#27F4D2;color:#000">12</div><div class="av" style="background:#6692FF;color:#000">41</div>
+      <div style="margin-left:auto;text-align:right"><div class="lbl">Capitano</div><div style="font-weight:600">Verstappen</div></div>
+    </div>
+    <div class="sub">In comune con te: Leclerc, Antonelli. Il weekend si decide su <b style="color:var(--p-t1)">Verstappen vs Russell</b> e sulle previsioni: lui dice Safety Car NO.</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span class="lbl">Lamo Team Gp · Claudio Vasseur</span><span class="pill">Nessun chip</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <div class="av" style="background:#52E252;color:#000">27</div><div class="av" style="background:#0093CC">10</div><div class="av" style="background:#6692FF;color:#000">30</div><div class="av" style="background:#27F4D2;color:#000">63</div><div class="av" style="background:#3671C6">3</div>
+      <div style="margin-left:auto;text-align:right"><div class="lbl">Capitano</div><div style="font-weight:600">Russell</div></div>
+    </div>
+    <div class="sub">Ha fatto 1 cambio: dentro Verstappen, fuori Hamilton. Stesso capitano tuo.</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span class="lbl">McNanen F1 Team · Alessandro</span><span class="pill blue">Halo</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <div class="av" style="background:#E80020">16</div><div class="av" style="background:#B6BABD;color:#000">87</div><div class="av" style="background:#E80020">44</div><div class="av" style="background:#6692FF;color:#000">41</div><div class="av" style="background:#27F4D2;color:#000">63</div>
+      <div style="margin-left:auto;text-align:right"><div class="lbl">Capitano</div><div style="font-weight:600">Leclerc</div></div>
+    </div>
+    <div class="sub">Unico a dire Bandiera rossa NO: se non esce prende +3, voi 0.</div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:6px">Le previsioni della lega</div>
+    <div class="grid3">
+      <div class="kpi"><div class="v">3/4</div><div class="l">Safety Car SI</div></div>
+      <div class="kpi"><div class="v">2/4</div><div class="l">Pole vince SI</div></div>
+      <div class="kpi"><div class="v">4 · 4 · 3 · 5</div><div class="l">Ritiri</div></div>
+    </div>
+  </div>
+  <div class="cta ghost">Condividi la griglia della lega</div>
+  <div class="bnav"><div><i></i>MURETTO</div><div class="on"><i></i>GARA</div><div><i></i>MERCATO</div><div><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Formazioni svelate: il primo momento del sabato</h2>
+  <div class="when">Gara · dalla deadline al via della qualifica</div>
+  <p>È l'idea che i due giudici del panel hanno messo al primo posto per rapporto valore e lavoro: formazioni e previsioni sono già leggibili da tutti dopo la deadline, il live le usa già per la classifica. Oggi però, chiusa la deadline, la pagina Gara dice "Nessuna sessione live" e le rose degli altri stanno in un modale della Classifica, tre tocchi più in là.</p>
+  <ul>
+    <li>Una card per Team Principal: cinque piloti, capitano, chip, il cambio fatto, e una frase che dice dove si gioca il weekend contro di te.</li>
+    <li>In alto la lega in tre numeri: capitano più scelto, la previsione più divisiva, i chip giocati. Prima della deadline la stessa card mostra solo "3 su 4 hanno confermato", anonimo.</li>
+    <li>"Condividi la griglia" è il primo screenshot naturale del weekend: tutti postano la propria rosa nel gruppo prima della qualifica.</li>
+    <li>Durante le prove libere lo stesso spazio mostra i tempi dei tuoi cinque, senza punti, e un tasto "Vai a confermare" se manca qualcosa.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>S: un hook per lega e round, la guardia sulla deadline in un solo helper, dati già disponibili.</span>
+</div>
+</section>
+
+<!-- ═══════════════════ S3 GARA LIVE ═══════════════════ -->
+<section class="screen" id="s3">
+<div class="phone"><div class="sb"><span>13:22</span><span class="island"></span><span>●●● 5G</span></div><div class="app" style="position:relative">
+  <div class="toast" style="margin:0 0 10px"><div class="lbl">Safety Car · giro 34</div><div>Per te <b class="g mono">+4</b>. Brasseur aveva detto NO: <b class="mono">0</b>. Sei a <b class="mono">−2</b> da lui.</div></div>
+  <div class="top"><div class="brand"><i></i>BAKU</div><span class="pill amber">Giro 34 / 51 · Safety Car</span></div>
+  <div class="lbl" style="margin:-6px 0 8px;display:flex;justify-content:space-between"><span>Gara · bandiera gialla</span><span>aggiornato 3 s fa · live</span></div>
+  <div class="card hero acc">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div class="lbl">Il tuo weekend</div><div class="big">87</div><div class="sub">piloti 62 · previsioni 25 · cambi <span class="a">−10</span></div></div>
+      <div style="text-align:right"><div class="lbl">Rispetto a Brasseur</div><div class="mono r" style="font-size:26px;font-weight:700;line-height:1">−2</div><div class="sub">1° in lega oggi</div></div>
+    </div>
+    <div class="gapbar"><i style="width:48%"></i></div>
+    <div class="legend"><span><i style="background:var(--p-accent)"></i>tu 87</span><span><i style="background:var(--p-line2)"></i>Brasseur 89</span><span>Claudio 71 · Ale 64</span></div>
+  </div>
+  <div class="lbl" style="margin:2px 0 6px">I tuoi piloti · in pista</div>
+  <div class="row me"><div class="bar" style="background:#27F4D2"></div><div class="n">P1</div><div class="name"><b>Russell <span class="tag">x2</span></b><small>dalla pole · giro veloce</small></div><div class="pts g">+62<small>25 +3 gv · x2</small></div></div>
+  <div class="row"><div class="bar" style="background:#E80020"></div><div class="n">P3</div><div class="name"><b>Leclerc <span class="tag amber">x3</span></b><small>partito P2 · −1</small></div><div class="pts g">+42<small>15 −1 · x3</small></div></div>
+  <div class="row"><div class="bar" style="background:#27F4D2"></div><div class="n">P9</div><div class="name"><b>Antonelli</b><small>partito P16 · +7</small></div><div class="pts g">+9<small>2 +7</small></div></div>
+  <div class="row"><div class="bar" style="background:#B6BABD"></div><div class="n">P14</div><div class="name"><b>Bearman</b><small>partito P11 · −3</small></div><div class="pts r">−3<small>0 −3</small></div></div>
+  <div class="row" style="opacity:.75"><div class="bar" style="background:#FFD700"></div><div class="n r">DNF</div><div class="name"><b style="text-decoration:line-through">Perez</b><small>ritirato giro 12 · ufficiale</small></div><div class="pts r">−10</div></div>
+  <div class="card" style="margin-top:8px">
+    <div class="lbl" style="margin-bottom:6px">Previsioni · 3 sicure, 3 in bilico</div>
+    <div class="prev">
+      <div class="ok"><b>Safety Car SI</b><span class="ans g">+4</span></div>
+      <div class="wait"><b>Virtual SC NO</b><span class="ans t2">+5 se regge</span></div>
+      <div class="ko"><b>Bandiera rossa SI</b><span class="ans r">0 finora</span></div>
+      <div class="ok"><b>Gomme wet NO</b><span class="ans g">+2</span></div>
+      <div class="wait"><b>Pole vince SI</b><span class="ans t2">Russell in testa</span></div>
+      <div class="wait"><b>Ritiri 4</b><span class="ans t2">3 finora</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:6px">Cosa è successo</div>
+    <div class="tl">
+      <div class="sc"><span class="lap">L34</span><span>Safety Car · detriti curva 15</span></div>
+      <div class="me"><span class="lap">L29</span><span>Antonelli supera Gasly: <b class="g">+1</b> per te</span></div>
+      <div class="rf"><span class="lap">L12</span><span>Perez si ferma: <b class="r">−10</b> per te e Alessandro</span></div>
+      <div class="go"><span class="lap">L1</span><span>Via · Russell tiene la pole</span></div>
+    </div>
+  </div>
+  <div class="bnav"><div><i></i>MURETTO</div><div class="on"><i></i>GARA</div><div><i></i>MERCATO</div><div><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Gara: il secondo schermo</h2>
+  <div class="when">Live · sabato e domenica, accanto alla TV</div>
+  <p>Il live oggi è già la cosa più forte dell'app, ma è organizzato come tre classifiche. In gara si guarda la TV: l'app deve dire solo quello che la TV non sa. Il tuo numero, contro chi, e cosa cambia a ogni evento.</p>
+  <ul>
+    <li>In cima un solo numero e un solo confronto: il tuo punteggio e il distacco dal rivale più vicino (o dal leader). La barra sotto mette tutti e quattro senza una lista.</li>
+    <li>Ogni riga pilota spiega la cifra: posizione, partenza, delta, moltiplicatore. È il breakdown senza dover aprire niente.</li>
+    <li>Gli eventi diventano frasi con il tuo saldo: "Safety Car, +4 per te, 0 per Brasseur". Il feed race control grezzo resta un tocco sotto, ma non è la prima cosa.</li>
+    <li>Le previsioni in bilico si distinguono da quelle sicure: "+5 se regge" è più utile di un colore.</li>
+    <li>Il toast in alto è il momento: Safety Car, ritiro di un tuo pilota, sorpasso in zona punti. Con la PWA installata su iPhone diventa una notifica anche a schermo spento.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Riorganizzare LiveTab con i dati che già arrivano: M. Eventi "per te": S sopra detectLiveEvents. Push su iOS: M (service worker + subscription + route server).</span>
+</div>
+</section>
+
+<!-- ═══════════════════ S4 RECAP ═══════════════════ -->
+<section class="screen" id="s4">
+<div class="phone"><div class="sb"><span>08:10</span><span class="island"></span><span>●●● 5G</span></div><div class="app">
+  <div class="top"><div class="brand"><i></i>RECAP</div><span class="pill">Baku · ufficiale</span></div>
+  <div class="share">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="lbl">Round 17 · Azerbaijan GP</span><span class="pill green">Ufficiale</span></div>
+    <div class="sub" style="font-size:11px;margin-top:2px">Qualifica ✓ ufficiale · Gara ✓ ufficiale · DOTD assegnato</div>
+    <div style="display:flex;align-items:flex-end;gap:12px;margin:6px 0 4px"><div class="pos">2<small>°</small></div><div><div class="h">KarrocHaas</div><div class="sub">87 punti · a 2 da Brasseur</div></div></div>
+    <div class="stack"><i style="width:60%;background:#E8002D"></i><i style="width:27%;background:#5aa9ff"></i><i style="width:13%;background:#ffb000"></i></div>
+    <div class="legend"><span><i style="background:#E8002D"></i>piloti 62</span><span><i style="background:#5aa9ff"></i>previsioni 25</span><span><i style="background:#ffb000"></i>cambi −10</span></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="kpi" style="background:rgba(46,229,157,.06);border-color:rgba(46,229,157,.3)"><div class="lbl">Scelta migliore</div><div style="font-weight:600">Russell capitano</div><div class="mono g">+62</div></div>
+      <div class="kpi" style="background:rgba(255,92,120,.06);border-color:rgba(255,92,120,.3)"><div class="lbl">Scelta peggiore</div><div style="font-weight:600">Perez</div><div class="mono r">−10</div></div>
+    </div>
+    <div class="grid3" style="margin-top:6px">
+      <div class="kpi"><div class="v">4/6</div><div class="l">Previsioni</div></div>
+      <div class="kpi"><div class="v g">+18</div><div class="l">Classifica reale</div></div>
+      <div class="kpi"><div class="v">3°→2°</div><div class="l">In stagione</div></div>
+    </div>
+  </div>
+  <div class="cta" style="margin-top:10px">Condividi nel gruppo</div>
+  <div class="card" style="margin-top:10px">
+    <div class="lbl" style="margin-bottom:6px">Se avessi…</div>
+    <div class="sub" style="margin-bottom:6px">Leclerc capitano invece di Russell: <b class="mono r">−12</b>. Halo invece di Boost: <b class="mono g">+10</b> (Perez a 0). Ritiri 3 invece di 4: <b class="mono g">+5</b>.</div>
+    <div class="gapbar" style="margin:8px 0 4px"><i style="width:75%"></i></div>
+    <div class="legend"><span><i style="background:var(--p-accent)"></i>tu 87</span><span><i style="background:var(--p-line2)"></i>weekend perfetto con la tua rosa 116</span></div>
+    <div class="sub" style="margin-top:8px">Brasseur ha vinto il weekend con Verstappen capitano e 5 previsioni su 6.</div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:6px">Il weekend in lega</div>
+    <div class="row"><div class="n">1</div><div class="name"><b>BrasGP</b><small>Brasseur · +25 CR</small></div><div class="pts">89</div></div>
+    <div class="row me"><div class="n">2</div><div class="name"><b>KarrocHaas</b><small>karrosimo91 · +18 CR</small></div><div class="pts">87</div></div>
+    <div class="row"><div class="n">3</div><div class="name"><b>Lamo Team Gp</b><small>Claudio Vasseur · +15 CR</small></div><div class="pts">71</div></div>
+    <div class="row"><div class="n">4</div><div class="name"><b>McNanen F1 Team</b><small>Alessandro · +12 CR</small></div><div class="pts">64</div></div>
+  </div>
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Prossimo</div><div style="font-size:12.5px">Singapore · sprint · deadline ven 9/10 14:30</div></div><span class="pill blue">Mercato aperto</span></div>
+  <div class="bnav"><div class="on"><i></i>MURETTO</div><div><i></i>GARA</div><div><i></i>MERCATO</div><div><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Recap: il lunedì che fa tornare</h2>
+  <div class="when">Post-gara · appena il calcolo è ufficiale, e in Home il lunedì</div>
+  <p>Oggi dopo la gara ci sono numeri sparsi in tre pagine e un tab Dettaglio. Il recap è una pagina sola che spiega ogni punto, dice cosa è andato bene e cosa no, e finisce con una card da mandare su WhatsApp. È anche la risposta a "perché ho fatto 87": piloti, previsioni, cambi, in una barra.</p>
+  <ul>
+    <li>La card in alto è pensata per lo screenshot: posizione enorme, tre numeri, colori di lega. Condividi genera un'immagine 1080×1350 con la stessa grafica.</li>
+    <li>"Se avessi": tre controfattuali calcolati con lo stesso scoring.ts sulla formazione reale. Zero infrastruttura, massimo effetto.</li>
+    <li>Una riga sul vincitore del weekend e come ha vinto: alimenta la chiacchiera nel gruppo.</li>
+    <li>Chiude con il prossimo passo: quando riapre il mercato, quando è la deadline. Il rito riparte da qui.</li>
+    <li>Lo stesso scontrino vive in tre stati con tre timbri, live, provvisorio, ufficiale, e una riga che dice cosa può ancora cambiare ("Gara provvisoria: mancano Driver of the Day e penalità post-gara"). Mai più tre versioni dello stesso punteggio con tre grafiche diverse.</li>
+    <li>"Weekend perfetto con la tua rosa": il massimo che potevi fare con quei cinque piloti. Il rimpianto è quello che fa tornare il lunedì.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Pagina recap: M (dati già in weekend_scores, weekend_results, formazioni). Immagine condivisibile: M (canvas lato client). Controfattuali: S.</span>
+</div>
+</section>
+
+<!-- ═══════════════════ S5 RIVALI ═══════════════════ -->
+<section class="screen" id="s5">
+<div class="phone"><div class="sb"><span>18:05</span><span class="island"></span><span>●●● 5G</span></div><div class="app">
+  <div class="top"><div class="brand"><i></i>RIVALI</div><span class="pill">Los Pitufos</span></div>
+  <div class="seg"><div class="on">Stagione</div><div>Weekend</div><div>Chi ha chi</div></div>
+  <div class="row"><div class="n">1</div><div class="name"><b>KarrocHaas</b><small>karrosimo91 · 14 GP · media 107</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,10 12,8 22,12 32,6 42,7 54,3"/></svg><div class="pts">1497<small class="t3">leader</small></div></div>
+  <div class="row"><div class="n">2</div><div class="name"><b>BrasGP</b><small>Brasseur · 14 GP · media 103</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#2ee59d" stroke-width="1.6" points="2,12 12,10 22,9 32,9 42,5 54,2"/></svg><div class="pts">1436<small class="r">−61</small></div></div>
+  <div class="row"><div class="n">3</div><div class="name"><b>Lamo Team Gp</b><small>Claudio Vasseur · 14 GP · media 97</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#ffb000" stroke-width="1.6" points="2,8 12,10 22,7 32,12 42,10 54,11"/></svg><div class="pts">1361<small class="r">−136</small></div></div>
+  <div class="row"><div class="n">4</div><div class="name"><b>McNanen F1 Team</b><small>Alessandro · 14 GP · media 87</small></div><svg class="spark" viewBox="0 0 56 20"><polyline fill="none" stroke="#ff5c78" stroke-width="1.6" points="2,6 12,9 22,8 32,12 42,13 54,15"/></svg><div class="pts">1218<small class="r">−279</small></div></div>
+  <div class="card acc" style="margin-top:10px">
+    <div class="lbl">Testa a testa · tocca un rivale</div>
+    <div class="h2h">
+      <div><div class="who">Tu</div><div class="v">8</div><div class="lbl">weekend vinti</div></div>
+      <div class="vs">VS</div>
+      <div><div class="who">Brasseur</div><div class="v">5</div><div class="lbl">weekend vinti</div></div>
+    </div>
+    <div class="grid3">
+      <div class="kpi"><div class="v g">+61</div><div class="l">Gap</div></div>
+      <div class="kpi"><div class="v">1</div><div class="l">Pareggi</div></div>
+      <div class="kpi"><div class="v">7</div><div class="l">GP restanti</div></div>
+    </div>
+    <div class="sub" style="margin-top:8px">Con 7 gare, Brasseur deve fare 9 punti a weekend più di te. Negli ultimi 5 GP ne ha fatti 4 in più.</div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">Chi ha chi · Baku (visibile dalla deadline)</div>
+    <div class="matrix">
+      <div></div><div class="hd">Tu</div><div class="hd">Bras</div><div class="hd">Clau</div><div class="hd">Ale</div>
+      <div class="dn">Russell</div><div class="c y me"></div><div class="c"></div><div class="c y"></div><div class="c y"></div>
+      <div class="dn">Leclerc</div><div class="c y me"></div><div class="c y"></div><div class="c"></div><div class="c y"></div>
+      <div class="dn">Verstappen</div><div class="c"></div><div class="c y"></div><div class="c y"></div><div class="c"></div>
+      <div class="dn">Antonelli</div><div class="c y me"></div><div class="c y"></div><div class="c"></div><div class="c"></div>
+      <div class="dn">Hamilton</div><div class="c"></div><div class="c y"></div><div class="c"></div><div class="c y"></div>
+      <div class="dn">Bearman</div><div class="c y me"></div><div class="c"></div><div class="c"></div><div class="c y"></div>
+      <div class="dn">Perez</div><div class="c y me"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+    </div>
+    <div class="sub" style="margin-top:8px">Tu e Brasseur condividete 2 piloti su 5: il weekend si decide su Russell, Verstappen e Perez.</div>
+  </div>
+  <div class="bnav"><div><i></i>MURETTO</div><div><i></i>GARA</div><div><i></i>MERCATO</div><div class="on"><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Rivali: la classifica come storia</h2>
+  <div class="when">Rank · tutta la settimana</div>
+  <p>Una lega di quattro persone non ha bisogno di una tabella: ha bisogno di sapere chi sta rincorrendo chi. Il gap dal leader, la forma degli ultimi round, i weekend vinti nel testa a testa, e dalla deadline la matrice "chi ha chi" che dice dove si decide il weekend.</p>
+  <ul>
+    <li>La forma come sparkline per giocatore (punti degli ultimi 6 round, già in weekend_scores) dice più di una media.</li>
+    <li>Testa a testa con la frase che conta: "con 7 gare deve fare 9 punti a weekend più di te". È matematica semplice che oggi la pagina Statistiche nasconde in dieci grafici.</li>
+    <li>"Chi ha chi" trasforma la rosa degli altri, oggi sepolta in un modale, in una mappa dei rischi condivisi.</li>
+    <li>Con più leghe la vista è la stessa: cambia solo il selettore in alto.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Vista stagione con forma e gap: S. Testa a testa: S (use-statistiche lo calcola già). Matrice: S (formazioni confermate del round, read-all).</span>
+</div>
+</section>
+
+<!-- ═══════════════════ S6 ONBOARDING ═══════════════════ -->
+<section class="screen" id="s6">
+<div class="phone onb"><div class="sb"><span>21:30</span><span class="island"></span><span>●●● 5G</span></div><div class="app">
+  <div class="top"><div class="brand"><i></i>PITUFOS<span>.</span></div><span class="pill">2 di 3</span></div>
+  <div class="h big" style="margin:6px 0 2px">Scegli 5 piloti<br>con 100 Soldini</div>
+  <div class="sub" style="margin-bottom:12px">Parti da una squadra pronta e cambiala quando vuoi. Il capitano vale doppio, nel bene e nel male.</div>
+  <div class="opt sel"><div class="radio"></div><div style="flex:1"><b style="font-size:13px">Equilibrata</b><div class="sub">Russell, Leclerc, Hadjar, Bearman, Lawson · 100</div></div><span class="pill green">Consigliata</span></div>
+  <div class="opt"><div class="radio"></div><div style="flex:1"><b style="font-size:13px">Due stelle</b><div class="sub">Norris, Verstappen, Bortoleto, Bearman, Perez · 98</div></div></div>
+  <div class="opt"><div class="radio"></div><div style="flex:1"><b style="font-size:13px">Faccio io</b><div class="sub">Scegli tu dal mercato, ti guidiamo</div></div></div>
+  <div class="card" style="margin-top:12px">
+    <div class="lbl" style="margin-bottom:6px">Poi ti chiediamo</div>
+    <div class="sub">Il capitano (x2) · 6 previsioni sulla gara, tipo "ci sarà la Safety Car?" · e se vuoi le notifiche 2 ore prima della deadline.</div>
+  </div>
+  <div class="card" style="display:flex;gap:10px;align-items:center"><div class="av" style="background:var(--p-accent);border-radius:50%">LP</div><div style="flex:1"><b style="font-size:12.5px">Sei stato invitato in Los Pitufos</b><div class="sub">4 amici · dal round 18 · codice già inserito</div></div></div>
+  <div class="cta">Continua</div>
+  <div class="lbl" style="margin:14px 0 6px">Come ti avvisiamo</div>
+  <div class="push"><div class="ic">P</div><div style="flex:1"><b>Mancano 2 ore alla deadline</b><span>Ti manca il capitano. Baku, qualifica alle 14:00.</span></div><small>ven 12:00</small></div>
+  <div class="push"><div class="ic">P</div><div style="flex:1"><b>Safety Car al giro 34</b><span>+4 per te. Sei a −2 da Brasseur.</span></div><small>sab 13:22</small></div>
+  <div class="push"><div class="ic">P</div><div style="flex:1"><b>Baku è ufficiale: 2°, 87 punti</b><span>Il recap è pronto. Mercato riaperto per Singapore.</span></div><small>dom 09:00</small></div>
+  <div class="bnav" style="margin-top:16px"><div class="on"><i></i>MURETTO</div><div><i></i>GARA</div><div><i></i>MERCATO</div><div><i></i>RIVALI</div><div><i></i>ALTRO</div></div>
+</div></div>
+<div class="notes">
+  <h2>Onboarding e notifiche: aperto a tutti davvero</h2>
+  <div class="when">Primo accesso · e ogni settimana a orari fissi</div>
+  <p>Oggi un nuovo iscritto atterra su una Home vuota con 100 Soldini e ventitré nomi. Tre passi guidati con una squadra consigliata portano chiunque a una formazione confermata in due minuti; l'invito con codice precompilato lo mette subito nella lega giusta.</p>
+  <ul>
+    <li>Squadre preset calcolate dai prezzi correnti (equilibrata, due stelle) e la scelta "faccio io" per chi sa già.</li>
+    <li>Le regole si spiegano dove servono, una frase per volta, non in una pagina di regolamento.</li>
+    <li>Tre notifiche che fanno il rito: deadline meno due ore con cosa manca, il momento in gara, il recap ufficiale. Web Push funziona su iPhone con la PWA installata; in alternativa un bot Telegram del gruppo con gli stessi tre messaggi.</li>
+    <li>La deadline meno due ore è anche il modo pulito di riusare i reminder già scritti, senza dominio email verificato.</li>
+  </ul>
+  <span class="k">Sforzo</span><span>Onboarding: M. Preset: S. Push iOS: M (subscription in Supabase + route server + un trigger giornaliero non basta: serve chiamare la route dal live o da un cron esterno gratuito). Telegram: S.</span>
+</div>
+</section>
+
+
+<h2 class="sec" id="panel">Cosa ha detto il panel</h2>
+<p class="lead" style="font-size:15px">Quattro prospettive indipendenti (il tifoso la domenica, crescita e social, product designer mobile, dati e insight) hanno letto l'audit di ogni schermata e proposto 44 idee; due giudici le hanno votate su impatto, fattibilità per uno sviluppatore volontario e differenza rispetto al Fantasy F1 ufficiale. La stella polare, in una frase: ogni giorno della settimana di gara il Muretto dice l'unica cosa da fare adesso, ogni punto sullo schermo si spiega da solo e non cambia mai di nascosto, e ogni momento del weekend produce qualcosa da mandare nel gruppo.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Idea</th><th>Lente</th><th>Sforzo</th><th>Nei mockup</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Formazioni svelate alla deadline, con "vs te"</td><td>social + product</td><td>S</td><td>schermata 3</td></tr>
+<tr><td>2</td><td>Previsioni vive: in attesa, presa, sbagliata, con il payoff scritto</td><td>tifoso</td><td>S</td><td>schermata 4</td></tr>
+<tr><td>3</td><td>Rimpianti: "se avessi" e weekend perfetto con la tua rosa</td><td>dati</td><td>S</td><td>schermata 5</td></tr>
+<tr><td>4</td><td>Scontrino del weekend con tre timbri (live, provvisorio, ufficiale)</td><td>product + tifoso</td><td>M</td><td>schermata 5</td></tr>
+<tr><td>5</td><td>Barra di sessione: giro, bandiera, freschezza del dato</td><td>tifoso</td><td>S</td><td>schermata 4</td></tr>
+<tr><td>6</td><td>Muretto a fasi: prepara, weekend, recap</td><td>product</td><td>M</td><td>schermate 1 e 5</td></tr>
+<tr><td>7</td><td>Duello: il rivale che ti precede, in cima al live e nel recap</td><td>tifoso + social</td><td>S</td><td>schermate 4 e 6</td></tr>
+<tr><td>8</td><td>Notifiche: bot Telegram nel gruppo, un cron al giorno per la deadline</td><td>product + social</td><td>M</td><td>schermata 7</td></tr>
+<tr><td>9</td><td>Conferma weekend: un bottone, quattro stati, stato unico dal server</td><td>product</td><td>M</td><td>schermata 1</td></tr>
+<tr><td>10</td><td>Scegli il Primo Pilota con i numeri (foglio a cinque carte)</td><td>dati</td><td>S</td><td>schermata 1</td></tr>
+<tr><td>11</td><td>Scheda pilota: forma, quotazione, chi lo ha, foto da OpenF1</td><td>dati</td><td>M</td><td>schermata 2</td></tr>
+<tr><td>12</td><td>Scouting previsioni: frequenza in stagione e valore atteso SI/NO</td><td>dati</td><td>S</td><td>schermata 1</td></tr>
+</tbody></table></div>
+
+<h3 style="font-family:var(--display);font-weight:500;font-size:22px;margin:26px 0 6px">Quick win: un pomeriggio ciascuno</h3>
+<ul class="notes" style="list-style:none;padding:0;margin:0;display:grid;gap:8px">
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Il pallino "da confermare" sta sulla tab LIVE, dove non puoi fare nulla: spostarlo sul Muretto con la parola sotto.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Il countdown a quattro caselle con i secondi diventa "Chiusura formazione · VEN 9 OTT · 14:30" in ora locale più "tra 2 g 4 h", rosso sotto le 24 ore; nei weekend sprint la parola VENERDÌ in evidenza.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Tutta la riga pilota diventa il tasto capitano (corona), via il bottone da 8 px "PRIMO / PILOTA".</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Nel mercato: VENDI in grigio e ACQUISTA in rosso, card non affordabili spente con "ti mancano N", "SCAMBIA" sulle card quando sei 5 su 5, foglio di conferma quando vendi il capitano o il bersaglio del Boost.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Chip come inventario: due pallini per chip (prima e dopo la pausa), "scade fra 7 GP", e il modale −10 che offre "attiva Wildcard" invece di ignorarla.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Copy: "riapre dopo la gara" è falso, riapre lunedì alle 02:00; "Aggiornamenti" suona da software, meglio "Aggiornamenti dalla fabbrica" con la spiegazione; il toast rosso per un successo va sostituito da un toast verde in basso.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Tipografia: le etichette a 9 px al 28% di bianco stanno sotto il contrasto minimo; portare a 11 px e 62%. Calendario con orari delle sessioni nel menu Altro; la pagina Risultati orfana va tolta.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Registrazione: la conferma email apre Safari fuori dalla PWA e chiede di riscrivere le credenziali; con "aperto a tutti" vale un magic link o la conferma disattivata per gli invitati.</li>
+</ul>
+
+<h3 style="font-family:var(--display);font-weight:500;font-size:22px;margin:26px 0 6px">Scartate dai giudici, e perché</h3>
+<ul class="notes" style="list-style:none;padding:0;margin:0;display:grid;gap:8px">
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>Notifiche di evento in gara scatenate dal primo client collegato: dipende da chi ha la pagina aperta ed è fragile per un volontario; le notifiche restano su deadline e risultato ufficiale, gli eventi vivono nel live aperto.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>Duello con punti in palio o a rotazione: è una modifica di regolamento da votare in CDA; "rivale = chi ti precede" dà lo stesso gancio senza calendario.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>Griglia della lega la domenica prima del via: OpenF1 non dà la griglia finché non parte la formazione, quasi sempre sarebbe "da qualifica".</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>Tab pista con 22 righe e gomme, modalità TV a schermo intero, storico circuiti 2023-2025, wrapped di fine stagione: l'app ufficiale fa meglio il timing, i dati storici vanno seminati a mano, il wrapped si fa dopo Abu Dhabi riusando il recap.</li>
+  <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>Sfottò a testo libero nelle leghe pubbliche: moderazione a carico di uno solo; frasi preset ovunque, testo libero solo fra amici.</li>
+</ul>
+
+<h2 class="sec" id="roadmap">Roadmap proposta</h2>
+<p class="lead" style="font-size:15px">Ordine per impatto sul rito settimanale diviso sforzo, dopo il voto dei giudici. I primi sei sono un mese di weekend di lavoro e cambiano il carattere dell'app prima della fine della stagione; il resto prepara la prossima.</p>
+<div class="roadmap" id="roadmap-list">
+  <div><span class="rk">01</span><span><b>Muretto con stato reale e Conferma unico</b><p>Un solo tasto, una barra a quattro tappe, stato dal server, capitano che passa al round nuovo come proposta. Toglie il rischio "ho toccato una previsione e non gioco" e il pallino che non si spegne.</p></span><span class="eff">M</span></div>
+  <div><span class="rk">02</span><span><b>Formazioni svelate alla deadline</b><p>Prima idea per i giudici: card per Team Principal, "vs te", previsioni della lega, condivisione. Dati già disponibili, un hook e una guardia.</p></span><span class="eff">S</span></div>
+  <div><span class="rk">03</span><span><b>Recap del weekend con scontrino, rimpianti e card condivisibile</b><p>Un componente per live, provvisorio e ufficiale; spiega ogni punto, migliore e peggiore scelta, weekend perfetto, immagine per il gruppo.</p></span><span class="eff">M</span></div>
+  <div><span class="rk">04</span><span><b>Live come secondo schermo</b><p>Barra di sessione con giro e bandiera, un numero e un rivale, previsioni vive con il payoff, eventi "per te". È la riorganizzazione di dati che già arrivano.</p></span><span class="eff">M</span></div>
+  <div><span class="rk">05</span><span><b>Mercato con forma, trend, ownership e scambio in un gesto</b><p>Sparkline ultimi 5 GP, variazione prezzo, quanti lo hanno, foto da OpenF1; costo del cambio prima di confermare; piloti non iscritti spenti; foglio quando vendi il capitano.</p></span><span class="eff">M</span></div>
+  <div><span class="rk">06</span><span><b>Notifiche: Telegram prima, push poi</b><p>Un bot nel gruppo della lega con un cron al giorno ("chiude oggi alle 14:30, non confermati: Luca, Marco") e il recap ufficiale; poi Web Push con la PWA installata per chi vuole.</p></span><span class="eff">M</span></div>
+  <div><span class="rk">07</span><span><b>Rivali: gap, forma, testa a testa, chi ha chi</b><p>La classifica come storia di lega; la matrice delle rose dalla deadline; la Classifica Reale finalmente in una tab.</p></span><span class="eff">S</span></div>
+  <div><span class="rk">08</span><span><b>Contesto sulle previsioni e scelta del capitano con i numeri</b><p>Frequenza degli eventi in stagione, valore atteso SI/NO, media ritiri; foglio del Primo Pilota con media per due e rischio DNF. Dati già in archivio.</p></span><span class="eff">S</span></div>
+  <div><span class="rk">09</span><span><b>Quick win di superficie</b><p>Pallino sulla tab giusta, deadline assoluta in ora locale, riga pilota come tasto capitano, toast verdi, tipografia leggibile, copy corretti, pagina Risultati tolta.</p></span><span class="eff">S</span></div>
+  <div><span class="rk">10</span><span><b>Onboarding in tre passi con squadre preset e invito</b><p>Serve quando la lega si apre; da fare prima della stagione 2027, insieme al magic link al posto della conferma email.</p></span><span class="eff">M</span></div>
+</div>
+
+<h2 class="sec">Cosa non cambia</h2>
+<p class="lead" style="font-size:15px">Identità Pitwall (nero, rosso, mono per i numeri), il motore di punteggio, il regolamento. Le schermate qui sopra riordinano informazioni che l'app già possiede: nessuna dipende da API nuove, due dipendono dalle notifiche. La grafica v2 con Space Grotesk è una scelta di gusto, non di UX: si può applicare sopra questa struttura in un secondo momento.</p>
+
+<footer>Mockup e proposta · 26 settembre 2026 · dati reali della lega al round 17 · branch claude/code-app-review-ju211d</footer>
+</div>
+
+</body>
+</html>

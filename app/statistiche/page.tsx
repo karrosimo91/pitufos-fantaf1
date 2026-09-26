@@ -118,7 +118,7 @@ export default function StatistichePage() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
         <div className="mb-5">
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[11px] tracking-[2.5px] text-[#E8002D] uppercase font-bold mb-1.5">
             ANDAMENTO · STAGIONE 2026
           </div>
           <h1 className="text-[28px] font-extrabold tracking-[-0.8px] leading-none">Statistiche</h1>
@@ -172,8 +172,8 @@ export default function StatistichePage() {
           </div>
         ) : stats.rounds.length === 0 ? (
           <div className="hud-card p-10 text-center">
-            <div className="text-white/30 text-sm font-semibold">Ancora nessun punteggio</div>
-            <div className="text-white/15 text-[12px] mt-2">
+            <div className="text-white/50 text-sm font-semibold">Ancora nessun punteggio</div>
+            <div className="text-white/45 text-[12px] mt-2">
               Le statistiche compaiono dopo il primo weekend calcolato.
             </div>
           </div>
@@ -308,7 +308,7 @@ export default function StatistichePage() {
                 <LegendItem color={VIZ.stack1} label="Piloti" />
                 <LegendItem color={VIZ.stack2} label="Previsioni" />
               </div>
-              <p className="text-[10px] text-white/25 mt-2 leading-snug">
+              <p className="text-[10px] text-white/50 mt-2 leading-snug">
                 Le barre mostrano i punti lordi. Le penalità cambi (già scalate dal totale) compaiono nel dettaglio al tocco.
               </p>
             </div>
@@ -324,7 +324,7 @@ export default function StatistichePage() {
                   <div className="flex items-center gap-2.5 mb-2.5">
                     <span
                       className={`font-[family-name:var(--font-jetbrains)] font-extrabold text-[15px] tabular-nums w-6 text-center shrink-0 ${
-                        i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/25"
+                        i === 0 ? "text-[#E8002D]" : i < 3 ? "text-white" : "text-white/50"
                       }`}
                     >
                       {String(i + 1).padStart(2, "0")}
@@ -333,7 +333,7 @@ export default function StatistichePage() {
                       <div className={`text-[13px] font-bold truncate leading-tight ${p.userId === user.id ? "text-[#E8002D]" : ""}`}>
                         {p.tpName}
                       </div>
-                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/25 truncate uppercase tracking-[0.5px]">
+                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 truncate uppercase tracking-[0.5px]">
                         {p.scuderiaName}
                       </div>
                     </div>
@@ -376,7 +376,7 @@ export default function StatistichePage() {
                         <div className={`text-[12px] truncate leading-tight ${p.userId === user.id ? "text-white font-bold" : "text-white/70"}`}>
                           {p.tpName}
                         </div>
-                        <div className="text-[9px] text-white/25 truncate leading-tight">
+                        <div className="text-[11px] text-white/50 truncate leading-tight">
                           {p1}·{p2}·{p3} su {p.gp}
                         </div>
                       </div>
@@ -406,7 +406,7 @@ export default function StatistichePage() {
                 <LegendItem color={VIZ.third} label="3°" />
                 <LegendItem color="rgba(255,255,255,0.10)" label="Fuori dal podio" dim />
               </div>
-              <p className="text-[10px] text-white/25 mt-2 leading-snug">
+              <p className="text-[10px] text-white/50 mt-2 leading-snug">
                 Il numero a destra è la <strong className="text-white/40 font-semibold">Classifica Reale</strong>: 25-18-15-12-10-8-6-4-2-1 punti ai primi dieci di ogni weekend.
               </p>
             </div>
@@ -421,7 +421,7 @@ export default function StatistichePage() {
                     w.userId === user.id ? "bg-[#E8002D]/[0.05]" : ""
                   }`}
                 >
-                  <span className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] text-white/30 uppercase w-16 shrink-0">
+                  <span className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] text-white/50 uppercase w-16 shrink-0">
                     {raceLabel(w.round)}
                   </span>
                   <span className={`text-[13px] font-bold truncate flex-1 min-w-0 ${w.userId === user.id ? "text-[#E8002D]" : ""}`}>
@@ -461,7 +461,7 @@ export default function StatistichePage() {
                   highlight: p.userId === user.id,
                 }))}
               />
-              <p className="text-[10px] text-white/25 mt-3 leading-snug">
+              <p className="text-[10px] text-white/50 mt-3 leading-snug">
                 Percentuale sulle 5 previsioni SI/NO. Il numero DNF esatto è contato a parte. Un weekend
                 perfetto vale {PREVISIONI_MAX_WEEKEND} punti di previsioni.
               </p>
@@ -475,7 +475,7 @@ export default function StatistichePage() {
                   <div key={e.key} className="bg-black/30 border border-[#1c1c26] rounded p-3">
                     <div className="font-[family-name:var(--font-jetbrains)] text-[18px] font-extrabold leading-none">
                       {e.happened}
-                      <span className="text-white/25 text-[12px] font-bold"> / {e.total}</span>
+                      <span className="text-white/50 text-[12px] font-bold"> / {e.total}</span>
                     </div>
                     <div className="hud-label mt-1.5">{e.label}</div>
                   </div>
@@ -523,18 +523,18 @@ export default function StatistichePage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-bold truncate">{p.tpName}</div>
-                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/25 truncate uppercase tracking-[0.5px]">
+                      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 truncate uppercase tracking-[0.5px]">
                         {p.scuderiaName}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
                       {all.length === 0 ? (
-                        <span className="text-[11px] text-white/20">Nessuno</span>
+                        <span className="text-[11px] text-white/45">Nessuno</span>
                       ) : (
                         all.map((c) => (
                           <span
                             key={c}
-                            className="font-[family-name:var(--font-jetbrains)] text-[9px] font-bold tracking-[1px] uppercase px-2 py-1 rounded bg-amber-400/8 border border-amber-400/25 text-amber-400"
+                            className="font-[family-name:var(--font-jetbrains)] text-[11px] font-bold tracking-[1px] uppercase px-2 py-1 rounded bg-amber-400/8 border border-amber-400/25 text-amber-400"
                           >
                             {chipLabel(c)}
                           </span>
@@ -575,7 +575,7 @@ function StatTile({ label, value, sub, trend = 0 }: { label: string; value: stri
         )}
       </div>
       <div className="hud-label mt-1.5">{label}</div>
-      {sub && <div className="text-[10px] text-white/25 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10px] text-white/50 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -586,14 +586,14 @@ function MiniStat({ label, value, accent }: { label: string; value: string; acce
       <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold tabular-nums leading-none ${accent ?? "text-white/80"}`}>
         {value}
       </div>
-      <div className="font-[family-name:var(--font-jetbrains)] text-[8px] tracking-[1px] text-white/25 mt-1">{label}</div>
+      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] text-white/50 mt-1">{label}</div>
     </div>
   );
 }
 
 function LegendItem({ color, label, dim = false }: { color: string; label: string; dim?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] ${dim ? "text-white/30" : "text-white/60"}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] ${dim ? "text-white/50" : "text-white/60"}`}>
       <span className="w-2.5 h-[3px] rounded-full shrink-0" style={{ backgroundColor: color }} />
       {label}
     </span>
@@ -620,7 +620,7 @@ function RecordCard({
         {value}
       </div>
       <div className="text-[12px] text-white/60 mt-1.5 truncate">{who}</div>
-      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/25 uppercase tracking-[1px]">{where}</div>
+      <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 uppercase tracking-[1px]">{where}</div>
     </div>
   );
 }
@@ -642,7 +642,7 @@ function SeasonTable({
     <div className="overflow-x-auto -mx-1 px-1">
       <table className="w-full text-[11px] font-[family-name:var(--font-jetbrains)] tabular-nums border-collapse">
         <thead>
-          <tr className="text-white/30">
+          <tr className="text-white/50">
             <th className="text-left font-bold py-1.5 pr-2 sticky left-0 bg-[#0e0e14]">TEAM</th>
             {rounds.map((r) => (
               <th key={r} className="text-right font-bold py-1.5 px-1.5 whitespace-nowrap">R{r}</th>

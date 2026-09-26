@@ -63,7 +63,7 @@ export function LineChart({
   if (width === 0) return <div ref={ref} style={{ height }} />;
   if (xLabels.length === 0) {
     return (
-      <div ref={ref} style={{ height }} className="flex items-center justify-center text-white/20 text-[12px]">
+      <div ref={ref} style={{ height }} className="flex items-center justify-center text-white/45 text-[12px]">
         Nessun dato
       </div>
     );
@@ -165,7 +165,7 @@ export function LineChart({
             left: Math.min(Math.max(4, geom.x(hover) - 60), Math.max(4, width - 130)),
           }}
         >
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[1.5px] text-white/35 uppercase mb-1">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[11px] tracking-[1.5px] text-white/35 uppercase mb-1">
             {xTitle ? `${xTitle} ${xLabels[hover]}` : xLabels[hover]}
           </div>
           {hoverRows.slice(0, 6).map((r) => (

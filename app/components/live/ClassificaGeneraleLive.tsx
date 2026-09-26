@@ -49,10 +49,10 @@ export function ClassificaGeneraleLive({
   }, [season, liveWeekendPoints, roundSalvato, userId]);
 
   if (loading && rows.length === 0) {
-    return <div className="text-center py-8 text-white/20 text-sm">Caricamento classifica…</div>;
+    return <div className="text-center py-8 text-white/45 text-sm">Caricamento classifica…</div>;
   }
   if (rows.length === 0) {
-    return <div className="text-center py-8 text-white/20 text-sm">Nessuna classifica disponibile</div>;
+    return <div className="text-center py-8 text-white/45 text-sm">Nessuna classifica disponibile</div>;
   }
 
   return (
@@ -68,7 +68,7 @@ export function ClassificaGeneraleLive({
           >
             <div className="flex items-center gap-2.5">
               <div className={`font-[family-name:var(--font-jetbrains)] text-[13px] font-bold w-5 text-center ${
-                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/30"
+                i === 0 ? "text-[#E8002D]" : entry.isMe ? "text-[#E8002D]" : "text-white/50"
               }`}>
                 {i + 1}
               </div>
@@ -76,15 +76,15 @@ export function ClassificaGeneraleLive({
                 <div className={`text-[13px] font-semibold ${entry.isMe ? "text-white" : ""}`}>
                   {entry.scuderiaName}
                 </div>
-                <div className={`text-[10px] ${entry.isMe ? "text-[#E8002D]/50" : "text-white/25"}`}>
+                <div className={`text-[11px] ${entry.isMe ? "text-[#E8002D]/70" : "text-white/45"}`}>
                   @{entry.tpName}
                 </div>
               </div>
             </div>
             <div className="flex items-baseline gap-1.5">
               {entry.liveWeekend !== 0 && (
-                <span className={`font-[family-name:var(--font-jetbrains)] text-[9px] ${
-                  entry.liveWeekend > 0 ? "text-green-400/70" : "text-red-400/70"
+                <span className={`font-[family-name:var(--font-jetbrains)] text-[11px] ${
+                  entry.liveWeekend > 0 ? "text-green-400/80" : "text-red-400/80"
                 }`}>
                   {entry.liveWeekend > 0 ? "+" : ""}{entry.liveWeekend}
                 </span>
@@ -95,8 +95,8 @@ export function ClassificaGeneraleLive({
                 {entry.total}
               </span>
               {i < 10 && (
-                <span className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/15">
-                  +{PUNTI_REALE[i]} CR
+                <span className="pill pill-muted text-[10px] px-1.5 py-0" title="Punti Classifica Reale del weekend">
+                  {PUNTI_REALE[i]} REALE
                 </span>
               )}
             </div>

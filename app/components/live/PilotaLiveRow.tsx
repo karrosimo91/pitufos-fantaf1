@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import { Crown, Zap } from "lucide-react";
 import { getDriverByNumber } from "../../lib/drivers-data";
 import type { LivePilotaScore } from "../../lib/use-live-scoring";
@@ -15,6 +16,19 @@ export interface PilotaLiveRowProps {
 
 export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, expanded, onToggle }: PilotaLiveRowProps) {
   const driver = getDriverByNumber(p.driver_number);
+  // Flash e chip delta quando cambiano i punti: prima il numero cambiava in
+  // silenzio e non si capiva cosa fosse successo.
+  const prevRef = useRef<number | null>(null);
+  const [delta, setDelta] = useState<number | null>(null);
+  useEffect(() => {
+    if (prevRef.current !== null && prevRef.current !== p.puntiFinali) {
+      setDelta(p.puntiFinali - prevRef.current);
+      const t = setTimeout(() => setDelta(null), 4000);
+      prevRef.current = p.puntiFinali;
+      return () => clearTimeout(t);
+    }
+    prevRef.current = p.puntiFinali;
+  }, [p.puntiFinali]);
   const isPrimo = p.driver_number === primoPilota;
   const isBoosted = chipPiloti === "boost" && p.moltiplicatore === 3;
   const isScudo = isPrimo && chipPiloti === "scudo";
@@ -28,16 +42,16 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
         : "border-white/[0.06] bg-white/[0.02]";
 
   return (
-    <div className={`relative rounded-xl mb-1.5 border transition-all ${borderClass}`}>
+    <div className={`relative rounded-xl mb-1.5 border transition-all ${borderClass} ${delta != null ? (delta > 0 ? "flash-up" : "flash-dn") : ""}`}>
       <div className="flex items-center justify-between p-3 cursor-pointer" onClick={onToggle}>
         {isPrimo && (
-          <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-            <Crown size={8} /> CAP {isScudo ? "SCUDO" : "x2"}
+          <div className="absolute -top-1.5 left-3 bg-[#E8002D] text-white text-[10px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
+            <Crown size={9} /> CAP {isScudo ? "SCUDO" : "x2"}
           </div>
         )}
         {isBoosted && (
-          <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[8px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
-            <Zap size={8} /> BOOST x3
+          <div className="absolute -top-1.5 left-3 bg-amber-500 text-black text-[10px] font-bold tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
+            <Zap size={9} /> BOOST x3
           </div>
         )}
 
@@ -54,21 +68,26 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
             <div className={`text-[13px] font-semibold ${p.isDnf ? "text-white/40 line-through" : ""}`}>
               {driver?.name || `#${p.driver_number}`}
             </div>
-            <div className="text-[10px] text-white/30">{driver?.team || ""}</div>
+            <div className="text-[11px] text-white/45">{driver?.team || ""}</div>
           </div>
           {p.isFastestLap && (
-            <span className="text-[8px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">FL</span>
+            <span className="text-[10px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">GV</span>
           )}
         </div>
 
         <div className="flex items-center gap-1">
+          {delta != null && delta !== 0 && (
+            <span className={`font-[family-name:var(--font-jetbrains)] text-[11px] font-bold px-1.5 py-0.5 rounded ${delta > 0 ? "bg-[#2ee59d]/15 text-[#2ee59d]" : "bg-[#E8002D]/15 text-[#E8002D]"}`}>
+              {delta > 0 ? "▲ +" : "▼ "}{delta}
+            </span>
+          )}
           <span className={`font-[family-name:var(--font-jetbrains)] text-base font-bold ${
-            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+            p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/45"
           }`}>
             {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
           </span>
           {p.moltiplicatore > 1 && (
-            <span className="text-[10px] text-white/30">x{p.moltiplicatore}</span>
+            <span className="text-[11px] text-white/45">x{p.moltiplicatore}</span>
           )}
         </div>
       </div>
@@ -79,20 +98,20 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
             {breakdownSections.map((section, si) => (
               <div key={si}>
                 {breakdownSections.length > 1 && (
-                  <div className="text-[9px] tracking-[1.5px] text-white/25 uppercase font-bold mb-1">{section.label}</div>
+                  <div className="text-[11px] tracking-[1px] text-white/45 uppercase font-bold mb-1">{section.label}</div>
                 )}
                 {section.breakdown.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between text-[12px]">
                     <span className="text-white/40">{item.label}</span>
                     <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/15"
+                      item.value > 0 ? "text-green-400" : item.value < 0 ? "text-red-400" : "text-white/45"
                     }`}>
                       {item.value > 0 ? "+" : ""}{item.value}
                     </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-white/30">Subtotale</span>
+                  <span className="text-white/50">Subtotale</span>
                   <span className="font-[family-name:var(--font-jetbrains)] font-bold text-white/40">
                     {section.breakdown.finalTotal > 0 ? "+" : ""}{section.breakdown.finalTotal}
                   </span>
@@ -128,7 +147,7 @@ export function PilotaLiveRow({ p, primoPilota, chipPiloti, breakdownSections, e
                   <div className="flex items-center justify-between text-[13px] mt-1">
                     <span className="text-white/70 font-bold">Totale Weekend</span>
                     <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${
-                      p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/15"
+                      p.puntiFinali > 0 ? "text-green-400" : p.puntiFinali < 0 ? "text-red-400" : "text-white/45"
                     }`}>
                       {p.puntiFinali > 0 ? "+" : ""}{p.puntiFinali}
                     </span>

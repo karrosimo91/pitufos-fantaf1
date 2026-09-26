@@ -14,7 +14,7 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
         className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.02] transition-all"
       >
         <span className="text-sm font-bold">{title}</span>
-        {open ? <ChevronDown size={16} className="text-white/30" /> : <ChevronRight size={16} className="text-white/30" />}
+        {open ? <ChevronDown size={16} className="text-white/50" /> : <ChevronRight size={16} className="text-white/50" />}
       </button>
       {open && <div className="px-4 pb-4 text-[13px] text-white/60 leading-relaxed space-y-3">{children}</div>}
     </div>
@@ -40,7 +40,7 @@ export default function InfoPage() {
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-bottomnav">
-        <Link href="/altro" className="flex items-center gap-1 text-white/30 text-xs mb-4 hover:text-white/50 transition-all">
+        <Link href="/altro" className="flex items-center gap-1 text-white/50 text-xs mb-4 hover:text-white/50 transition-all">
           <ArrowLeft size={14} /> Altro
         </Link>
 
@@ -62,7 +62,8 @@ export default function InfoPage() {
           <Accordion title="Primo Pilota (Capitano)">
             <p>Ogni weekend scegli 1 pilota come <strong>Primo Pilota</strong>.</p>
             <p>Il suo punteggio viene <strong>raddoppiato (x2)</strong>, sia bonus che malus.</p>
-            <p>Esempio: se il Primo Pilota fa DNF (-15), il malus diventa <strong>-30</strong>.</p>
+            <p>Esempio: se il Primo Pilota si ritira in gara (-10), il malus diventa <strong>-20</strong>. Con lo Scudo Capitano resta -10.</p>
+            <p>Il Primo Pilota del round precedente ti viene riproposto: basta riconfermarlo nel Muretto, o toccare un altro pilota.</p>
           </Accordion>
 
           {/* Mercato e cambi */}
@@ -116,7 +117,7 @@ export default function InfoPage() {
               ["Giro veloce sprint", "+2"],
               ["DNF sprint", "-5"],
             ]} />
-            <p className="text-xs text-white/30">Nessun punto per posizioni guadagnate/perse in sprint.</p>
+            <p className="text-xs text-white/50">Nessun punto per posizioni guadagnate/perse in sprint.</p>
           </Accordion>
 
           {/* Gara */}
@@ -137,14 +138,14 @@ export default function InfoPage() {
               ["Posizione persa vs griglia di partenza reale", "-1 /pos"],
               ["Giro veloce", "+3"],
               ["Driver of the Day", "+5"],
-              ["DNF / Ritiro", "-10"],
+              ["DNF / Ritiro / non partito", "-10"],
               ["Penalita in gara", "-5"],
             ]} />
           </Accordion>
 
           {/* Previsioni */}
           <Accordion title="Previsioni (6 per weekend)">
-            <p>Punti differenziati in base alla probabilita dell'evento:</p>
+            <p>Punti differenziati in base alla probabilita dell&apos;evento:</p>
             <PuntiTable rows={[
               ["Safety Car: SI", "+4"],
               ["Safety Car: NO", "+6"],
@@ -156,17 +157,17 @@ export default function InfoPage() {
               ["Gomme wet: NO", "+2"],
               ["Pole vince (chi parte 1° in griglia): SI", "+4"],
               ["Pole vince (chi parte 1° in griglia): NO", "+7"],
-              ["Numero DNF esatto", "+5"],
+              ["Numero ritiri esatto", "+5"],
             ]} />
-            <p className="text-xs text-white/30">Previsione sbagliata = 0 punti.</p>
+            <p className="text-xs text-white/50">Previsione sbagliata = 0 punti.</p>
           </Accordion>
 
           {/* Aggiornamenti */}
-          <Accordion title="Aggiornamenti (Chip)">
+          <Accordion title="Aggiornamenti dalla fabbrica (chip)">
             <p>Ogni chip ha <strong>2 utilizzi</strong>: 1 prima della pausa estiva, 1 dopo. Se non lo usi, scade.</p>
             <p>Max 1 Aggiornamento Piloti + 1 Aggiornamento Previsioni per weekend.</p>
 
-            <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mt-3 mb-1">Aggiornamenti Piloti</div>
+            <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mt-3 mb-1">Aggiornamenti Piloti</div>
             <PuntiTable rows={[
               ["Boost Mode (x3)", "Un pilota diverso dal Capitano fa x3"],
               ["Halo", "Se un pilota va in negativo, minimo 0 punti"],
@@ -175,9 +176,9 @@ export default function InfoPage() {
               ["Wildcard", "Cambi illimitati senza penalita"],
             ]} />
 
-            <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mt-3 mb-1">Aggiornamenti Previsioni</div>
+            <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mt-3 mb-1">Aggiornamenti Previsioni</div>
             <PuntiTable rows={[
-              ["Prev. Doppia", "Punti x2 su 1 previsione"],
+              ["Previsione Doppia", "Punti x2 su 1 previsione"],
             ]} />
           </Accordion>
 
@@ -189,9 +190,10 @@ export default function InfoPage() {
           </Accordion>
 
           {/* Classifiche */}
-          <Accordion title="Classifica">
-            <p><strong>Classifica Somma Punti:</strong> somma totale di tutti i punti weekend dopo weekend. Include punteggio piloti, previsioni e penalita cambi.</p>
-            <p>Puoi creare o unirti a <strong>leghe</strong> per competere con amici su un sottoinsieme di gare.</p>
+          <Accordion title="Le due classifiche">
+            <p><strong>Somma punti (principale):</strong> somma di tutti i punti weekend dopo weekend. Include piloti, previsioni e penalita cambi.</p>
+            <p><strong>Classifica Reale:</strong> ogni weekend i giocatori vengono ordinati per punteggio e i primi 10 prendono punti come in F1: 25-18-15-12-10-8-6-4-2-1. A pari punti conta chi ha fatto piu punti con i piloti, poi con le previsioni.</p>
+            <p>Puoi creare o unirti a <strong>leghe</strong> per competere con amici su un sottoinsieme di gare: in Rivali le trovi entrambe.</p>
           </Accordion>
         </div>
       </main>

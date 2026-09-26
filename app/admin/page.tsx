@@ -238,7 +238,7 @@ export default function AdminPage() {
           </div>
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-4">
             <div>
-              <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Username</label>
+              <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Username</label>
               <input
                 type="text"
                 value={user}
@@ -248,7 +248,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-2">Password</label>
+              <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-2">Password</label>
               <input
                 type="password"
                 value={pass}
@@ -289,7 +289,7 @@ export default function AdminPage() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-white/30 hover:text-white/60 text-xs border border-white/10 px-3 py-2 rounded-lg transition-all"
+            className="text-white/50 hover:text-white/60 text-xs border border-white/10 px-3 py-2 rounded-lg transition-all"
           >
             Logout
           </button>
@@ -297,7 +297,7 @@ export default function AdminPage() {
 
         {/* Audit regole (sola lettura) */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
             Audit regole (sola lettura, a blocchi di round)
           </label>
           <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -307,10 +307,10 @@ export default function AdminPage() {
             <input type="number" min={1} max={24} value={auditTo} onChange={(e) => setAuditTo(Number(e.target.value))}
               className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
             <button onClick={handleAudit} disabled={auditing}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${auditing ? "bg-white/10 text-white/30 cursor-wait" : "bg-blue-600 hover:bg-blue-600/80 text-white"}`}>
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${auditing ? "bg-white/10 text-white/50 cursor-wait" : "bg-blue-600 hover:bg-blue-600/80 text-white"}`}>
               {auditing ? "Audit in corso..." : "Lancia audit"}
             </button>
-            <span className="text-white/30 text-[11px]">Max ~6 round per chiamata (limite 60s)</span>
+            <span className="text-white/50 text-[11px]">Max ~6 round per chiamata (limite 60s)</span>
           </div>
           {auditData?.error && <div className="text-red-400 text-xs">{auditData.error}</div>}
           {auditData?.totali_stagione && (
@@ -349,7 +349,7 @@ export default function AdminPage() {
 
         {/* Selezione Round */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
             Seleziona Round
           </label>
           <select
@@ -373,7 +373,7 @@ export default function AdminPage() {
 
         {/* Selezione Sessione */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
             Sessione da calcolare
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -393,7 +393,7 @@ export default function AdminPage() {
                 }`}
               >
                 <div className="text-sm font-bold">{s.label}</div>
-                <div className="text-[10px] text-white/30 mt-1">{s.desc}</div>
+                <div className="text-[10px] text-white/50 mt-1">{s.desc}</div>
               </button>
             ))}
           </div>
@@ -402,7 +402,7 @@ export default function AdminPage() {
         {/* Driver of the Day — solo per mode "race" */}
         {session === "race" && (
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-            <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+            <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
               Driver of the Day
             </label>
             <select
@@ -422,15 +422,15 @@ export default function AdminPage() {
 
         {/* Ricalcolo completo del round */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
             Ricalcolo completo Round {round}
           </label>
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleRicalcolaRound} disabled={recalcRound || loading || resetting}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcRound ? "bg-white/10 text-white/30 cursor-wait" : "bg-emerald-600 hover:bg-emerald-600/80 text-white"}`}>
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcRound ? "bg-white/10 text-white/50 cursor-wait" : "bg-emerald-600 hover:bg-emerald-600/80 text-white"}`}>
               {recalcRound ? "Ricalcolo in corso..." : `Ricalcola round ${round}`}
             </button>
-            <span className="text-white/30 text-[11px]">
+            <span className="text-white/50 text-[11px]">
               {RACES_2026.find((x) => x.round === round)?.sprint ? "Shootout → Sprint → Qualifica → Gara" : "Qualifica → Gara"}, idempotente. Il Driver of the Day salvato viene mantenuto se non ne selezioni uno.
             </span>
           </div>
@@ -441,15 +441,15 @@ export default function AdminPage() {
 
         {/* Ricalcolo stagione */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold block mb-3">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
             Ricalcolo intera stagione
           </label>
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleRicalcolaStagione} disabled={recalcSeason || recalcRound || loading || resetting}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcSeason ? "bg-white/10 text-white/30 cursor-wait" : "bg-orange-600 hover:bg-orange-600/80 text-white"}`}>
+              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcSeason ? "bg-white/10 text-white/50 cursor-wait" : "bg-orange-600 hover:bg-orange-600/80 text-white"}`}>
               {recalcSeason ? "Ricalcolo in corso..." : "Ricalcola tutti i round in archivio"}
             </button>
-            <span className="text-white/30 text-[11px]">Solo i round già calcolati, tutte le sessioni, in ordine. Idempotente. Alcuni minuti.</span>
+            <span className="text-white/50 text-[11px]">Solo i round già calcolati, tutte le sessioni, in ordine. Idempotente. Alcuni minuti.</span>
           </div>
           {recalcSeasonLog.length > 0 && (
             <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[400px] overflow-auto">{recalcSeasonLog.join("\n")}</pre>
@@ -463,7 +463,7 @@ export default function AdminPage() {
             disabled={loading || resetting}
             className={`flex-1 py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
               loading || resetting
-                ? "bg-white/10 text-white/30 cursor-wait"
+                ? "bg-white/10 text-white/50 cursor-wait"
                 : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
           >
@@ -481,7 +481,7 @@ export default function AdminPage() {
             disabled={loading || resetting || reviewing}
             className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
               loading || resetting || reviewing
-                ? "bg-white/10 text-white/30 cursor-wait"
+                ? "bg-white/10 text-white/50 cursor-wait"
                 : "bg-blue-600 hover:bg-blue-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
           >
@@ -517,7 +517,7 @@ export default function AdminPage() {
             disabled={loading || resetting}
             className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
               loading || resetting
-                ? "bg-white/10 text-white/30 cursor-wait"
+                ? "bg-white/10 text-white/50 cursor-wait"
                 : "bg-orange-600 hover:bg-orange-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
             }`}
           >
@@ -534,7 +534,7 @@ export default function AdminPage() {
 
         {/* Ricalcolo penalità */}
         <div className="mt-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
-          <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-1">
+          <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-1">
             Manutenzione penalità
           </div>
           <p className="text-xs text-white/40 mb-4">
@@ -547,7 +547,7 @@ export default function AdminPage() {
               disabled={recalcPen || loading || resetting}
               className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
                 recalcPen || loading || resetting
-                  ? "bg-white/10 text-white/30 cursor-wait"
+                  ? "bg-white/10 text-white/50 cursor-wait"
                   : "bg-purple-600 hover:bg-purple-600/80 text-white"
               }`}
             >
@@ -558,7 +558,7 @@ export default function AdminPage() {
               disabled={recalcPen || loading || resetting}
               className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
                 recalcPen || loading || resetting
-                  ? "bg-white/10 text-white/30 cursor-wait"
+                  ? "bg-white/10 text-white/50 cursor-wait"
                   : "bg-purple-700 hover:bg-purple-700/80 text-white"
               }`}
             >
@@ -602,7 +602,7 @@ export default function AdminPage() {
                                 <span>{g.nome}</span>
                                 <span className="font-[family-name:var(--font-jetbrains)]">
                                   punti: {g.delta_punti > 0 ? "+" : ""}{g.delta_punti}
-                                  {g.delta_reale !== 0 && <span className="text-white/30"> | reale: {g.delta_reale > 0 ? "+" : ""}{g.delta_reale}</span>}
+                                  {g.delta_reale !== 0 && <span className="text-white/50"> | reale: {g.delta_reale > 0 ? "+" : ""}{g.delta_reale}</span>}
                                 </span>
                               </div>
                             ))}
@@ -614,7 +614,7 @@ export default function AdminPage() {
                 )}
                 {recalcData.log?.length > 0 && (
                   <details className="mt-4">
-                    <summary className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold cursor-pointer">
+                    <summary className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold cursor-pointer">
                       Log ({recalcData.log.length})
                     </summary>
                     <div className="mt-2 font-[family-name:var(--font-jetbrains)] text-[11px] space-y-1 max-h-60 overflow-y-auto">
@@ -645,7 +645,7 @@ export default function AdminPage() {
                     <div className="text-[10px] tracking-[2px] text-[#E8002D] uppercase font-bold">
                       {result.session === "race" ? "Classifica Weekend" : `Parziale — ${result.session}`}
                     </div>
-                    <div className="text-xs text-white/30">
+                    <div className="text-xs text-white/50">
                       {result.gara} — {result.giocatori} giocatori
                     </div>
                   </div>
@@ -657,7 +657,7 @@ export default function AdminPage() {
                         <span
                           key={key}
                           className={`text-[10px] px-2 py-1 rounded-lg font-bold ${
-                            done ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/[0.03] text-white/20 border border-white/[0.05]"
+                            done ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/[0.03] text-white/45 border border-white/[0.05]"
                           }`}
                         >
                           {key.replace("_", " ").toUpperCase()}
@@ -679,14 +679,14 @@ export default function AdminPage() {
                         </span>
                         <div className="flex-1">
                           <div className="font-semibold text-sm">{c.nome}</div>
-                          <div className="text-[11px] text-white/30">{c.scuderia}</div>
+                          <div className="text-[11px] text-white/50">{c.scuderia}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-[family-name:var(--font-jetbrains)] font-bold text-lg">
                             {c.punti_weekend}
                           </div>
                           {c.punti_reale != null && (
-                            <div className="text-[10px] text-white/30">
+                            <div className="text-[10px] text-white/50">
                               Reale: +{c.punti_reale}
                             </div>
                           )}
@@ -699,7 +699,7 @@ export default function AdminPage() {
                 {/* Eventi */}
                 {result.eventi && (
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-3">
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-3">
                       Eventi Gara
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-xs">
@@ -715,7 +715,7 @@ export default function AdminPage() {
                           key={i}
                           className={`px-3 py-2 rounded-lg text-center font-bold ${
                             typeof val === "boolean"
-                              ? val ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/[0.03] text-white/30 border border-white/[0.05]"
+                              ? val ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/[0.03] text-white/50 border border-white/[0.05]"
                               : "bg-white/[0.03] text-white/60 border border-white/[0.05]"
                           }`}
                         >
@@ -731,7 +731,7 @@ export default function AdminPage() {
             {/* Logs */}
             {logs.length > 0 && (
               <details className="bg-white/[0.02] border border-white/[0.04] rounded-2xl p-4">
-                <summary className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold cursor-pointer">
+                <summary className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold cursor-pointer">
                   Log dettagliato ({logs.length} righe)
                 </summary>
                 <div className="mt-3 font-[family-name:var(--font-jetbrains)] text-[11px] space-y-1 max-h-60 overflow-y-auto">
@@ -776,7 +776,7 @@ export default function AdminPage() {
               <div className="mt-4 space-y-4">
                 {/* Events */}
                 <div>
-                  <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Eventi</div>
+                  <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Eventi</div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     {[
                       ["SC", reviewData.raw_results.events.safety_car],
@@ -788,7 +788,7 @@ export default function AdminPage() {
                     ].map(([label, val], i) => (
                       <div key={i} className={`px-2 py-1 rounded-lg text-center font-bold ${
                         typeof val === "boolean"
-                          ? val ? "bg-green-500/10 text-green-400" : "bg-white/[0.03] text-white/30"
+                          ? val ? "bg-green-500/10 text-green-400" : "bg-white/[0.03] text-white/50"
                           : "bg-white/[0.03] text-white/60"
                       }`}>{label as string}</div>
                     ))}
@@ -797,7 +797,7 @@ export default function AdminPage() {
 
                 {/* Qualifying */}
                 <div>
-                  <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Qualifica</div>
+                  <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Qualifica</div>
                   <div className="space-y-1">
                     {reviewData.raw_results.qualifying?.map((r: any) => (
                       <div key={r.driver_number} className="flex justify-between text-xs bg-white/[0.02] px-3 py-1 rounded-lg">
@@ -811,13 +811,13 @@ export default function AdminPage() {
 
                 {/* Race */}
                 <div>
-                  <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Gara</div>
+                  <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Gara</div>
                   <div className="space-y-1">
                     {reviewData.raw_results.race?.map((r: any) => (
                       <div key={r.driver_number} className="flex items-center gap-2 text-xs bg-white/[0.02] px-3 py-1 rounded-lg">
                         <span className="text-white/60 w-8">P{r.pos}</span>
                         <span className="text-white flex-1">{r.driver}</span>
-                        {r.grid && <span className="text-white/30">Grid P{r.grid}</span>}
+                        {r.grid && <span className="text-white/50">Grid P{r.grid}</span>}
                         {r.dnf && <span className="text-red-400">DNF</span>}
                         {r.fastest_lap && <span className="text-purple-400">FL</span>}
                         {r.dotd && <span className="text-yellow-400">DOTD</span>}
@@ -830,7 +830,7 @@ export default function AdminPage() {
                 {/* Sprint Shootout */}
                 {reviewData.raw_results.sprint_shootout && (
                   <div>
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Sprint Shootout</div>
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Sprint Shootout</div>
                     <div className="space-y-1">
                       {reviewData.raw_results.sprint_shootout.map((r: any) => (
                         <div key={r.driver_number} className="flex justify-between text-xs bg-white/[0.02] px-3 py-1 rounded-lg">
@@ -845,7 +845,7 @@ export default function AdminPage() {
                 {/* Sprint */}
                 {reviewData.raw_results.sprint && (
                   <div>
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Sprint Race</div>
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Sprint Race</div>
                     <div className="space-y-1">
                       {reviewData.raw_results.sprint.map((r: any) => (
                         <div key={r.driver_number} className="flex items-center gap-2 text-xs bg-white/[0.02] px-3 py-1 rounded-lg">
@@ -870,7 +870,7 @@ export default function AdminPage() {
                     }`}>{idx + 1}</span>
                     <div className="flex-1">
                       <span className="font-semibold text-sm text-white">{player.nome}</span>
-                      <span className="text-white/30 text-xs ml-2">{player.scuderia}</span>
+                      <span className="text-white/50 text-xs ml-2">{player.scuderia}</span>
                     </div>
                     <div className="text-right">
                       <span className="font-[family-name:var(--font-jetbrains)] font-bold text-lg text-white">{player.totale_calcolato}</span>
@@ -884,7 +884,7 @@ export default function AdminPage() {
                 <div className="mt-4 space-y-4">
                   {/* Formazione */}
                   <div className="bg-white/[0.02] rounded-xl p-4">
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-2">Formazione</div>
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-2">Formazione</div>
                     <div className="flex flex-wrap gap-2 text-xs">
                       {player.formazione.piloti.map((p: any) => (
                         <span key={p.number} className={`px-2 py-1 rounded-lg ${
@@ -912,7 +912,7 @@ export default function AdminPage() {
 
                   {/* Piloti Breakdown */}
                   <div className="bg-white/[0.02] rounded-xl p-4">
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-3">
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-3">
                       Punti Piloti: {player.punti_piloti}
                     </div>
                     {player.piloti_breakdown.map((drv: any) => (
@@ -932,14 +932,14 @@ export default function AdminPage() {
                         <div className="pl-4 space-y-0.5">
                           {Object.entries(drv.sessions).map(([sessionName, bd]: [string, any]) => (
                             <div key={sessionName} className="text-[11px] text-white/40">
-                              <span className="text-white/20 uppercase">{sessionName.replace("_", " ")}:</span>{" "}
+                              <span className="text-white/45 uppercase">{sessionName.replace("_", " ")}:</span>{" "}
                               {bd.items.map((item: any, i: number) => (
                                 <span key={i} className={item.value >= 0 ? "text-white/50" : "text-red-400/70"}>
                                   {item.label}: {item.value > 0 ? "+" : ""}{item.value}
                                   {i < bd.items.length - 1 ? " | " : ""}
                                 </span>
                               ))}
-                              <span className="text-white/30 ml-1">[base: {bd.baseTotal}]</span>
+                              <span className="text-white/50 ml-1">[base: {bd.baseTotal}]</span>
                             </div>
                           ))}
                         </div>
@@ -949,7 +949,7 @@ export default function AdminPage() {
 
                   {/* Previsioni Breakdown */}
                   <div className="bg-white/[0.02] rounded-xl p-4">
-                    <div className="text-[10px] tracking-[2px] text-white/30 uppercase font-bold mb-3">
+                    <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-3">
                       Punti Previsioni: {player.punti_previsioni}
                     </div>
                     {player.previsioni_raw ? (
@@ -969,16 +969,16 @@ export default function AdminPage() {
                           return (
                             <div key={p.key} className="flex items-center gap-2 text-xs">
                               <span className="w-24 text-white/40">{p.label}:</span>
-                              <span className={`w-12 ${p.val === null ? "text-white/20" : "text-white/60"}`}>
+                              <span className={`w-12 ${p.val === null ? "text-white/45" : "text-white/60"}`}>
                                 {p.val === null ? "—" : isDnf ? p.val : p.val ? "SI" : "NO"}
                               </span>
-                              <span className="w-16 text-white/20">
+                              <span className="w-16 text-white/45">
                                 reale: {isDnf ? p.event : p.event ? "SI" : "NO"}
                               </span>
-                              <span className={`w-8 font-bold ${corretto && p.val !== null ? "text-green-400" : p.val === null ? "text-white/20" : "text-red-400"}`}>
+                              <span className={`w-8 font-bold ${corretto && p.val !== null ? "text-green-400" : p.val === null ? "text-white/45" : "text-red-400"}`}>
                                 {corretto && p.val !== null ? "OK" : p.val === null ? "—" : "X"}
                               </span>
-                              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/30"}`}>
+                              <span className={`font-[family-name:var(--font-jetbrains)] font-bold ${pts > 0 ? "text-green-400" : "text-white/50"}`}>
                                 {pts > 0 ? "+" : ""}{pts}
                               </span>
                               {isChipTarget && (
@@ -996,7 +996,7 @@ export default function AdminPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="text-xs text-white/20">Nessuna previsione confermata</div>
+                      <div className="text-xs text-white/45">Nessuna previsione confermata</div>
                     )}
                   </div>
 

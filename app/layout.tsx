@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Oswald, JetBrains_Mono } from "next/font/google";
 import RegisterSW from "./components/RegisterSW";
+import AppProviders from "./components/AppProviders";
 import "./globals.css";
 
 const inter = Inter({
@@ -57,7 +58,7 @@ export default function RootLayout({
         className={`${inter.variable} ${oswald.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <RegisterSW />
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

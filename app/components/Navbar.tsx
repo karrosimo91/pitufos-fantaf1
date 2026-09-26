@@ -14,7 +14,7 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[2px] hidden sm:inline">
+          <span className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/50 tracking-[2px] hidden sm:inline">
             STAGIONE 2026
           </span>
           {user && profile && (

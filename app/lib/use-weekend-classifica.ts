@@ -95,6 +95,10 @@ export function useWeekendClassifica(opts: {
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
   const [retiredDrivers, setRetiredDrivers] = useState<Set<number>>(new Set());
   const [formazioni, setFormazioni] = useState<PlayerFormazione[]>([]);
+  // Membri della lega selezionata (null = nessun filtro). Le formazioni si
+  // leggono per TUTTI i giocatori: i provvisori si salvano per tutti, la
+  // classifica mostrata si filtra per lega.
+  const [memberIds, setMemberIds] = useState<Set<string> | null>(null);
   const [previsioni, setPrevisioni] = useState<Map<string, PlayerPrevisioni>>(new Map());
   const [penalita, setPenalita] = useState<Map<string, number>>(new Map());
 
@@ -274,24 +278,22 @@ export function useWeekendClassifica(opts: {
     let cancelled = false;
     (async () => {
       try {
-        let memberIds: string[] | null = null;
         if (legaId) {
           const { data: members } = await supabase
             .from("lega_members")
             .select("user_id")
             .eq("lega_id", legaId);
-          if (members) memberIds = members.map((m) => m.user_id);
+          if (!cancelled) setMemberIds(members ? new Set(members.map((m) => m.user_id)) : null);
+        } else if (!cancelled) {
+          setMemberIds(null);
         }
         if (cancelled) return;
 
-        let query = supabase
+        const { data: formData, error: formErr } = await supabase
           .from("formazioni")
           .select("user_id, driver_numbers, primo_pilota, chip_piloti, chip_piloti_target, sesto_uomo")
           .eq("round", round)
           .eq("confirmed", true);
-        if (memberIds) query = query.in("user_id", memberIds);
-
-        const { data: formData, error: formErr } = await query;
         if (formErr) {
           console.warn("[weekend-classifica] formazioni", formErr);
           return;
@@ -356,7 +358,8 @@ export function useWeekendClassifica(opts: {
   const ws = useLiveWebSocket(debug ? null : sessionKey);
 
   // Costruisce classifica live combinando WS + formazioni + previsioni + previousResults
-  const classifica = useMemo<WeekendClassificaEntry[]>(() => {
+  // (tutti i giocatori con formazione confermata; il filtro lega è sotto)
+  const classificaAll = useMemo<WeekendClassificaEntry[]>(() => {
     if (formazioni.length === 0) return [];
     const archivio = !debug && !sessionKey;
     if (archivio && !previousResults) return [];
@@ -398,8 +401,17 @@ export function useWeekendClassifica(opts: {
     return entries;
   }, [formazioni, previsioni, ws.positions, ws.raceControl, ws.fastestLap, ws.stints, sessionType, gridPositions, retiredDrivers, previousResults, penalita, userId, debug, sessionKey]);
 
+  const classifica = useMemo(
+    () => (memberIds ? classificaAll.filter((c) => memberIds.has(c.userId)) : classificaAll),
+    [classificaAll, memberIds],
+  );
+
   return {
     classifica,
+    /** Tutti i giocatori, senza filtro lega: per i provvisori */
+    classificaAll,
+    /** Membri della lega selezionata (null = tutti) */
+    memberIds,
     formazioni,
     previsioniByUser: previsioni,
     /** user_id → penalità cambi (già tolta da `classifica`) */

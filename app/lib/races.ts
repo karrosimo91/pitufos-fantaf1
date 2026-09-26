@@ -27,8 +27,8 @@ export const RACES_2026: Race[] = [
   { round: 24, name: "Abu Dhabi Grand Prix",       circuit: "Abu Dhabi",    flag: "🇦🇪", countryCode: "ae", date: "2026-12-06T13:00:00Z", deadline: "2026-12-05T14:00:00Z", sprint: false },
 ];
 
-/** Giorno dopo la gara (mezzanotte UTC del lunedì) */
-function raceEndDate(race: Race): Date {
+/** Giorno dopo la gara (mezzanotte UTC del lunedì): da qui il round successivo diventa "corrente". */
+export function raceEndDate(race: Race): Date {
   const d = new Date(race.date);
   d.setUTCDate(d.getUTCDate() + 1);
   d.setUTCHours(0, 0, 0, 0);
@@ -114,4 +114,80 @@ export function getDeadline(race: Race): string {
 /** Controlla se siamo dopo la deadline */
 export function isAfterDeadline(race: Race): boolean {
   return new Date() >= new Date(getDeadline(race));
+}
+
+// ─── Fasi del round ───
+//
+// "prepara": formazione aperta, si arriva alla deadline.
+// "weekend": dalla deadline alla mezzanotte UTC dopo la gara (sessioni in
+//            corso o appena concluse, il round è ancora quello corrente).
+// "recap":   gara finita e round passato: resta consultabile finché non
+//            chiude la formazione del round successivo.
+export type RoundPhase = "prepara" | "weekend" | "recap";
+
+export function getRacePhase(race: Race, now: Date = new Date()): RoundPhase {
+  if (now < new Date(race.deadline)) return "prepara";
+  if (now < raceEndDate(race)) return "weekend";
+  return "recap";
+}
+
+/** Ultimo GP concluso (mezzanotte UTC dopo la gara già passata). */
+export function getLastCompletedRace(now: Date = new Date()): Race | null {
+  const past = RACES_2026.filter((r) => raceEndDate(r) <= now);
+  return past.length > 0 ? past[past.length - 1] : null;
+}
+
+/**
+ * Il round il cui recap è ancora "attuale": l'ultimo GP concluso, finché non
+ * chiude la formazione del round successivo. Dal lunedì alla deadline
+ * successiva la Home e la pagina Gara mostrano ancora il weekend appena fatto
+ * invece di un vuoto "nessuna sessione live".
+ */
+export function getRecapRace(now: Date = new Date()): Race | null {
+  const last = getLastCompletedRace(now);
+  if (!last) return null;
+  const next = RACES_2026.find((r) => r.round > last.round);
+  if (next && now >= new Date(next.deadline)) return null;
+  return last;
+}
+
+const GIORNI = ["DOM", "LUN", "MAR", "MER", "GIO", "VEN", "SAB"];
+const MESI = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
+
+/** "VEN 9 OTT · 14:30" nell'ora locale del browser. */
+export function formatDateTimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} · ${hh}:${mm}`;
+}
+
+/** "LUN 02:00" nell'ora locale (per "riapre lunedì alle 02:00"). */
+export function formatWeekdayTimeLocal(date: Date): string {
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${GIORNI[date.getDay()]} ${hh}:${mm}`;
+}
+
+/** "tra 2 g 4 h", "tra 3 h 12 min", "tra 45 min", "adesso"; null se passato. */
+export function formatRelative(targetIso: string, now: Date = new Date()): string | null {
+  const diff = new Date(targetIso).getTime() - now.getTime();
+  if (diff <= 0) return null;
+  const min = Math.floor(diff / 60_000);
+  const h = Math.floor(min / 60);
+  const d = Math.floor(h / 24);
+  if (d >= 1) return `tra ${d} g ${h % 24} h`;
+  if (h >= 1) return `tra ${h} h ${min % 60} min`;
+  if (min >= 1) return `tra ${min} min`;
+  return "adesso";
+}
+
+/** Millisecondi alla deadline (negativo se passata). */
+export function msToDeadline(race: Race, now: Date = new Date()): number {
+  return new Date(race.deadline).getTime() - now.getTime();
+}
+
+/** Nome breve del GP per etichette ("Baku", "Singapore"): la città del circuito. */
+export function raceShortName(race: Race): string {
+  return race.circuit;
 }

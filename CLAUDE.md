@@ -14,7 +14,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 ## Regolamento v1.0 — Approvato dal CDA
 
 > ⚠️ **Drift versione doc/codice:** questo documento è fermo alla v1.0.0
-> (ultima approvazione CDA), mentre il codice applicativo è già a v1.8.1
+> (ultima approvazione CDA), mentre il codice applicativo è già a v1.11.0
 > (vedi `CHANGELOG.md`). Le sezioni sotto vanno riletta contro l'implementazione
 > reale prima di assumerle come fonte di verità su dettagli di edge case.
 
@@ -218,6 +218,30 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
 8. **Audit prima di ricalcolare**: `/api/audit-regole?from=&to=` (sola lettura, cookie admin o `admin_key`)
    mostra i delta per regola/round/giocatore. I round 2-14 hanno in archivio griglia =
    qualifica: il ricalcolo retroattivo con la griglia reale è da fare dopo il via del CDA.
+
+## Struttura dell'app (v1.11.0, 26/09/2026)
+- **Stato condiviso:** `lib/weekend-context.tsx` (`WeekendProvider`, montato in `layout.tsx` via
+  `components/AppProviders.tsx`) tiene UNA istanza di `useSquadra`, `usePrevisioni`, `useLiveSession`
+  più round corrente, fase (`prepara` / `weekend` / `recap`, da `lib/races.ts`), `locked`, `recapRace`.
+  Pagine e BottomNav leggono `useWeekend()`: non istanziare più gli hook direttamente nelle pagine.
+- **Toast:** `components/ui/Toast.tsx` (`useToast().show(msg, { kind, detail, action })`), in basso sopra la nav.
+- **Muretto (Home):** `components/muretto/*` (hero a fasi, formazione tap-to-captain, aggiornamenti dalla
+  fabbrica con due usi, previsioni con contesto da `lib/season-insights.ts`, `ConfermaBar` unico).
+  Il Primo Pilota si copia nel nuovo round come proposta (`primoPilotaProposto` in `useSquadra`).
+- **Mercato:** `DriverTile` unico + `components/mercato/*` (scheda pilota, SCAMBIA atomico via
+  `useSquadra().scambia`, vendita capitano, cambio a pagamento con Wildcard). Dati di contesto da
+  `lib/use-driver-insights.ts` (forma, delta prezzo, chi lo ha in lega, ha corso l'ultimo GP).
+- **Gara:** `LiveTab` (barra sessione, hero con rivale, eventi tradotti `lib/live-events.ts`, previsioni vive
+  `lib/previsioni-live.ts`, formazioni svelate), `ProvisionalView`, `WeekendArchivioTab`; il recap del GP
+  precedente resta visibile fino alla deadline successiva.
+- **Recap:** `/risultati?round=` con `components/recap/WeekendRecap.tsx` e derivazioni pure `lib/recap.ts`.
+- **Rivali:** `/classifica` con `components/rivali/*` (forma, scheda stagione con testa a testa, chi ha chi),
+  Classifica Reale dai `real_points` di `weekend_scores` via `use-statistiche`.
+- **Inviti lega:** `/registrati?lega=CODICE` o `/login?lega=` → `lib/pending-lega.ts` → iscrizione al primo
+  accesso dal Muretto.
+- **Tipografia:** minimo 11px, grigi per parole ≥ 40% (`--text-2` 0.62, `--text-3` 0.45); `.pill`, `.btn-primary`,
+  `.btn-secondary`, `.sticky-bar`, `.skeleton`, `.tap` in `globals.css`.
+- **Notifiche (Telegram/push):** NON implementate, escluse per decisione del 26/09.
 
 ## Admin — autenticazione
 - Credenziali SOLO lato server: `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_API_KEY` (variabili Vercel). Mai

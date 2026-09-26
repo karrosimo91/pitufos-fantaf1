@@ -55,7 +55,7 @@ export function StackedBarChart({
   if (width === 0) return <div ref={ref} style={{ height }} />;
   if (rows.length === 0) {
     return (
-      <div ref={ref} style={{ height }} className="flex items-center justify-center text-white/20 text-[12px]">
+      <div ref={ref} style={{ height }} className="flex items-center justify-center text-white/45 text-[12px]">
         Nessun dato
       </div>
     );
@@ -140,7 +140,7 @@ export function StackedBarChart({
           className="pointer-events-none absolute top-1 z-10 bg-[#14141c] border border-[#2a2a38] rounded-lg px-2.5 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.6)] min-w-[120px]"
           style={{ left: Math.min(Math.max(4, geom.x(hover) - 60), Math.max(4, width - 140)) }}
         >
-          <div className="font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[1.5px] text-white/35 uppercase mb-1">
+          <div className="font-[family-name:var(--font-jetbrains)] text-[11px] tracking-[1.5px] text-white/35 uppercase mb-1">
             {xTitle ? `${xTitle} ${rows[hover].label}` : rows[hover].label}
           </div>
           {rows[hover].values.map((v, si) => (

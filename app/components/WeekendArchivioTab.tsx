@@ -1,33 +1,43 @@
 "use client";
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ChevronRight, Share2 } from "lucide-react";
 import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import type { LiveSnapshot } from "../lib/build-live-results";
 import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
 import { ClassificaGeneraleLive } from "./live/ClassificaGeneraleLive";
 import { PlayerDetailModal } from "./live/PlayerDetailModal";
-import { HudCard } from "./ui/HudCard";
+import { FormazioniSvelate } from "./live/FormazioniSvelate";
+import { LiveHero } from "./live/LiveHero";
+import { shareText } from "../lib/share";
+import { useToast } from "./ui/Toast";
 
 const EMPTY_SNAP: LiveSnapshot = { positions: new Map(), raceControl: [], fastestLap: null, stints: [] };
 const EMPTY_GRID = new Map<number, number>();
 
+type SubTab = "weekend" | "formazioni" | "generale";
+
 /**
- * Weekend in corso ma nessuna sessione live: punteggi di tutti i Team
- * Principal calcolati dalle sessioni già in archivio (`weekend_results`),
- * con lo stesso calcolo e gli stessi componenti del Live. Tocca un giocatore
- * (anche te stesso) per il dettaglio piloti e previsioni.
+ * Weekend senza sessione live: punteggi di tutti dalle sessioni in archivio
+ * (`weekend_results`), formazioni svelate e classifica generale. Se non c'è
+ * ancora nulla in archivio, dice cosa si aspetta invece di "nessuna
+ * sessione live".
  */
 export default function WeekendArchivioTab({
-  round,
-  userId,
-  legaId,
+  round, userId, legaId, raceName, emptyTitle, emptyText, showRecapLink = false,
 }: {
   round: number;
   userId?: string;
   legaId?: string;
+  raceName: string;
+  emptyTitle: string;
+  emptyText: string;
+  showRecapLink?: boolean;
 }) {
   const data = useWeekendClassifica({ round, sessionType: "", sessionKey: null, legaId, userId });
-  const [subTab, setSubTab] = useState<"weekend" | "generale">("weekend");
+  const [subTab, setSubTab] = useState<SubTab>("weekend");
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const toast = useToast();
 
   const weekendPoints = useMemo(() => {
     const m = new Map<string, number>();
@@ -39,7 +49,7 @@ export default function WeekendArchivioTab({
     const r = data.previousResults;
     if (!r) return [];
     const out: string[] = [];
-    if (r.qualifying?.length) out.push("Qualifica");
+    if (r.qualifying?.length) out.push("Qualifiche");
     if (r.sprint_shootout?.length) out.push("Shootout");
     if (r.sprint?.length) out.push("Sprint");
     if (r.race?.length) out.push("Gara");
@@ -47,68 +57,72 @@ export default function WeekendArchivioTab({
   }, [data.previousResults]);
 
   if (!data.previousLoaded) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-8 h-8 border-2 border-[#E8002D]/30 border-t-[#E8002D] rounded-full animate-spin" />
-      </div>
-    );
+    return <div className="space-y-3"><div className="skeleton h-28" /><div className="skeleton h-40" /></div>;
   }
 
-  if (!data.previousResults || sessioni.length === 0) {
-    return (
-      <div className="hud-card p-10 text-center">
-        <div className="text-white/30 text-sm font-semibold">Nessuna sessione live al momento</div>
-        <div className="text-white/15 text-[12px] mt-2">
-          I punteggi del weekend compaiono qui appena viene calcolata la prima sessione.
-        </div>
-      </div>
-    );
-  }
-
+  const hasData = !!data.previousResults && sessioni.length > 0;
   const me = data.classifica.find((c) => c.isMe);
   const myPenalita = userId ? data.penalitaByUser.get(userId) ?? 0 : 0;
   const selectedFormazione = selectedPlayer ? data.formazioni.find((f) => f.user_id === selectedPlayer) : null;
   const selectedEntry = selectedPlayer ? data.classifica.find((c) => c.userId === selectedPlayer) : null;
+  const raceDone = (data.previousResults?.race?.length ?? 0) > 0;
+
+  const onShare = async () => {
+    const lines = data.classifica.map((c, i) => `${i + 1}. ${c.tpName} ${c.points}`);
+    const r = await shareText(`${raceName} · classifica weekend`, [`${raceName} · ${sessioni.join(" + ")}`, ...lines].join("\n"));
+    if (r === "copied") toast.show("Classifica copiata", { kind: "success", detail: "Incollala nel gruppo" });
+    else if (r === "failed") toast.show("Condivisione non riuscita", { kind: "error" });
+  };
 
   return (
     <div>
-      <HudCard label="PUNTEGGIO WEEKEND" meta="UFFICIALE" className="mb-4">
-        <div className="big-num">{me ? me.points : "—"}</div>
-        <div className="font-[family-name:var(--font-jetbrains)] text-[10px] text-white/30 tracking-[1.5px] uppercase mt-3">
-          {sessioni.join(" · ")}
-          {myPenalita > 0 && (
-            <>
-              <span className="mx-2 text-white/15">·</span>
-              CAMBI <span className="text-amber-400/80 ml-1">−{myPenalita}</span>
-            </>
+      {hasData ? (
+        <>
+          <LiveHero
+            label={`${sessioni.join(" · ").toUpperCase()} · ${raceDone ? "UFFICIALE" : "PARZIALE"}`}
+            points={me ? me.points : 0}
+            piloti={0}
+            previsioni={0}
+            penalita={myPenalita}
+            isRace={false}
+            classifica={data.classifica}
+            userId={userId}
+          />
+          {showRecapLink && raceDone && (
+            <Link href={`/risultati?round=${round}`} className="flex items-center gap-3 hud-card hud-card-accent p-3.5 mb-3 tap">
+              <div className="flex-1 text-[13px] font-bold">Apri il recap: scontrino, rimpianti, weekend perfetto</div>
+              <ChevronRight size={16} className="text-white/45" />
+            </Link>
           )}
+        </>
+      ) : (
+        <div className="hud-card p-6 text-center mb-3">
+          <div className="text-[15px] font-bold">{emptyTitle}</div>
+          <div className="text-[13px] text-white/60 mt-1.5">{emptyText}</div>
         </div>
-        <div className="text-[10px] text-white/20 mt-2">
-          Sessioni già calcolate. Tocca un Team Principal per il dettaglio.
-        </div>
-      </HudCard>
+      )}
 
       <div className="flex gap-1 mb-4">
-        {([
-          ["weekend", "CLASSIFICA WEEKEND"],
-          ["generale", "GENERALE"],
-        ] as const).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setSubTab(id)}
-            className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[9px] tracking-[1.2px] font-bold transition-all border ${
-              subTab === id
-                ? "bg-[#E8002D]/12 border-[#E8002D]/45 text-[#E8002D]"
-                : "bg-[#0e0e14] border-[#1c1c26] text-white/40 hover:text-white/70"
-            }`}
-          >
+        {([["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setSubTab(id)}
+            className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
             {label}
           </button>
         ))}
       </div>
 
       {subTab === "weekend" && (
-        <ClassificaWeekendList classifica={data.classifica} onSelect={setSelectedPlayer} />
+        hasData ? (
+          <>
+            <ClassificaWeekendList classifica={data.classifica} onSelect={setSelectedPlayer} />
+            <button onClick={onShare} className="btn-secondary w-full"><Share2 size={14} /> CONDIVIDI LA CLASSIFICA</button>
+          </>
+        ) : (
+          <div className="text-[13px] text-white/50 text-center py-6">La classifica del weekend compare appena viene calcolata la prima sessione.</div>
+        )
+      )}
+      {subTab === "formazioni" && (
+        <FormazioniSvelate formazioni={data.formazioni} previsioniByUser={data.previsioniByUser} userId={userId} raceName={raceName} members={data.memberIds} />
       )}
       {subTab === "generale" && (
         <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={weekendPoints} userId={userId} />

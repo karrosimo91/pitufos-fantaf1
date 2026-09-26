@@ -21,7 +21,7 @@ export function PageHead({
   return (
     <div className="px-4 pt-5 pb-2">
       {breadcrumb && (
-        <div className="font-[family-name:var(--font-jetbrains)] text-[9px] text-white/30 tracking-[2px] mb-1.5 uppercase">
+        <div className="font-[family-name:var(--font-jetbrains)] text-[11px] text-white/50 tracking-[2px] mb-1.5 uppercase">
           {breadcrumb}
         </div>
       )}
