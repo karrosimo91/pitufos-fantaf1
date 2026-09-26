@@ -145,7 +145,7 @@ export default function InfoPage() {
 
           {/* Previsioni */}
           <Accordion title="Previsioni (6 per weekend)">
-            <p>Punti differenziati in base alla probabilita dell'evento:</p>
+            <p>Punti differenziati in base alla probabilita dell&apos;evento:</p>
             <PuntiTable rows={[
               ["Safety Car: SI", "+4"],
               ["Safety Car: NO", "+6"],

@@ -20,12 +20,11 @@ export function ConfermaBar({
     <div className="sticky-bar">
       <div className="max-w-3xl mx-auto px-4 py-3">
         {(modified || penaltyLine) && (
-          <div className="flex items-center gap-2 mb-2 text-[12px]">
-            {modified && (
+          <div className="flex items-center justify-between gap-3 mb-2 text-[12px]">
+            {modified ? (
               <span className="flex items-center gap-1.5 text-[#ffb000] font-bold"><AlertTriangle size={13} /> Modifiche non confermate</span>
-            )}
-            {modified && penaltyLine && <span className="text-white/50">·</span>}
-            {penaltyLine && <span className="text-[#ffb000]">{penaltyLine}</span>}
+            ) : <span />}
+            {penaltyLine && <span className="text-[#ffb000] shrink-0">{penaltyLine}</span>}
           </div>
         )}
         <button type="button" onClick={onConfirm} disabled={disabled} className="btn-primary">

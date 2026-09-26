@@ -254,7 +254,7 @@ function Pick({ label, d, tone }: { label: string; d: RecapDriver; tone: "up" | 
       <div className="hud-label mb-1">{label}</div>
       <div className="font-bold text-[14px] truncate">{d.name}</div>
       <div className={`font-[family-name:var(--font-jetbrains)] text-[20px] font-extrabold tabular-nums ${tone === "up" ? "text-[#2ee59d]" : "text-[#E8002D]"}`}>{d.puntiFinali > 0 ? "+" : ""}{d.puntiFinali}</div>
-      {why && <div className="text-[11px] text-white/55 mt-0.5 truncate">{top?.label}: {why.label.toLowerCase()}</div>}
+      {why && <div className="text-[11px] text-white/55 mt-0.5 truncate">{top?.label}: {why.label}</div>}
     </div>
   );
 }

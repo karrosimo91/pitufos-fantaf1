@@ -63,10 +63,17 @@ const STYLE: Record<ToastKind, { border: string; icon: ReactNode; text: string }
 
 function ToastView({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
   const st = STYLE[toast.kind ?? "info"];
+  // Se c'è una barra fissa (Conferma weekend, rosa modificata) il toast sale
+  // sopra di lei invece di coprirla.
+  const [offset, setOffset] = useState(0);
+  useEffect(() => {
+    const bar = document.querySelector<HTMLElement>(".sticky-bar");
+    setOffset(bar ? bar.offsetHeight : 0);
+  }, [toast.id]);
   return (
     <div
       className="fixed left-0 right-0 z-[70] flex justify-center px-4 pointer-events-none"
-      style={{ bottom: "calc(84px + env(safe-area-inset-bottom, 0px))" }}
+      style={{ bottom: `calc(${84 + offset}px + env(safe-area-inset-bottom, 0px))` }}
     >
       <div
         role="status"

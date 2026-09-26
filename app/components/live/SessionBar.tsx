@@ -47,7 +47,7 @@ export function SessionBar({
         <span className="text-white/50">·</span>
         <span className={`font-bold ${FLAG_CLASS[flag]} truncate`}>{FLAG_LABEL[flag]}</span>
       </div>
-      <div className={`shrink-0 flex items-center gap-1.5 ${stale ? "text-[#ffb000]" : "text-white/55"}`}>
+      <div className={`shrink-0 flex items-center gap-1.5 normal-case tracking-normal ${stale ? "text-[#ffb000]" : "text-white/55"}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${fresh ? "bg-[#2ee59d] animate-live-pulse" : stale ? "bg-[#ffb000]" : "bg-white/40"}`} />
         {ageS === null ? (connected ? "in attesa dati" : mode === "polling" ? "polling" : "collegamento…") : ageS < 5 ? "adesso" : `${ageS} s fa`}
       </div>

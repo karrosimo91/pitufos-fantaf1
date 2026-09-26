@@ -81,7 +81,7 @@ export default function Muretto() {
     { label: `${Math.min(sq.driverNumbers.length, 5)}/5 piloti`, done: sq.driverNumbers.length >= minDrivers },
     { label: "Primo Pilota", done: !!sq.primoPilota },
     { label: `${prev.completate}/6 previsioni`, done: prev.completate === 6 },
-    { label: "Aggiornamenti", done: !!sq.chipPiloti || !!prev.chipAttivo, optional: true },
+    { label: "Chip (opz.)", done: !!sq.chipPiloti || !!prev.chipAttivo, optional: true },
   ];
 
   const bothConfirmed = sq.confirmed && prev.confirmed;

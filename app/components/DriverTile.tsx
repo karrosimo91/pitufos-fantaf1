@@ -77,10 +77,8 @@ export default function DriverTile({
           {d.number}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-bold text-[14px] truncate tracking-[-0.2px]">{d.name}</span>
-            {warnLabel && <span className="pill pill-amber text-[10px] px-1.5 py-0">{warnLabel}</span>}
-          </div>
+          <div className="font-bold text-[14px] truncate tracking-[-0.2px]">{d.name}</div>
+          {warnLabel && <div className="mt-0.5"><span className="pill pill-amber text-[10px] px-1.5 py-0">{warnLabel}</span></div>}
           <div className="flex items-center gap-2 mt-0.5 font-[family-name:var(--font-jetbrains)] text-[11px] text-white/60 tracking-[0.3px] min-w-0">
             <span className="uppercase truncate">{d.team}</span>
             {price != null && (
