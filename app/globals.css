@@ -338,3 +338,7 @@ body {
   .toast-in, .flash-up, .flash-dn, .skeleton, .animate-live-pulse, .live-pill-dot { animation: none; }
   .tap:active, .btn-primary:active, .btn-secondary:active { transform: none; }
 }
+
+/* Scroll orizzontale senza barra (chip rail) */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
