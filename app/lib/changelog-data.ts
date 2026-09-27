@@ -15,6 +15,33 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.11.1",
+    date: "27 Settembre 2026",
+    summary: "Il Bahrain GP si corre a Sepang il 4 ottobre: è il round 18, Singapore e le altre scalano di uno. Chip come usi rimasti, niente dati altrui prima delle qualifiche.",
+    sections: [
+      {
+        title: "Calendario",
+        items: [
+          "Bahrain Grand Prix recuperato a Sepang (Malesia): qualifiche sabato 3 ottobre alle 10:00 italiane (chiusura formazione), gara domenica 4 ottobre alle 9:00 italiane. È il round 18; Singapore diventa il 19 e così via fino ad Abu Dhabi (25). Le leghe arrivano fino al round 25.",
+          "Il Muretto è già sul Bahrain a Sepang: formazione e Primo Pilota sono quelli portati avanti da Baku, le previsioni ripartono vuote.",
+        ],
+      },
+      {
+        title: "Aggiornamenti (chip)",
+        items: [
+          "Ogni chip mostra quanti usi restano in questa metà stagione (1 rimasto, 0 rimasti, in uso) e quando scade: i contatori si azzerano alla pausa estiva, quindi un chip usato nella prima metà è di nuovo disponibile.",
+          "Nella scheda del rivale si vedono i chip che ha ancora, non quelli usati.",
+        ],
+      },
+      {
+        title: "Formazioni degli altri",
+        items: [
+          "Rose, previsioni e chip degli altri Team Principal per il weekend in arrivo si vedono solo dall'inizio delle qualifiche (o della Sprint Shootout). Prima, \"chi lo ha in rosa\" nel Mercato e nel Muretto si riferisce all'ultimo GP già chiuso, indicato per nome.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.11.0",
     date: "26 Settembre 2026",
     summary: "L'app cambia faccia: Muretto a fasi con un solo Conferma, Mercato con forma e scambio in un gesto, Gara come secondo schermo, Recap del weekend, Rivali.",

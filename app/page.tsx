@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "./lib/auth";
-import { getNextRace, getUpcomingRaces, formatDateTimeLocal, formatRelative } from "./lib/races";
+import { getNextRace, getUpcomingRaces, formatDateTimeLocal, formatRelative, TOTAL_ROUNDS } from "./lib/races";
 import { APP_VERSION } from "./lib/types";
 import CountryFlag from "./components/CountryFlag";
 import { Brand } from "./components/ui/Brand";
@@ -56,7 +56,7 @@ export default function Home() {
         </div>
 
         <HudCard
-          label={`ROUND ${nextRace.round} / 24 · PROSSIMA`}
+          label={`ROUND ${nextRace.round} / ${TOTAL_ROUNDS} · PROSSIMA`}
           meta={nextRace.sprint ? <span className="pill pill-accent">SPRINT</span> : null}
           className="mb-5"
         >
@@ -100,7 +100,7 @@ export default function Home() {
           {user ? "▶ VAI AL MURETTO" : "▶ CREA LA TUA SCUDERIA"}
         </Link>
         <p className="font-[family-name:var(--font-jetbrains)] text-white/50 text-[11px] mt-2 text-center tracking-[1.5px]">
-          GRATUITO · APERTO A TUTTI · 24 GP · 22 PILOTI
+          GRATUITO · APERTO A TUTTI · 23 GP · 22 PILOTI
         </p>
 
         <SectionHead

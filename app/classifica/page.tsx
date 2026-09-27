@@ -16,7 +16,7 @@ import { useWeekend } from "../lib/weekend-context";
 import { useStatistiche } from "../lib/use-statistiche";
 import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import { useProvisionalScores } from "../lib/provisional-scores";
-import { RACES_2026, getRaceByRound, isAfterDeadline } from "../lib/races";
+import { RACES_2026, getRaceByRound, isAfterDeadline, LAST_ROUND } from "../lib/races";
 import type { LiveSnapshot } from "../lib/build-live-results";
 import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, remainingChips } from "../lib/chip-rules";
 import { ChevronDown, BarChart3, ChevronRight, Eye } from "lucide-react";
@@ -60,7 +60,7 @@ function RivaliContent() {
 
   const currentLega = leghe.find((l) => l.id === selectedLega);
   const roundStart = currentLega?.round_start ?? 1;
-  const roundEnd = currentLega?.round_end ?? 24;
+  const roundEnd = currentLega?.round_end ?? LAST_ROUND;
   const { classifica: totals, loading } = useClassificaLega(selectedLega, null);
   const stats = useStatistiche(selectedLega, roundStart, roundEnd);
   const { provisional } = useProvisionalScores(false, currentRound);

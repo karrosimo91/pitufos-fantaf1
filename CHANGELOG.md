@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.11.1 — 27 Settembre 2026
+
+### Calendario
+- **Bahrain GP a Sepang, round 18** (2-4 ottobre; qualifiche sab 3/10 08:00 UTC = chiusura formazione, gara dom 4/10 07:00 UTC). Singapore diventa round 19, Austin 20, Città del Messico 21, San Paolo 22, Las Vegas 23, Lusail 24, Abu Dhabi 25. `LAST_ROUND`/`TOTAL_ROUNDS` in `lib/races.ts` al posto del 24 fisso (limiti delle API post-gara/reset/review/audit, statistiche, leghe, chip). Flag `my.svg`.
+- DB: `leghe.round_end` portato da 24 a 25 per le leghe esistenti (Generale e Los Pitufos), altrimenti Abu Dhabi restava fuori.
+- Le righe `formazioni`/`previsioni` create per il round 18 la mattina del 27/09 (copie non confermate della rosa di Baku) valgono ora per Sepang.
+
+### Chip e privacy pre-deadline
+- Chip come usi rimasti nella metà corrente; scheda rivale con i chip ancora disponibili; Statistiche e Rivali contano i chip solo sui round chiusi.
+- "Chi lo ha in rosa" prima della chiusura si riferisce all'ultimo round chiuso; formazioni svelate, classifica live, rivale e generale live solo a formazione chiusa (anche nel pre-buffer di `/api/live-session`).
+
 ## v1.11.0 — 26 Settembre 2026
 
 ### Nuova esperienza (proposta UX del 26/09, tutto tranne le notifiche)

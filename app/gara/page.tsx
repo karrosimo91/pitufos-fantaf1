@@ -13,7 +13,7 @@ import { useAuth } from "../lib/auth";
 import { useProvisionalScores } from "../lib/provisional-scores";
 import { useWeekendResults } from "../lib/use-weekend-results";
 import { useLegaMembers } from "../lib/use-lega-members";
-import { formatDateTimeLocal, formatRelative } from "../lib/races";
+import { formatDateTimeLocal, formatRelative, TOTAL_ROUNDS } from "../lib/races";
 import { ChevronRight } from "lucide-react";
 
 const LiveTab = dynamic(() => import("../components/LiveTab"), { ssr: false });
@@ -76,7 +76,7 @@ function GaraPage() {
       <main className="max-w-3xl mx-auto px-4 py-4 pb-bottomnav">
         <div className="hud-card hud-card-accent mb-4">
           <div className="hud-card-head">
-            <div className="hud-label">ROUND {String(headerRace.round).padStart(2, "0")} / 24{showRecapOfPrevious ? " · APPENA CONCLUSO" : ""}</div>
+            <div className="hud-label">ROUND {String(headerRace.round).padStart(2, "0")} / {TOTAL_ROUNDS}{showRecapOfPrevious ? " · APPENA CONCLUSO" : ""}</div>
             <div className="flex items-center gap-1.5">
               {headerRace.sprint && <span className="pill pill-accent">SPRINT</span>}
               {isLive && <span className="live-pill"><span className="live-pill-dot" />LIVE</span>}

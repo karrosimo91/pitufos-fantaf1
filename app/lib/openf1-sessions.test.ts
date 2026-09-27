@@ -34,10 +34,12 @@ describe("findRaceSessionForRound", () => {
     expect(r.ok && r.session.location).toBe("Monte Carlo");
   });
 
-  it("round 18 è Singapore anche con Kuala Lumpur infilata prima", () => {
-    // Con meetings[round - 1] qui sarebbe uscita Kuala Lumpur.
-    const r = findRaceSessionForRound(18, SESSIONS);
-    expect(r.ok && r.session.session_key).toBe(11388);
+  it("round 18 è Sepang (Bahrain GP recuperato, 4/10) e round 19 è Singapore", () => {
+    // Dal 27/09/2026 il calendario ha Sepang al 18: l'abbinamento per data lo trova da solo.
+    const kl = findRaceSessionForRound(18, SESSIONS);
+    expect(kl.ok && kl.session.session_key).toBe(11731);
+    const sg = findRaceSessionForRound(19, SESSIONS);
+    expect(sg.ok && sg.session.session_key).toBe(11388);
   });
 
   it("ignora la Sprint anche se è di tipo Race", () => {

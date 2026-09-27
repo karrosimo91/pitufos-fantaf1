@@ -27,7 +27,7 @@ Fantasy F1 ibrido: fantasy manager (scuderia piloti con budget) + pronostici (pr
 - Quotazioni variano dopo ogni GP
 - Mercato: compravendita con quotazioni variabili, 2 cambi gratis per round, dal 3° in poi -10 punti weekend ciascuno
 - Aperto a tutti
-- Stagione 2026: 24 GP, 6 weekend sprint, 22 piloti, 11 scuderie
+- Stagione 2026: 25 slot in `lib/races.ts` (Bahrain r4 e Jeddah r5 cancellati; Bahrain GP recuperato a **Sepang come round 18**, 4/10/2026), 23 GP corsi, 6 weekend sprint, 22 piloti, 11 scuderie. Usare `LAST_ROUND`/`TOTAL_ROUNDS`, mai 24 fisso
 
 ### Primo Pilota (Capitano)
 - Ogni weekend scegli obbligatoriamente 1 pilota come Primo Pilota
@@ -181,6 +181,8 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
    `races.ts`. Se non c'è o è ambigua → errore, niente salvato. Motivo: OpenF1 tiene in lista
    le gare cancellate (Bahrain, Jeddah 2026) e ne aggiunge altre (Kuala Lumpur 4/10/2026,
    fra Baku e Singapore): `meetings[round - 1]` dal round 18 avrebbe preso la gara sbagliata.
+   Dal 27/09/2026 Kuala Lumpur (Sepang, "Bahrain Grand Prix") È il nostro round 18: Singapore
+   19 … Abu Dhabi 25; `leghe.round_end` = 25.
 2. **Niente risultati ufficiali, niente calcolo** (`lib/official-results.ts`,
    `checkResultsReady`): sessione conclusa, `session_result` con righe, tutti i piloti di
    `/drivers`. Fallisce → 409. Nessun fallback sul feed `position` (non ha i flag dnf/dsq/dns:

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { createClient, isSupabaseConfigured } from "./supabase";
-import { RACES_2026 } from "./races";
+import { RACES_2026, LAST_ROUND } from "./races";
 import type { RaceWeekendResults } from "./scoring";
 import { PREVISIONI_PUNTI } from "./types";
 import { ordinaClassificaWeekend, PUNTI_REALE } from "./classifica-reale";
@@ -442,7 +442,7 @@ export const PREVISIONI_MAX_WEEKEND =
 
 
 /** Wrapper: dati grezzi + derivazioni memoizzate. */
-export function useStatistiche(legaId: string | null, roundStart = 1, roundEnd = 24) {
+export function useStatistiche(legaId: string | null, roundStart = 1, roundEnd = LAST_ROUND) {
   const raw = useStatisticheData(legaId, roundStart, roundEnd);
   const derived = useMemo(() => deriveStats(raw, roundStart, roundEnd), [raw, roundStart, roundEnd]);
   return { ...raw, ...derived };

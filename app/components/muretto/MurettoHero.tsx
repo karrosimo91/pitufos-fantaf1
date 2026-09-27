@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Check, Circle, AlertTriangle, ChevronRight, Lock } from "lucide-react";
 import CountryFlag from "../CountryFlag";
 import type { Race } from "../../lib/types";
-import { formatDateTimeLocal, formatRelative, msToDeadline, type RoundPhase } from "../../lib/races";
+import { formatDateTimeLocal, formatRelative, msToDeadline, TOTAL_ROUNDS, type RoundPhase } from "../../lib/races";
 
 export interface HeroStep {
   label: string;
@@ -44,7 +44,7 @@ export function MurettoHero({
   return (
     <div className="hud-card hud-card-accent mb-4">
       <div className="hud-card-head">
-        <div className="hud-label">ROUND {String(race.round).padStart(2, "0")} / 24</div>
+        <div className="hud-label">ROUND {String(race.round).padStart(2, "0")} / {TOTAL_ROUNDS}</div>
         <div className="flex items-center gap-2">
           {race.sprint && <span className="pill pill-accent">SPRINT</span>}
           {isLive && <span className="live-pill"><span className="live-pill-dot" />LIVE</span>}

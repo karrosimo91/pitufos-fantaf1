@@ -16,10 +16,10 @@ describe("chip: usi rimasti per metà stagione", () => {
   });
   it("fine metà e testo di stato", () => {
     expect(halfEndRound(5)).toBe(13);
-    expect(halfEndRound(18)).toBe(24);
+    expect(halfEndRound(18)).toBe(25);
     expect(chipStatusText(18, 15)).toContain("esaurito");
     expect(chipStatusText(5, 3)).toContain("torna dopo la pausa");
-    expect(chipStatusText(18, null)).toBe("Scade tra 7 GP");
+    expect(chipStatusText(18, null)).toBe("Scade tra 8 GP");
   });
 });
 

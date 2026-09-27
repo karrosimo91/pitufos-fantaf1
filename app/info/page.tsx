@@ -54,7 +54,7 @@ export default function InfoPage() {
           <Accordion title="Struttura del gioco">
             <p>Ogni giocatore e un <strong>Team Principal</strong> e gestisce la propria <strong>Scuderia</strong>.</p>
             <p>Budget iniziale: <strong>100 Soldini</strong>. Ogni scuderia ha <strong>5 piloti</strong>.</p>
-            <p>Stagione 2026: 24 GP, 6 weekend sprint, 22 piloti, 11 scuderie.</p>
+            <p>Stagione 2026: 23 GP (Bahrain e Jeddah cancellati ad aprile; il Bahrain GP si recupera a Sepang il 4 ottobre come round 18), 6 weekend sprint, 22 piloti, 11 scuderie.</p>
             <p>Le quotazioni dei piloti variano dopo ogni GP.</p>
           </Accordion>
 
