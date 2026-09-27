@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useLeghe, useLegaPreferita } from "../lib/store";
 import { useAuth } from "../lib/auth";
-import { RACES_2026 } from "../lib/races";
+import { RACES_2026, LAST_ROUND } from "../lib/races";
 import { ArrowLeft, Plus, LogIn, Copy, Check, Users, Trophy, Lock, Globe, Star, Share2 } from "lucide-react";
 import type { Lega } from "../lib/types";
 import { shareText } from "../lib/share";
@@ -22,7 +22,7 @@ export default function LeghePage() {
   // Form crea lega
   const [nome, setNome] = useState("");
   const [roundStart, setRoundStart] = useState(1);
-  const [roundEnd, setRoundEnd] = useState(24);
+  const [roundEnd, setRoundEnd] = useState(LAST_ROUND);
   const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createdLega, setCreatedLega] = useState<Lega | null>(null);

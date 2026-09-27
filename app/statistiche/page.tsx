@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { LAST_ROUND } from "../lib/races";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
@@ -36,7 +37,7 @@ export default function StatistichePage() {
 
   const legaId = legaSel ?? (legaPrefLoaded ? legaPreferita : null) ?? LEGA_GENERALE_ID;
   const lega = leghe.find((l) => l.id === legaId);
-  const stats = useStatistiche(legaId, lega?.round_start ?? 1, lega?.round_end ?? 24);
+  const stats = useStatistiche(legaId, lega?.round_start ?? 1, lega?.round_end ?? LAST_ROUND);
 
   const me = stats.players.find((p) => p.userId === user?.id) ?? null;
   const rival = stats.players.find((p) => p.userId === rivalId) ?? null;

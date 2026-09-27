@@ -3,6 +3,7 @@
 // chip-labels.ts; qui c'è la spiegazione per il giocatore.
 
 import { PAUSA_ESTIVA_ROUND } from "./store";
+import { LAST_ROUND } from "./races";
 
 export interface ChipRule {
   id: string;
@@ -59,7 +60,7 @@ export function halfOf(round: number): "prima" | "dopo" {
 }
 
 /** Ultimo round della metà stagione a cui appartiene `round`. */
-export function halfEndRound(round: number, seasonEnd = 24): number {
+export function halfEndRound(round: number, seasonEnd = LAST_ROUND): number {
   return halfOf(round) === "prima" ? PAUSA_ESTIVA_ROUND - 1 : seasonEnd;
 }
 
@@ -83,7 +84,7 @@ export function remainingChips(all: ChipRule[], used: { chip: string; round: num
  * metà, o scadenza. `usedRound` è il round in cui è già stato usato nella
  * stessa metà (null se libero).
  */
-export function chipStatusText(round: number, usedRound: number | null, seasonEnd = 24): string {
+export function chipStatusText(round: number, usedRound: number | null, seasonEnd = LAST_ROUND): string {
   if (usedRound != null) {
     return halfOf(round) === "prima"
       ? `Usato al R${usedRound} · torna dopo la pausa estiva`

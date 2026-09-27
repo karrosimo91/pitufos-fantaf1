@@ -18,14 +18,21 @@ export const RACES_2026: Race[] = [
   { round: 15, name: "Italian Grand Prix",         circuit: "Monza",        flag: "🇮🇹", countryCode: "it", date: "2026-09-06T13:00:00Z", deadline: "2026-09-05T14:00:00Z", sprint: false },
   { round: 16, name: "Spanish Grand Prix",         circuit: "Madrid",       flag: "🇪🇸", countryCode: "es", date: "2026-09-13T13:00:00Z", deadline: "2026-09-12T14:00:00Z", sprint: false },
   { round: 17, name: "Azerbaijan Grand Prix",      circuit: "Baku",         flag: "🇦🇿", countryCode: "az", date: "2026-09-26T11:00:00Z", deadline: "2026-09-25T12:00:00Z", sprint: false },
-  { round: 18, name: "Singapore Grand Prix",       circuit: "Marina Bay",   flag: "🇸🇬", countryCode: "sg", date: "2026-10-11T12:00:00Z", deadline: "2026-10-09T12:30:00Z", sprint: true },
-  { round: 19, name: "United States Grand Prix",   circuit: "Austin",       flag: "🇺🇸", countryCode: "us", date: "2026-10-25T20:00:00Z", deadline: "2026-10-24T21:00:00Z", sprint: false },
-  { round: 20, name: "Mexico City Grand Prix",     circuit: "Mexico City",  flag: "🇲🇽", countryCode: "mx", date: "2026-11-01T20:00:00Z", deadline: "2026-10-31T21:00:00Z", sprint: false },
-  { round: 21, name: "Brazilian Grand Prix",       circuit: "São Paulo",    flag: "🇧🇷", countryCode: "br", date: "2026-11-08T17:00:00Z", deadline: "2026-11-07T18:00:00Z", sprint: false },
-  { round: 22, name: "Las Vegas Grand Prix",       circuit: "Las Vegas",    flag: "🇺🇸", countryCode: "us", date: "2026-11-22T04:00:00Z", deadline: "2026-11-21T04:00:00Z", sprint: false },
-  { round: 23, name: "Qatar Grand Prix",           circuit: "Lusail",       flag: "🇶🇦", countryCode: "qa", date: "2026-11-29T16:00:00Z", deadline: "2026-11-28T18:00:00Z", sprint: false },
-  { round: 24, name: "Abu Dhabi Grand Prix",       circuit: "Abu Dhabi",    flag: "🇦🇪", countryCode: "ae", date: "2026-12-06T13:00:00Z", deadline: "2026-12-05T14:00:00Z", sprint: false },
+  // Bahrain GP recuperato a Sepang (Malesia), 2-4 ottobre 2026: gara domenica 15:00 locali (UTC+8),
+  // qualifiche sabato 16:00 locali. Inserito come round 18: i round successivi scalano di uno (25 slot).
+  { round: 18, name: "Bahrain Grand Prix",         circuit: "Sepang",       flag: "🇲🇾", countryCode: "my", date: "2026-10-04T07:00:00Z", deadline: "2026-10-03T08:00:00Z", sprint: false },
+  { round: 19, name: "Singapore Grand Prix",       circuit: "Marina Bay",   flag: "🇸🇬", countryCode: "sg", date: "2026-10-11T12:00:00Z", deadline: "2026-10-09T12:30:00Z", sprint: true },
+  { round: 20, name: "United States Grand Prix",   circuit: "Austin",       flag: "🇺🇸", countryCode: "us", date: "2026-10-25T20:00:00Z", deadline: "2026-10-24T21:00:00Z", sprint: false },
+  { round: 21, name: "Mexico City Grand Prix",     circuit: "Mexico City",  flag: "🇲🇽", countryCode: "mx", date: "2026-11-01T20:00:00Z", deadline: "2026-10-31T21:00:00Z", sprint: false },
+  { round: 22, name: "Brazilian Grand Prix",       circuit: "São Paulo",    flag: "🇧🇷", countryCode: "br", date: "2026-11-08T17:00:00Z", deadline: "2026-11-07T18:00:00Z", sprint: false },
+  { round: 23, name: "Las Vegas Grand Prix",       circuit: "Las Vegas",    flag: "🇺🇸", countryCode: "us", date: "2026-11-22T04:00:00Z", deadline: "2026-11-21T04:00:00Z", sprint: false },
+  { round: 24, name: "Qatar Grand Prix",           circuit: "Lusail",       flag: "🇶🇦", countryCode: "qa", date: "2026-11-29T16:00:00Z", deadline: "2026-11-28T18:00:00Z", sprint: false },
+  { round: 25, name: "Abu Dhabi Grand Prix",       circuit: "Abu Dhabi",    flag: "🇦🇪", countryCode: "ae", date: "2026-12-06T13:00:00Z", deadline: "2026-12-05T14:00:00Z", sprint: false },
 ];
+
+/** Ultimo round in calendario (slot, cancellati compresi): 25 dal 27/09/2026, con Sepang al 18. */
+export const LAST_ROUND = RACES_2026[RACES_2026.length - 1].round;
+export const TOTAL_ROUNDS = RACES_2026.length;
 
 /** Giorno dopo la gara (mezzanotte UTC del lunedì): da qui il round successivo diventa "corrente". */
 export function raceEndDate(race: Race): Date {

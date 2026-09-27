@@ -21,7 +21,7 @@ export default function CalendarioPage() {
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-5 pb-bottomnav">
         <div className="mb-5">
-          <div className="hud-label text-[#E8002D] mb-1">STAGIONE 2026 · 24 GRAN PREMI · 6 SPRINT</div>
+          <div className="hud-label text-[#E8002D] mb-1">STAGIONE 2026 · 23 GRAN PREMI · 6 SPRINT · BAHRAIN A SEPANG IL 4 OTTOBRE</div>
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] leading-none">Calendario</h1>
           <div className="text-[12px] text-white/55 mt-2">Orari nella tua ora locale. La formazione chiude prima delle qualifiche, nei weekend sprint prima della Sprint Shootout (venerdì).</div>
         </div>

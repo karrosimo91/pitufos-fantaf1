@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LAST_ROUND } from "../../lib/races";
 import { isAdminRequest } from "../../lib/admin-auth";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  if (!round || typeof round !== "number" || round < 1 || round > 24) {
+  if (!round || typeof round !== "number" || round < 1 || round > LAST_ROUND) {
     return NextResponse.json({ error: "Round non valido" }, { status: 400 });
   }
 

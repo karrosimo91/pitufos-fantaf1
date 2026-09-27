@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LAST_ROUND } from "../../lib/races";
 import { isAdminRequest } from "../../lib/admin-auth";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
   }
 
   const from = Number(params.get("from") ?? 1);
-  const to = Number(params.get("to") ?? 24);
+  const to = Number(params.get("to") ?? LAST_ROUND);
   const raw = params.get("raw") === "1";
   if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to > 24 || from > to) {
     return NextResponse.json({ error: "Intervallo round non valido" }, { status: 400 });
