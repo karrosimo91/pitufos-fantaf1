@@ -8,7 +8,7 @@ import { getRaceByRound } from "../../lib/races";
 
 export function FormazioneSection({
   driverNumbers, primoPilota, sestoUomo, chipPiloti, chipPilotiTarget,
-  locked, insights, pointsMap, onSetCaptain, onRemoveSesto, proposedFromRound, lastRacedRound, prices,
+  locked, insights, pointsMap, onSetCaptain, onRemoveSesto, proposedFromRound, lastRacedRound, prices, ownershipRound,
 }: {
   driverNumbers: number[];
   primoPilota: number | null;
@@ -23,11 +23,15 @@ export function FormazioneSection({
   proposedFromRound: number | null;
   lastRacedRound: number | null;
   prices: Map<number, number>;
+  /** Round a cui si riferisce "N in lega" (null = non mostrare) */
+  ownershipRound?: number | null;
 }) {
   const hasPoints = !!pointsMap && pointsMap.size > 0;
   const captainHint = `+${PUNTI_GARA[1] * 2} se vince · −20 se ritiro`;
   const proposedRace = proposedFromRound ? getRaceByRound(proposedFromRound) : null;
   const lastRace = lastRacedRound ? getRaceByRound(lastRacedRound) : null;
+  const ownRace = ownershipRound ? getRaceByRound(ownershipRound) : null;
+  const ownSuffix = ownershipRound && !locked ? ` a ${ownRace?.circuit ?? `R${ownershipRound}`}` : "";
 
   const rows = [...driverNumbers];
 
@@ -67,7 +71,7 @@ export function FormazioneSection({
                 roleHint={isCaptain ? captainHint : null}
                 proposedHint={proposed ? `come a ${proposedRace?.circuit ?? `R${proposedFromRound}`} · da confermare` : null}
                 warnLabel={ins?.racedLast === false && lastRace ? `Non ha corso a ${lastRace.circuit}` : null}
-                metaLine={ins && ins.owners > 0 ? `${ins.owners} in lega${ins.captains > 0 ? ` · capitano di ${ins.captains}` : ""}` : null}
+                metaLine={ins && ins.owners > 0 ? `${ins.owners} in lega${ownSuffix}${ins.captains > 0 ? ` · capitano di ${ins.captains}` : ""}` : null}
                 onTap={!locked && !hasPoints && !isCaptain ? () => onSetCaptain(num) : undefined}
                 points={hasPoints ? (pointsMap!.get(num) ?? null) : null}
                 className={isCaptain ? "border-white/40" : ""}

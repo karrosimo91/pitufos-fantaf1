@@ -4,6 +4,7 @@ import { createClient, isSupabaseConfigured } from "./supabase";
 import { DRIVERS_2026 } from "./drivers-data";
 import { useAllWeekendResults } from "./use-weekend-results";
 import { driverFormByRound, lastRacedRound, computeEventStats, type RoundResults } from "./season-insights";
+import { RACES_2026, isAfterDeadline } from "./races";
 
 export interface DriverInsight {
   /** Ultimi 3 weekend in archivio: punti base, dal più recente */
@@ -23,11 +24,25 @@ export interface DriverInsight {
 }
 
 /**
+ * Round di cui si può mostrare "chi lo ha in rosa": il corrente solo a
+ * formazione chiusa (qualifiche o shootout iniziate); prima, l'ultimo round
+ * già chiuso. Le formazioni degli altri per il weekend in preparazione non
+ * devono uscire in nessuna forma, nemmeno come conteggio.
+ */
+export function ownershipRoundFor(round: number, locked: boolean): number | null {
+  if (locked) return round;
+  const closed = RACES_2026.filter((r) => r.round < round && isAfterDeadline(r));
+  return closed.length > 0 ? closed[closed.length - 1].round : null;
+}
+
+/**
  * Dati di contesto per le schede pilota (Mercato, Muretto, Sesto Uomo, Boost):
  * forma, trend quotazione, chi lo ha in lega, se ha corso l'ultimo GP.
- * Tutte tabelle read-all. I nomi dei proprietari escono solo dopo la deadline.
+ * Tutte tabelle read-all. Prima della deadline "chi lo ha" si riferisce
+ * all'ultimo round chiuso; i nomi escono solo per il round corrente chiuso.
  */
 export function useDriverInsights(round: number, legaId: string | null, locked: boolean) {
+  const ownershipRound = ownershipRoundFor(round, locked);
   const { rows: resultRows, loaded: resultsLoaded } = useAllWeekendResults();
   const [prices, setPrices] = useState<{ round: number; driver_number: number; price: number }[]>([]);
   const [formazioni, setFormazioni] = useState<{ user_id: string; driver_numbers: number[]; primo_pilota: number | null }[]>([]);
@@ -49,7 +64,7 @@ export function useDriverInsights(round: number, legaId: string | null, locked: 
       let formQuery = supabase
         .from("formazioni")
         .select("user_id, driver_numbers, primo_pilota")
-        .eq("round", round)
+        .eq("round", ownershipRound ?? -1)
         .eq("confirmed", true);
       if (memberIds) formQuery = formQuery.in("user_id", memberIds);
 
@@ -83,7 +98,7 @@ export function useDriverInsights(round: number, legaId: string | null, locked: 
       setLoaded(true);
     })();
     return () => { cancelled = true; };
-  }, [round, legaId, locked]);
+  }, [round, legaId, locked, ownershipRound]);
 
   const insights = useMemo(() => {
     const rows: RoundResults[] = resultRows.map((r) => ({ round: r.round, data: r.data }));
@@ -117,6 +132,9 @@ export function useDriverInsights(round: number, legaId: string | null, locked: 
     loaded: loaded && resultsLoaded,
     insights,
     members,
+    /** Round a cui si riferiscono `owners`/`captains` (il corrente solo a formazione chiusa) */
+    ownershipRound,
+    ownershipIsCurrent: ownershipRound === round,
     eventStats,
     lastRacedRound: useMemo(() => lastRacedRound(resultRows.map((r) => ({ round: r.round, data: r.data })))?.round ?? null, [resultRows]),
     resultRows,

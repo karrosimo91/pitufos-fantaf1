@@ -27,7 +27,7 @@ import { SectionHead } from "./ui/SectionHead";
 type SubTab = "dashboard" | "weekend" | "formazioni" | "generale";
 
 export default function LiveTab({
-  sessionKey, sessionType, meetingKey, round, userId, legaId, raceName,
+  sessionKey, sessionType, meetingKey, round, userId, legaId, raceName, locked = true,
   driverNumbers, primoPilota, chipPiloti, chipPrevisioni, previsioni, qualifyingPole, debug = false,
 }: {
   sessionKey: number;
@@ -37,6 +37,8 @@ export default function LiveTab({
   userId?: string;
   legaId?: string;
   raceName: string;
+  /** Formazione chiusa: solo allora si svelano le rose degli altri */
+  locked?: boolean;
   driverNumbers: number[];
   primoPilota: number | null;
   chipPiloti: ChipPilotiConfig | null;
@@ -60,7 +62,10 @@ export default function LiveTab({
   const live = debug ? mockLive : realLive;
   const myPenalita = userId ? data.penalitaByUser.get(userId) ?? 0 : 0;
 
-  const classifica = debug ? MOCK_CLASSIFICA : data.classifica;
+  // Prima della chiusura (finestra di pre-buffer di /api/live-session) la
+  // classifica live rivelerebbe le rose degli altri: resta vuota.
+  const dataClassifica = data.classifica;
+  const classifica = useMemo(() => (debug ? MOCK_CLASSIFICA : locked ? dataClassifica : []), [debug, locked, dataClassifica]);
   const kind = classifySession(sessionType);
   const isRace = kind === "race";
   const isSprint = kind === "sprint";
@@ -154,8 +159,11 @@ export default function LiveTab({
         ended={ended}
       />
 
+      {!locked && !debug && (
+        <div className="hud-card p-3 mb-3 text-[12px] text-white/60">Classifica, formazioni e rivali compaiono all&apos;inizio della sessione, quando la formazione è chiusa.</div>
+      )}
       <div className="flex gap-1 mb-4">
-        {([["dashboard", "I MIEI"], ["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"]] as const).map(([id, label]) => (
+        {([["dashboard", "I MIEI"], ["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"]] as const).filter(([id]) => locked || debug || id === "dashboard").map(([id, label]) => (
           <button key={id} onClick={() => setSubTab(id)}
             className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
             {label}
@@ -214,14 +222,16 @@ export default function LiveTab({
       {subTab === "weekend" && <ClassificaWeekendList classifica={classifica} onSelect={setSelectedPlayer} />}
 
       {subTab === "formazioni" && (
-        <FormazioniSvelate formazioni={data.formazioni} previsioniByUser={data.previsioniByUser} userId={userId} raceName={raceName} members={data.memberIds} />
+        locked
+          ? <FormazioniSvelate formazioni={data.formazioni} previsioniByUser={data.previsioniByUser} userId={userId} raceName={raceName} members={data.memberIds} />
+          : <div className="hud-card p-4 text-[13px] text-white/55">Le formazioni si svelano alla chiusura: dall&apos;inizio delle qualifiche (o della Sprint Shootout).</div>
       )}
 
-      {subTab === "generale" && (
+      {subTab === "generale" && (locked || debug) && (
         <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={liveWeekendPoints} userId={userId} />
       )}
 
-      {selectedFormazione && selectedEntry && (
+      {(locked || debug) && selectedFormazione && selectedEntry && (
         <PlayerDetailModal
           player={selectedFormazione}
           entry={selectedEntry}

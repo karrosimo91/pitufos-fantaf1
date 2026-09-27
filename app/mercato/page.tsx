@@ -297,8 +297,9 @@ export default function MercatoPage() {
                 }
               }
               const meta: string[] = [];
-              if (insight.owners > 0) meta.push(`${insight.owners}/${ins.members || insight.owners} in lega`);
-              if (insight.captains > 0) meta.push(`capitano di ${insight.captains}`);
+              const ownRace = ins.ownershipRound ? getRaceByRound(ins.ownershipRound) : null;
+              if (insight.owners > 0) meta.push(ins.ownershipIsCurrent ? `${insight.owners}/${ins.members || insight.owners} in lega` : `${insight.owners}/${ins.members || insight.owners} a ${ownRace?.circuit ?? `R${ins.ownershipRound}`}`);
+              if (insight.captains > 0) meta.push(ins.ownershipIsCurrent ? `capitano di ${insight.captains}` : `capitano di ${insight.captains}`);
               if (!d.owned && !rosterFull && !affordable && !locked) meta.push(`ti mancano ${d.price - cassa}`);
               return (
                 <DriverTile
@@ -343,6 +344,7 @@ export default function MercatoPage() {
           resultRows={ins.resultRows.map((r) => ({ round: r.round, data: r.data }))}
           locked={locked}
           members={ins.members}
+          ownershipLabel={ins.ownershipIsCurrent ? "In lega · questo weekend" : `In lega · a ${(ins.ownershipRound ? getRaceByRound(ins.ownershipRound)?.circuit : null) ?? "l'ultimo GP chiuso"}`}
           onClose={() => setSheet(null)}
           footer={!locked && ready ? (
             squadra.driverNumbers.includes(sheet.n)
