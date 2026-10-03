@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.11.2 — 3 Ottobre 2026
+
+### Fix
+- **Live mai acceso dal 26/09** (`lib/use-live-session.ts`): `useLiveSession(enabled)` catturava `enabled` in una callback con dipendenze vuote. L'utente arriva in modo asincrono (null al mount), quindi il controllo di `/api/live-session` restava congelato su "disabilitato" e il tab Gara non mostrava mai il LIVE (visto alla qualifica di Sepang). Ora il polling parte quando l'utente c'è e lo stato "spento" è derivato, senza setState sincroni nell'effetto.
+
 ## v1.11.1 — 27 Settembre 2026
 
 ### Calendario
