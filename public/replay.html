@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replay gara · Los Pitufos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E8002D; --bg: #0b0b0d; --panel: #141418; --line: rgba(255,255,255,.08);
+    --text: #f3f3f3; --text-2: rgba(255,255,255,.62); --text-3: rgba(255,255,255,.45);
+    --lap-ms: 1400ms; --row-h: 46px; --stage-w: 960px; --stage-ratio: 16 / 9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  h1 { font-family: Oswald, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 12px; }
+  h1 span { color: var(--red); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 14px; font-size: 13px; color: var(--text-2); }
+  .controls label { display: flex; align-items: center; gap: 6px; }
+  input[type=number], select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; width: 72px; }
+  select { width: auto; }
+  button { background: var(--red); color: #fff; border: 0; border-radius: 8px; padding: 7px 14px; font: 600 13px Inter, sans-serif; cursor: pointer; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--text-2); }
+  button:disabled { opacity: .4; cursor: default; }
+  input[type=range] { width: 220px; accent-color: var(--red); }
+  .msg { color: var(--text-2); font-size: 13px; margin: 8px 0; min-height: 18px; }
+  .msg.err { color: #ff6b6b; }
+
+  /* ─── Scena da registrare ─── */
+  .stage { width: min(100%, var(--stage-w)); aspect-ratio: var(--stage-ratio); background: linear-gradient(160deg, #15151a 0%, #0b0b0d 70%); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; padding: 18px 22px 10px; border-bottom: 1px solid var(--line); gap: 12px; }
+  .head .title { font-family: Oswald, sans-serif; font-weight: 700; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; line-height: 1; }
+  .head .title small { display: block; font: 600 12px Inter, sans-serif; color: var(--text-3); letter-spacing: 2px; margin-bottom: 6px; }
+  .lap { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 30px; line-height: 1; text-align: right; white-space: nowrap; }
+  .lap small { display: block; font: 600 11px Inter, sans-serif; color: var(--text-3); letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase; }
+  .badges { display: flex; gap: 6px; padding: 8px 22px 0; min-height: 30px; flex-wrap: wrap; }
+  .badge { font: 700 11px Oswald, sans-serif; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--text-2); opacity: .35; transition: opacity .4s; }
+  .badge.on { opacity: 1; }
+  .badge.sc.on { background: #f5c400; color: #111; border-color: #f5c400; }
+  .badge.vsc.on { border-color: #f5c400; color: #f5c400; }
+  .badge.red.on { background: var(--red); color: #fff; border-color: var(--red); }
+  .badge.wet.on { background: #2a7fff; color: #fff; border-color: #2a7fff; }
+  .badge.dnf.on { border-color: rgba(255,255,255,.3); color: var(--text); }
+  .board { position: relative; flex: 1; margin: 8px 22px 6px; }
+  .row { position: absolute; left: 0; right: 0; height: calc(var(--row-h) - 8px); display: grid; grid-template-columns: 30px 1fr 74px; align-items: center; gap: 10px; transition: top var(--lap-ms) cubic-bezier(.4,0,.2,1); }
+  .row .rank { font: 700 18px "JetBrains Mono", monospace; color: var(--text-3); text-align: right; }
+  .row.r1 .rank { color: #f5c400; }
+  .row .bar { position: relative; height: 100%; background: rgba(255,255,255,.05); border-radius: 6px; overflow: hidden; }
+  .row .fill { position: absolute; inset: 0 auto 0 0; background: rgba(232,0,45,.75); border-radius: 6px; transition: width var(--lap-ms) cubic-bezier(.4,0,.2,1); }
+  .row.r1 .fill { background: var(--red); }
+  .row .name { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 10px; gap: 8px; white-space: nowrap; overflow: hidden; }
+  .row .name b { font: 700 15px Oswald, sans-serif; letter-spacing: .5px; text-transform: uppercase; }
+  .row .name span { font-size: 11px; color: rgba(255,255,255,.7); overflow: hidden; text-overflow: ellipsis; }
+  .row .pts { font: 700 20px "JetBrains Mono", monospace; text-align: right; }
+  .row .move { font: 600 11px Inter, sans-serif; margin-left: 4px; }
+  .row .move.up { color: #4ade80; } .row .move.down { color: #ff6b6b; }
+  .strip { display: flex; gap: 5px; padding: 6px 22px 14px; overflow: hidden; }
+  .chip { display: flex; align-items: center; gap: 5px; font: 700 11px "JetBrains Mono", monospace; padding: 3px 7px; border-radius: 6px; background: rgba(255,255,255,.05); border-left: 3px solid #888; white-space: nowrap; }
+  .chip i { font-style: normal; color: var(--text-3); font-size: 10px; }
+  .chip.dnf { opacity: .35; text-decoration: line-through; }
+  .foot { position: absolute; right: 14px; bottom: 6px; font: 600 10px Inter, sans-serif; color: var(--text-3); letter-spacing: 2px; text-transform: uppercase; }
+
+  .stage.story { --stage-w: 540px; --stage-ratio: 9 / 16; --row-h: 72px; }
+  .stage.story .row { grid-template-columns: 34px 1fr 84px; }
+  .stage.story .row .name b { font-size: 19px; }
+  .stage.story .row .name span { font-size: 12px; }
+  .stage.story .row .pts { font-size: 24px; }
+  .stage.story .strip { padding-bottom: 26px; }
+  .stage.story .head { flex-direction: column; align-items: flex-start; }
+  .stage.story .lap { text-align: left; }
+  .stage.story .strip { flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Replay <span>gara</span> · classifica giro per giro</h1>
+  <div class="controls">
+    <label>Round <input type="number" id="round" min="1" max="25" value="18"></label>
+    <label>Lega <select id="lega"><option value="">Los Pitufos</option><option value="all">Tutti i giocatori</option></select></label>
+    <button id="load">Carica</button>
+    <button id="play" class="ghost" disabled>▶ Play</button>
+    <label>Velocità <select id="speed"><option value="2400">lenta</option><option value="1400" selected>normale</option><option value="700">veloce</option><option value="300">turbo</option></select></label>
+    <label>Giro <input type="range" id="scrub" min="0" max="0" value="0" disabled> <span id="scrubLbl">–</span></label>
+    <label>Formato <select id="format"><option value="wide">16:9</option><option value="story">9:16</option></select></label>
+    <button id="download" class="ghost" disabled>Scarica JSON</button>
+  </div>
+  <div class="msg" id="msg">Fai login su /admin in questo browser, poi scegli il round e premi Carica.</div>
+
+  <div class="stage" id="stage">
+    <div class="head">
+      <div class="title"><small id="sub">LOS PITUFOS · FANTAF1</small><span id="title">—</span></div>
+      <div class="lap"><small>Giro</small><span id="lapLbl">—</span></div>
+    </div>
+    <div class="badges">
+      <span class="badge sc" id="bSC">Safety Car</span>
+      <span class="badge vsc" id="bVSC">VSC</span>
+      <span class="badge red" id="bRED">Bandiera rossa</span>
+      <span class="badge wet" id="bWET">Wet</span>
+      <span class="badge dnf" id="bDNF">0 ritiri</span>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="strip" id="strip"></div>
+    <div class="foot">pitufos-fantaf1.vercel.app</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), board = $("board"), strip = $("strip"), msg = $("msg");
+  let data = null, frames = [], idx = 0, playing = false, timer = null;
+  const shown = new Map();   // user_id → punti mostrati (per il conteggio animato)
+  let rafId = null;
+
+  const say = (t, err) => { msg.textContent = t; msg.className = "msg" + (err ? " err" : ""); };
+
+  // ?round=18 dal pannello admin
+  const qsRound = Number(new URLSearchParams(location.search).get("round"));
+  if (Number.isInteger(qsRound) && qsRound > 0) $("round").value = String(qsRound);
+
+  $("format").addEventListener("change", (e) => {
+    stage.classList.toggle("story", e.target.value === "story");
+    if (frames.length) render(idx, true);
+  });
+  $("speed").addEventListener("change", (e) => {
+    document.documentElement.style.setProperty("--lap-ms", e.target.value + "ms");
+    if (playing) { stop(); start(); }
+  });
+
+  $("load").addEventListener("click", async () => {
+    stop();
+    const round = Number($("round").value);
+    const lega = $("lega").value;
+    say("Carico i dati OpenF1 e le formazioni del round " + round + "…");
+    $("load").disabled = true;
+    try {
+      const res = await fetch(`/api/replay-round?round=${round}${lega ? "&lega=" + lega : ""}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || ("HTTP " + res.status));
+      data = json;
+      frames = json.frames.slice();
+      if (json.official && json.official.length) {
+        const names = new Map(frames[frames.length - 1].players.map((p) => [p.user_id, p]));
+        frames.push({
+          lap: frames.length, label: "Punteggio ufficiale", events: frames[frames.length - 1].events,
+          drivers: frames[frames.length - 1].drivers,
+          players: json.official.map((o, i) => ({ ...(names.get(o.user_id) || { name: "?", scuderia: "" }), ...o, rank: i + 1 })),
+        });
+      }
+      $("title").textContent = `${json.race.flag || ""} ${json.race.name}`;
+      $("sub").textContent = `LOS PITUFOS · ROUND ${json.round} · ${json.race.circuit.toUpperCase()}`;
+      $("scrub").max = String(frames.length - 1);
+      $("scrub").disabled = false;
+      $("play").disabled = false;
+      $("download").disabled = false;
+      shown.clear();
+      idx = 0;
+      render(0, true);
+      const avviso = json.grid_source === "qualifying" ? " Attenzione: griglia dalla qualifica (penalità in griglia ignorate)." : "";
+      say(`${json.total_laps} giri, ${frames[0].players.length} giocatori, griglia da ${json.grid_source}.${json.official ? " Ultimo fotogramma: punteggio ufficiale." : " Round non ancora calcolato: manca il fotogramma ufficiale."}${avviso}`);
+    } catch (e) {
+      say("Errore: " + e.message + (String(e.message).includes("autorizzato") ? " (fai login su /admin e riprova)" : ""), true);
+    } finally {
+      $("load").disabled = false;
+    }
+  });
+
+  $("play").addEventListener("click", () => (playing ? stop() : start()));
+  $("scrub").addEventListener("input", (e) => { stop(); render(Number(e.target.value), false); });
+  $("download").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `replay-round-${data.round}.json`;
+    a.click();
+  });
+
+  function start() {
+    if (!frames.length) return;
+    if (idx >= frames.length - 1) { idx = 0; render(0, true); }
+    playing = true;
+    $("play").textContent = "❚❚ Pausa";
+    const lapMs = Number($("speed").value);
+    timer = setInterval(() => {
+      if (idx >= frames.length - 1) { stop(); return; }
+      render(idx + 1, false);
+    }, lapMs + 250);
+  }
+  function stop() {
+    playing = false;
+    $("play").textContent = "▶ Play";
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  function fmt(n) { return (n > 0 ? "+" : "") + Math.round(n); }
+
+  function render(i, instant) {
+    const prev = frames[idx];
+    idx = i;
+    const f = frames[i];
+    $("scrub").value = String(i);
+    $("scrubLbl").textContent = f.label;
+    $("lapLbl").textContent = f.lap === 0 ? "GRIGLIA" : f.label.replace("Giro ", "").replace("Bandiera a scacchi", "FINE").replace("Punteggio ufficiale", "UFFICIALE");
+    const ev = f.events;
+    $("bSC").classList.toggle("on", !!ev.safety_car);
+    $("bVSC").classList.toggle("on", !!ev.virtual_safety_car);
+    $("bRED").classList.toggle("on", !!ev.red_flag);
+    $("bWET").classList.toggle("on", !!ev.wet_tyres);
+    $("bDNF").classList.toggle("on", ev.total_dnf > 0);
+    $("bDNF").textContent = ev.total_dnf === 1 ? "1 ritiro" : `${ev.total_dnf} ritiri`;
+
+    // Barre: scala da min a max del fotogramma (i punti possono essere negativi)
+    const pts = f.players.map((p) => p.points);
+    const max = Math.max(1, ...pts), min = Math.min(0, ...pts);
+    const span = max - min || 1;
+    const rowH = parseFloat(getComputedStyle(stage).getPropertyValue("--row-h"));
+    const prevRank = new Map((prev && prev !== f ? prev.players : f.players).map((p) => [p.user_id, p.rank]));
+
+    for (const p of f.players) {
+      let row = board.querySelector(`[data-id="${p.user_id}"]`);
+      if (!row) {
+        row = document.createElement("div");
+        row.className = "row";
+        row.dataset.id = p.user_id;
+        row.innerHTML = `<div class="rank"></div><div class="bar"><div class="fill"></div><div class="name"><b></b><span></span></div></div><div class="pts"></div>`;
+        row.querySelector("b").textContent = p.name;
+        row.querySelector("span").textContent = p.scuderia;
+        row.style.top = (p.rank - 1) * rowH + "px";
+        board.appendChild(row);
+      }
+      row.classList.toggle("r1", p.rank === 1);
+      row.style.transitionDuration = instant ? "0ms" : "";
+      row.querySelector(".fill").style.transitionDuration = instant ? "0ms" : "";
+      row.style.top = (p.rank - 1) * rowH + "px";
+      row.querySelector(".fill").style.width = Math.max(4, ((p.points - min) / span) * 100) + "%";
+      const was = prevRank.get(p.user_id);
+      const mv = was == null || was === p.rank ? "" : was > p.rank ? `<i class="move up">▲${was - p.rank}</i>` : `<i class="move down">▼${p.rank - was}</i>`;
+      row.querySelector(".rank").innerHTML = p.rank + mv;
+      if (instant) shown.set(p.user_id, p.points);
+    }
+    animatePoints(f, instant ? 0 : Number($("speed").value));
+
+    // Striscia piloti (prime 10 posizioni + ritirati in coda)
+    const info = data.drivers || {};
+    strip.innerHTML = f.drivers.slice(0, stage.classList.contains("story") ? 8 : 12).map((d) => {
+      const di = info[d.number] || {};
+      const short = (di.name || ("#" + d.number)).split(" ").pop().slice(0, 3).toUpperCase();
+      return `<span class="chip${d.dnf ? " dnf" : ""}" style="border-left-color:#${di.colour || "888"}"><i>${d.dnf ? "OUT" : "P" + d.position}</i>${short}</span>`;
+    }).join("");
+  }
+
+  // Conteggio animato dei punti: da quelli mostrati a quelli del fotogramma
+  function animatePoints(f, ms) {
+    if (rafId) cancelAnimationFrame(rafId);
+    const from = new Map(f.players.map((p) => [p.user_id, shown.get(p.user_id) ?? p.points]));
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = ms === 0 ? 1 : Math.min(1, (now - t0) / ms);
+      const e = 1 - Math.pow(1 - k, 3);
+      for (const p of f.players) {
+        const v = from.get(p.user_id) + (p.points - from.get(p.user_id)) * e;
+        shown.set(p.user_id, v);
+        const el = board.querySelector(`[data-id="${p.user_id}"] .pts`);
+        if (el) el.textContent = fmt(v);
+      }
+      if (k < 1) rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+  }
+})();
+</script>
+</body>
+</html>

@@ -255,6 +255,10 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
 - `/admin` ha il pannello "Audit regole" (`/api/audit-regole`), "Ricalcola round" e "Ricalcola
   stagione" (`/api/admin/rounds` elenca i round in archivio; si rilanciano solo quelli, mai il
   round 1 o i cancellati).
+- **Replay gara** (v1.11.3): `/api/replay-round?round=` (sola lettura, admin) ricostruisce la classifica
+  giocatori giro per giro dagli stream storici OpenF1 con le funzioni del live (`lib/replay-round.ts`);
+  `/replay.html` la anima per registrare i video. Il live NON salva uno storico (`provisional_weekend`
+  tiene solo l'ultimo stato): per l'andamento in gara si usa il replay.
 
 ## CDA Los Pitufos
 - Pagina `/cda`: votazione regolamento, riservata ai membri della lega LP (id: `566abb62-600d-4189-9eab-267fa98d140c`)

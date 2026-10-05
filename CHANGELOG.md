@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.3 — 5 Ottobre 2026
+
+### Replay gara (admin)
+- **`/api/replay-round?round=`** (GET, cookie admin o `admin_key`, sola lettura): la classifica dei giocatori a ogni giro della gara, ricostruita dagli stream storici OpenF1 (`position`, `race_control`, `laps`, `stints`, `session_result`) con le stesse funzioni del live (`detectLiveEvents` → `buildLiveWeekendResults` → `computePlayerScoresFrom`, in `lib/replay-round.ts`). Fotogramma 0 = dopo la qualifica (senza previsioni), poi un fotogramma per giro fino alla bandiera a scacchi; `official` porta i punteggi di `weekend_scores` se il round è calcolato. Filtro lega (`lega=` id, default Los Pitufos, `all` per tutti). Il momento del ritiro è stimato alla fine dell'ultimo giro registrato del pilota; Driver of the Day, penalità post-gara e override manuali restano solo nell'ufficiale.
+- **`/replay.html`**: pagina statica che anima la classifica (barre, frecce di posizione, eventi SC/VSC/rossa/wet/ritiri, striscia piloti), play/pausa, velocità, slider giro, formato 16:9 o 9:16 da registrare a schermo, download del JSON. Link dal pannello `/admin`.
+
 ## v1.11.2 — 3 Ottobre 2026
 
 ### Fix
