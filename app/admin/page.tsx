@@ -295,6 +295,20 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {/* Replay gara (sola lettura) */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
+          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
+            Replay gara (classifica giro per giro, per i video)
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={`/replay.html?round=${round}`} target="_blank" rel="noreferrer"
+              className="py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase bg-white/10 hover:bg-white/15 text-white transition-all">
+              Apri replay round {round}
+            </a>
+            <span className="text-white/50 text-[11px]">Ricostruito dagli stream storici OpenF1 con le regole del live; usa il cookie admin di questo browser.</span>
+          </div>
+        </div>
+
         {/* Audit regole (sola lettura) */}
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
           <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
