@@ -13,14 +13,21 @@ const FLAG_CLASS: Record<FlagState, string> = {
   red: "text-[#E8002D]", chequered: "text-white", none: "text-white/50",
 };
 
-/** Barra di sessione: cosa sta succedendo in pista e quanto sono freschi i dati. */
+/**
+ * Barra di sessione: cosa sta succedendo in pista e quanto è fresca la
+ * CLASSIFICA. `lastDataAt` è l'ultimo dato di qualunque tipo; la freschezza
+ * mostrata è quella delle posizioni (`lastPositionAt`), perché race control
+ * e giri possono scorrere mentre le posizioni, da cui dipende il punteggio,
+ * sono ferme. Prima della prima posizione si ricade su `lastDataAt`.
+ */
 export function SessionBar({
-  sessionType, currentLap, raceControl, lastDataAt, connected, mode,
+  sessionType, currentLap, raceControl, lastDataAt, lastPositionAt = 0, connected, mode,
 }: {
   sessionType: string;
   currentLap: number | null;
   raceControl: LiveRaceControl[];
   lastDataAt: number;
+  lastPositionAt?: number;
   connected: boolean;
   mode?: "init" | "mqtt" | "polling";
 }) {
@@ -33,7 +40,8 @@ export function SessionBar({
   }, []);
   const kind = classifySession(sessionType);
   const flag = latestFlag(raceControl);
-  const ageS = lastDataAt > 0 && now > 0 ? Math.max(0, Math.round((now - lastDataAt) / 1000)) : null;
+  const freshAt = lastPositionAt > 0 ? lastPositionAt : lastDataAt;
+  const ageS = freshAt > 0 && now > 0 ? Math.max(0, Math.round((now - freshAt) / 1000)) : null;
   const fresh = ageS !== null && ageS <= 20;
   const stale = ageS !== null && ageS > 60;
 

@@ -1,14 +1,11 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import mqtt from "mqtt";
+import { mergePositions, latestPositionDate, type LivePositionEntry } from "./live-positions";
 
 // ─── Tipi per i dati live ───
 
-export interface LivePosition {
-  driver_number: number;
-  position: number;
-  date: string;
-}
+export type LivePosition = LivePositionEntry;
 
 export interface LiveRaceControl {
   message: string;
@@ -32,8 +29,14 @@ export interface LiveStint {
   date: string;
 }
 
-const STALE_DATA_MS = 15000;   // se per 15s non arrivano dati live → considera la WS "ferma"
-const SAFETY_CHECK_MS = 7000;  // ogni 7s controlla la freschezza e, se ferma, fa un poll REST
+const STALE_DATA_MS = 15000;      // nessun dato di nessun tipo per 15 s → la WS è "ferma", polling REST
+const STALE_POSITIONS_MS = 30000; // posizioni ferme per 30 s → riallineamento REST, anche se il resto arriva
+const SAFETY_CHECK_MS = 7000;     // ogni 7 s controlla la freschezza
+const RESYNC_MIN_GAP_MS = 20000;  // non più di un riallineamento REST ogni 20 s
+const TELEMETRY_EVERY_MS = 30000;
+
+type Topic = "position" | "race_control" | "laps" | "stints";
+const TOPICS: Topic[] = ["position", "race_control", "laps", "stints"];
 
 /**
  * Hook WebSocket MQTT per dati live OpenF1.
@@ -41,12 +44,21 @@ const SAFETY_CHECK_MS = 7000;  // ogni 7s controlla la freschezza e, se ferma, f
  * Strategia di resilienza:
  *   1. Fetch iniziale via /api/live-data (no CORS)
  *   2. Connessione MQTT push real-time (path felice)
- *   3. Watchdog: se MQTT non si connette entro 8s OR si disconnette,
- *      attiva polling REST /api/live-data ogni 15s come fallback.
- *      Il polling si ferma automaticamente quando MQTT torna su.
+ *   3. Safety-net: se non arriva NESSUN dato per 15 s (MQTT non connesso o
+ *      silenzioso) fa polling REST di /api/live-data.
+ *   4. Riallineamento delle POSIZIONI: il punteggio dipende solo da
+ *      `v1/position`, che emette un messaggio soltanto quando una macchina
+ *      cambia posizione. Race control, giri e stint continuano ad arrivare
+ *      anche quando le posizioni sono ferme, quindi "arrivano dati" non vuol
+ *      dire "la classifica è aggiornata": se le posizioni non si muovono da
+ *      30 s, alla riconnessione MQTT (iOS sospende la WS quando l'app va in
+ *      background: i cambi di posizione persi non vengono mai rimandati) e
+ *      quando la pagina torna in primo piano, si chiede a REST solo il
+ *      seguito (`since` = ultima posizione nota) e si fonde.
  *
  * Espone `mode` per debug: "mqtt" se MQTT attivo, "polling" se in fallback,
- * "init" durante il primo fetch.
+ * "init" durante il primo fetch; `lastPositionAt` è l'ultimo istante in cui
+ * le posizioni sono state ricevute o verificate.
  */
 export function useLiveWebSocket(sessionKey: number | null) {
   const [positions, setPositions] = useState<Map<number, LivePosition>>(new Map());
@@ -59,51 +71,92 @@ export function useLiveWebSocket(sessionKey: number | null) {
   // applicato: servono alla barra di sessione (GIRO 23 · aggiornato 3 s fa).
   const [currentLap, setCurrentLap] = useState<number | null>(null);
   const [lastDataAt, setLastDataAt] = useState<number>(0);
+  // Ultimo istante in cui le posizioni sono arrivate (MQTT) o sono state
+  // verificate (REST, anche senza novità): è la freschezza della classifica.
+  const [lastPositionAt, setLastPositionAt] = useState<number>(0);
   const clientRef = useRef<mqtt.MqttClient | null>(null);
   const fastestRef = useRef<number>(Infinity);
   // Timestamp dell'ultimo dato live applicato (MQTT o REST). Serve al "safety check":
   // se i dati sono fermi da troppo tempo, riattiviamo il polling REST anche se la
   // connessione MQTT risulta "aperta" ma silenziosa.
   const lastDataAtRef = useRef<number>(0);
+  const lastPositionAtRef = useRef<number>(0);
+  const positionsRef = useRef<Map<number, LivePosition>>(new Map());
+  const lastResyncAtRef = useRef<number>(0);
+  const resyncInFlightRef = useRef(false);
+  // Telemetria: messaggi MQTT ricevuti/applicati per topic. In console ogni 30 s:
+  // se le posizioni sono ferme si vede subito se è OpenF1 a non mandarle o
+  // se le scartiamo noi.
+  const statsRef = useRef({
+    received: { position: 0, race_control: 0, laps: 0, stints: 0 } as Record<Topic, number>,
+    applied: { position: 0, race_control: 0, laps: 0, stints: 0 } as Record<Topic, number>,
+    otherSession: 0,
+    resyncs: 0,
+    resyncRows: 0,
+  });
 
   // Reset quando cambia sessione. Reset intenzionale e poco frequente (solo al
   // cambio di sessionKey): azzeriamo lo stato live per non mostrare dati della
   // sessione precedente.
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setPositions(new Map());
+    positionsRef.current = new Map();
     setRaceControl([]);
     setFastestLap(null);
     setStints([]);
     fastestRef.current = Infinity;
     lastDataAtRef.current = 0;
+    lastPositionAtRef.current = 0;
+    lastResyncAtRef.current = 0;
+    resyncInFlightRef.current = false;
+    statsRef.current = {
+      received: { position: 0, race_control: 0, laps: 0, stints: 0 },
+      applied: { position: 0, race_control: 0, laps: 0, stints: 0 },
+      otherSession: 0, resyncs: 0, resyncRows: 0,
+    };
     setCurrentLap(null);
     setLastDataAt(0);
+    setLastPositionAt(0);
     setMode("init");
   }, [sessionKey]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Applica una risposta /api/live-data (sia per init che per polling)
+  const markPositionsFresh = useCallback(() => {
+    lastPositionAtRef.current = Date.now();
+    setLastPositionAt(lastPositionAtRef.current);
+  }, []);
+
+  const applyPositions = useCallback((rows: { driver_number?: number | null; position?: number | null; date?: string | null }[]) => {
+    const next = mergePositions(positionsRef.current, rows);
+    if (next === positionsRef.current) return false;
+    positionsRef.current = next;
+    setPositions(next);
+    return true;
+  }, []);
+
+  // Applica una risposta /api/live-data (snapshot iniziale, polling o
+  // riallineamento parziale con `since`: in quel caso le liste contengono
+  // solo il seguito e si FONDONO, non sostituiscono).
   const applyLiveSnapshot = useCallback((data: {
     positions?: LivePosition[];
     raceControl?: LiveRaceControl[];
     laps?: LiveLap[];
     stints?: LiveStint[];
+    partial?: boolean;
   }) => {
     if (data.positions?.length || data.raceControl?.length || data.laps?.length || data.stints?.length) {
       lastDataAtRef.current = Date.now();
       setLastDataAt(lastDataAtRef.current);
     }
     if (data.positions?.length) {
-      const posMap = new Map<number, LivePosition>();
-      for (const p of data.positions) {
-        if (!p.driver_number || !p.position) continue;
-        const existing = posMap.get(p.driver_number);
-        if (!existing || p.date > existing.date) posMap.set(p.driver_number, p);
-      }
-      setPositions(posMap);
+      applyPositions(data.positions);
+      statsRef.current.resyncRows += data.positions.length;
     }
-    if (data.raceControl?.length) setRaceControl(data.raceControl);
+    if (data.raceControl?.length) {
+      // La lista REST è completa: sostituisce la nostra solo se non è più
+      // corta (un 429 parziale non deve cancellare messaggi già visti).
+      const rc = data.raceControl;
+      setRaceControl((prev) => (rc.length >= prev.length ? rc : prev));
+    }
     if (data.laps?.length) {
       let fastest = Infinity;
       let fastestDriver = 0;
@@ -113,7 +166,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
           fastestDriver = l.driver_number;
         }
       }
-      if (fastestDriver) {
+      if (fastestDriver && fastest < fastestRef.current) {
         fastestRef.current = fastest;
         setFastestLap({ driver_number: fastestDriver, duration: fastest });
       }
@@ -121,23 +174,35 @@ export function useLiveWebSocket(sessionKey: number | null) {
       for (const l of data.laps) if (l.lap_number && l.lap_number > maxLap) maxLap = l.lap_number;
       if (maxLap > 0) setCurrentLap((prev) => (prev == null || maxLap > prev ? maxLap : prev));
     }
-    if (data.stints?.length) setStints(data.stints);
-  }, []);
+    if (data.stints?.length) {
+      const st = data.stints;
+      setStints((prev) => (st.length >= prev.length ? st : prev));
+    }
+  }, [applyPositions]);
 
-  const fetchLiveData = useCallback(async (sk: number, signal: AbortSignal) => {
+  /**
+   * Fetch REST. Con `since` chiede solo le posizioni (e i giri) successivi
+   * all'ultima nota: poco traffico, quindi si può fare spesso. Una risposta
+   * ok, anche vuota, conferma che la classifica è allineata.
+   */
+  const fetchLiveData = useCallback(async (sk: number, signal: AbortSignal, since?: string | null) => {
     try {
-      const res = await fetch(`/api/live-data?session_key=${sk}`, { cache: "no-store", signal });
+      const url = `/api/live-data?session_key=${sk}${since ? `&since=${encodeURIComponent(since)}` : ""}`;
+      const res = await fetch(url, { cache: "no-store", signal });
       if (!res.ok) {
         console.warn("[live-ws] /api/live-data response not ok", res.status);
-        return;
+        return false;
       }
       const data = await res.json();
       applyLiveSnapshot(data);
+      if (data.positionsOk !== false) markPositionsFresh();
+      return true;
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") return;
+      if ((err as Error)?.name === "AbortError") return false;
       console.warn("[live-ws] fetchLiveData failed", err);
+      return false;
     }
-  }, [applyLiveSnapshot]);
+  }, [applyLiveSnapshot, markPositionsFresh]);
 
   useEffect(() => {
     if (!sessionKey) return;
@@ -146,22 +211,63 @@ export function useLiveWebSocket(sessionKey: number | null) {
     const abortCtrl = new AbortController();
     let cancelled = false;
 
-    // Safety-net: gira sempre finché la sessione è attiva. Se i dati live sono
-    // fermi da più di STALE_DATA_MS — perché MQTT non si connette OPPURE è
-    // connesso ma silenzioso — fa un poll REST. Quando i dati live riprendono
-    // ad arrivare (lastDataAtRef si aggiorna) smette da solo. Questo evita il
-    // caso "live a zero" in cui la WS sembra aperta ma non spinge nulla.
+    // Riallineamento posizioni via REST, con `since` = ultima posizione nota.
+    // Al massimo uno ogni RESYNC_MIN_GAP_MS e mai due in parallelo.
+    const resync = async (reason: string, force = false) => {
+      if (cancelled || resyncInFlightRef.current) return;
+      const now = Date.now();
+      if (!force && now - lastResyncAtRef.current < RESYNC_MIN_GAP_MS) return;
+      lastResyncAtRef.current = now;
+      resyncInFlightRef.current = true;
+      statsRef.current.resyncs++;
+      const since = latestPositionDate(positionsRef.current);
+      try {
+        await fetchLiveData(sessionKey!, abortCtrl.signal, since);
+      } finally {
+        resyncInFlightRef.current = false;
+      }
+      if (!cancelled && process.env.NODE_ENV !== "production") {
+        console.log(`[live-ws] resync (${reason}) since=${since ?? "inizio"}`);
+      }
+    };
+
+    // Safety-net: gira sempre finché la sessione è attiva.
+    //   - nessun dato per STALE_DATA_MS (MQTT non connesso O connesso ma muto)
+    //     → polling REST completo, come prima;
+    //   - dati sì ma POSIZIONI ferme per STALE_POSITIONS_MS → riallineamento
+    //     parziale. È il caso "race control scorre, punteggi fermi".
     const safetyTimer: ReturnType<typeof setInterval> = setInterval(() => {
       if (cancelled) return;
-      if (Date.now() - lastDataAtRef.current > STALE_DATA_MS) {
+      const now = Date.now();
+      if (now - lastDataAtRef.current > STALE_DATA_MS) {
         setMode("polling");
-        fetchLiveData(sessionKey!, abortCtrl.signal);
+        void resync("nessun dato");
+      } else if (now - lastPositionAtRef.current > STALE_POSITIONS_MS) {
+        void resync("posizioni ferme");
       }
     }, SAFETY_CHECK_MS);
+
+    const telemetryTimer: ReturnType<typeof setInterval> = setInterval(() => {
+      if (cancelled) return;
+      const s = statsRef.current;
+      const per = TOPICS.map((t) => `${t}=${s.applied[t]}/${s.received[t]}`).join(" ");
+      console.log(
+        `[live-ws] sessionKey=${sessionKey} · applicati/ricevuti: ${per} · altra sessione: ${s.otherSession}`
+        + ` · resync: ${s.resyncs} (${s.resyncRows} righe) · posizioni ${Math.round((Date.now() - lastPositionAtRef.current) / 1000)} s fa`,
+      );
+    }, TELEMETRY_EVERY_MS);
+
+    // Tornando in primo piano (iOS sospende la WS in background e i cambi di
+    // posizione persi non vengono rimandati) ci si riallinea subito.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void resync("primo piano", true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     async function connect() {
       try {
         // Fetch dati iniziali via proxy (abortabile se sessionKey cambia)
+        lastResyncAtRef.current = Date.now();
         await fetchLiveData(sessionKey!, abortCtrl.signal);
         if (cancelled) return;
 
@@ -188,8 +294,10 @@ export function useLiveWebSocket(sessionKey: number | null) {
 
         clientRef.current = client;
 
+        let connections = 0;
         client.on("connect", () => {
           setConnected(true);
+          connections++;
           // Non passiamo subito a "mqtt": il mode diventa "mqtt" solo al PRIMO
           // messaggio reale (vedi handler sotto). Così, se la connessione si apre
           // ma resta silenziosa, il safety-net continua col polling e l'utente
@@ -200,6 +308,9 @@ export function useLiveWebSocket(sessionKey: number | null) {
             "v1/laps",
             "v1/stints",
           ]);
+          // Riconnessione: tutto ciò che è cambiato nel frattempo non arriva
+          // più via MQTT. Si riallinea subito da REST.
+          if (connections > 1) void resync("riconnessione", true);
         });
 
         // Polling e riconnessione sono gestiti dal safety-net + reconnectPeriod:
@@ -210,30 +321,17 @@ export function useLiveWebSocket(sessionKey: number | null) {
           console.warn("[live-ws] mqtt error", err?.message ?? err);
         });
 
-        // Telemetria: contiamo messaggi per session_key. Se vediamo molti
-        // messaggi con session_key ≠ quello atteso, sappiamo che useLiveSession
-        // ha rilevato la sessione sbagliata.
-        const seenSessionKeys = new Map<number, number>();
-        let lastLogAt = 0;
-
         client.on("message", (_topic: string, payload: Buffer) => {
           try {
             const msg = JSON.parse(payload.toString());
+            const topic = _topic.replace(/^\//, "").replace(/^v1\//, "") as Topic;
+            const known = TOPICS.includes(topic);
 
-            // Debug telemetry: traccia le session_key che arrivano vs attesa
-            if (msg.session_key) {
-              seenSessionKeys.set(msg.session_key, (seenSessionKeys.get(msg.session_key) ?? 0) + 1);
-              const now = Date.now();
-              if (now - lastLogAt > 30_000) {
-                lastLogAt = now;
-                const stats = Array.from(seenSessionKeys.entries())
-                  .map(([k, v]) => `${k}:${v}${k === sessionKey ? "✓" : "✗"}`)
-                  .join(" ");
-                console.log(`[live-ws] expected sessionKey=${sessionKey} · received: ${stats}`);
-              }
+            if (msg.session_key && msg.session_key !== sessionKey) {
+              statsRef.current.otherSession++;
+              return;
             }
-
-            if (msg.session_key && msg.session_key !== sessionKey) return;
+            if (known) statsRef.current.received[topic]++;
 
             // Dato valido della nostra sessione: aggiorna la freschezza (così il
             // safety-net non fa polling inutile) e segna la modalità "mqtt" push.
@@ -241,24 +339,15 @@ export function useLiveWebSocket(sessionKey: number | null) {
             setLastDataAt(lastDataAtRef.current);
             setMode("mqtt");
 
-            const topic = _topic.replace(/^\//, "");
-
-            if (topic === "v1/position" && msg.driver_number && msg.position) {
-              setPositions((prev) => {
-                const next = new Map(prev);
-                const existing = next.get(msg.driver_number);
-                if (!existing || msg.date > existing.date) {
-                  next.set(msg.driver_number, {
-                    driver_number: msg.driver_number,
-                    position: msg.position,
-                    date: msg.date,
-                  });
-                }
-                return next;
-              });
+            if (topic === "position" && msg.driver_number && msg.position) {
+              // Il flusso posizioni è vivo: conta anche se la posizione è
+              // uguale a quella nota (OpenF1 può ripubblicare lo stesso stato).
+              markPositionsFresh();
+              if (applyPositions([msg])) statsRef.current.applied.position++;
             }
 
-            if (topic === "v1/race_control" && msg.message) {
+            if (topic === "race_control" && msg.message) {
+              statsRef.current.applied.race_control++;
               setRaceControl((prev) => [...prev, {
                 message: msg.message,
                 flag: msg.flag,
@@ -268,12 +357,13 @@ export function useLiveWebSocket(sessionKey: number | null) {
               }]);
             }
 
-            if (topic === "v1/laps" && msg.lap_number) {
+            if (topic === "laps" && msg.lap_number) {
+              statsRef.current.applied.laps++;
               const ln = Number(msg.lap_number);
               if (ln > 0) setCurrentLap((prev) => (prev == null || ln > prev ? ln : prev));
             }
 
-            if (topic === "v1/laps" && msg.lap_duration && msg.lap_duration > 0) {
+            if (topic === "laps" && msg.lap_duration && msg.lap_duration > 0) {
               if (msg.lap_duration < fastestRef.current) {
                 fastestRef.current = msg.lap_duration;
                 setFastestLap({
@@ -283,7 +373,8 @@ export function useLiveWebSocket(sessionKey: number | null) {
               }
             }
 
-            if (topic === "v1/stints" && msg.compound) {
+            if (topic === "stints" && msg.compound) {
+              statsRef.current.applied.stints++;
               setStints((prev) => [...prev, {
                 driver_number: msg.driver_number,
                 compound: msg.compound,
@@ -308,13 +399,15 @@ export function useLiveWebSocket(sessionKey: number | null) {
       cancelled = true;
       abortCtrl.abort();
       clearInterval(safetyTimer);
+      clearInterval(telemetryTimer);
+      document.removeEventListener("visibilitychange", onVisible);
       if (client) {
         client.end(true);
         clientRef.current = null;
       }
       setConnected(false);
     };
-  }, [sessionKey, fetchLiveData]);
+  }, [sessionKey, fetchLiveData, applyPositions, markPositionsFresh]);
 
-  return { positions, raceControl, fastestLap, stints, connected, mode, currentLap, lastDataAt };
+  return { positions, raceControl, fastestLap, stints, connected, mode, currentLap, lastDataAt, lastPositionAt };
 }

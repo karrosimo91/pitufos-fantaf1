@@ -141,6 +141,7 @@ export default function LiveTab({
           currentLap={data.ws.currentLap}
           raceControl={data.ws.raceControl}
           lastDataAt={data.ws.lastDataAt}
+          lastPositionAt={data.ws.lastPositionAt}
           connected={data.ws.connected}
           mode={data.ws.mode}
         />
