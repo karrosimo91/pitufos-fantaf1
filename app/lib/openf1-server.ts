@@ -2,7 +2,7 @@
 
 export const OPENF1 = "https://api.openf1.org/v1";
 
-async function getOpenF1Token(): Promise<string | null> {
+export async function getOpenF1Token(): Promise<string | null> {
   const username = process.env.OPENF1_USERNAME;
   const password = process.env.OPENF1_PASSWORD;
   if (!username || !password) return null;
@@ -46,8 +46,11 @@ export interface OpenF1Response<T = any> {
  * per token scaduto o di un 429 per troppe richieste, e chi chiama deve
  * poterlo dire.
  */
-export async function fetchOpenF1<T = any>(url: string): Promise<OpenF1Response<T>> {
-  const token = await getOpenF1Token();
+export async function fetchOpenF1<T = any>(
+  url: string,
+  opts?: { /** Token già ottenuto: evita una richiesta /token per chiamata */ token?: string | null },
+): Promise<OpenF1Response<T>> {
+  const token = opts && "token" in opts ? opts.token : await getOpenF1Token();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   let retries = 0;
   for (;;) {

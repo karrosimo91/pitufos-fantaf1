@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.11.4 — 10 Ottobre 2026
+
+### Live: classifica ferma mentre race control scorre
+- **Il punteggio live restava fermo anche con la WebSocket viva** (`lib/use-live-ws.ts`). Il punteggio dipende solo da `v1/position`, che OpenF1 pubblica soltanto quando una macchina cambia posizione; race control, giri e stint continuano ad arrivare comunque. Il safety-net REST partiva solo se non arrivava *nessun* dato per 15 s, quindi un messaggio di race control bastava a dichiarare il live "fresco" e nessuno riallineava mai le posizioni. Due i modi concreti per restare fermi: la riconnessione MQTT (iOS sospende la WebSocket quando l'app va in background o lo schermo si blocca; alla ripresa `mqtt.js` si riconnette ma i cambi di posizione persi non vengono rimandati, e chi non cambia più posizione resta a quella vecchia per tutta la sessione) e il confronto delle date come stringhe fra record REST e MQTT, che poteva scartare un aggiornamento vero se i due formati differivano. Ora: freschezza delle posizioni tracciata a parte (`lastPositionAt`); riallineamento REST subito a ogni riconnessione e al ritorno in primo piano, e comunque se le posizioni sono ferme da 30 s; confronto per istante (`lib/live-positions.ts`, testato) con il nuovo che vince in caso di data mancante o pari.
+- **`/api/live-data?since=`**: riallineamento parziale, posizioni e giri solo dall'ultima nota in poi, race control e stint completi; il client fonde invece di sostituire. Chiedere l'intera sessione da ogni telefono a ogni poll (migliaia di righe di `position` a fine gara) è quello che faceva scattare il 429 di OpenF1, che il proxy leggeva come "nessun dato": ora usa `fetchOpenF1` (retry 1-2-4 s su 429/5xx) con un solo token per richiesta e dichiara `positionsOk` quando le posizioni non sono arrivate.
+- **Barra di sessione**: "aggiornato N s fa" misura le posizioni (la classifica), non l'ultimo messaggio qualsiasi. Telemetria in console ogni 30 s con messaggi applicati/ricevuti per topic, messaggi di altre sessioni e riallineamenti: se il problema si ripresenta si vede subito se OpenF1 non manda posizioni o se le scartiamo noi.
+
 ## v1.11.3 — 5 Ottobre 2026
 
 ### Replay gara (admin)

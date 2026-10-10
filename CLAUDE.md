@@ -291,6 +291,7 @@ sulla tabella: una query bloccata da RLS torna 0 righe senza errore.
 - `LiveTab.tsx`: componente UI con posizioni piloti, previsioni live, feed race control
 - Integrato in `/gara` con badge LIVE e tab auto-switch
 - Dati push istantanei via WebSocket, più due polling REST di supporto durante gara/sprint: `/api/live-grid` (griglia, finché non arriva quella vera) e `/api/live-retired` (ritiri ufficiali da `session_result`, ogni 45 sec)
+- **Posizioni** (v1.11.4): `v1/position` emette solo ai cambi di posizione, quindi "arrivano dati" ≠ "classifica aggiornata". `use-live-ws.ts` tiene `lastPositionAt` separato da `lastDataAt` e riallinea da REST (`/api/live-data?since=`, parziale) a ogni riconnessione MQTT, al ritorno in primo piano e se le posizioni sono ferme da 30 s. Fusione dei record in `lib/live-positions.ts` (confronto per istante, non per stringa). Telemetria in console ogni 30 s (`[live-ws] … applicati/ricevuti`)
 - Debug mode: `/gara?debug_live=true` per testare con dati mock
 
 ## PWA
