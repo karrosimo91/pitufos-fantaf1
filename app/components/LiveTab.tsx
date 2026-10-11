@@ -239,7 +239,7 @@ export default function LiveTab({
       )}
 
       {subTab === "duelli" && (locked || debug) && (
-        <DuelliLive duelli={generale.duelli} loading={generale.loading} />
+        <DuelliLive duelli={generale.duelli} loading={generale.loading} pageHref={legaId ? `/duelli?lega=${legaId}` : "/duelli"} />
       )}
 
       {(locked || debug) && selectedFormazione && selectedEntry && (

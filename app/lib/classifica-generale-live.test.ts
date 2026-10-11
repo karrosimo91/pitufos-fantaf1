@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildClassificaGeneraleLive, buildDuelliLive } from "./classifica-generale-live";
+import { buildClassificaGeneraleLive, buildDuelliLive, buildDuelloStorico } from "./classifica-generale-live";
 
 const season = [
   { user_id: "a", team_principal_name: "Anna", scuderia_name: "A Racing", total_points: 300 },
@@ -97,5 +97,33 @@ describe("buildDuelliLive", () => {
   it("con meno di due giocatori non ci sono duelli", () => {
     expect(buildDuelliLive([])).toEqual([]);
     expect(buildDuelliLive(buildClassificaGeneraleLive([season[0]], new Map(), new Map()))).toEqual([]);
+  });
+});
+
+describe("buildDuelloStorico", () => {
+  it("conta i weekend vinti da ciascuno e l'effetto dell'ultimo GP", () => {
+    const s = buildDuelloStorico([1, 2, 3, 4], [50, 40, 30, 20], [45, 40, 35, 10]);
+    expect(s.wonAhead).toBe(2);
+    expect(s.wonBehind).toBe(1);
+    expect(s.tied).toBe(1);
+    expect(s.ultimoGp).toEqual({ round: 4, delta: 10 });
+    expect(s.recent.map((r) => r.round)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("salta i round in cui uno dei due non ha punteggio", () => {
+    const s = buildDuelloStorico([1, 2, 3], [50, null, 30], [45, 40, undefined]);
+    expect(s.wonAhead + s.wonBehind + s.tied).toBe(1);
+    expect(s.ultimoGp).toEqual({ round: 1, delta: 5 });
+  });
+
+  it("limita i confronti recenti", () => {
+    const rounds = Array.from({ length: 10 }, (_, i) => i + 1);
+    const s = buildDuelloStorico(rounds, rounds.map(() => 1), rounds.map(() => 0), 3);
+    expect(s.recent.map((r) => r.round)).toEqual([8, 9, 10]);
+    expect(s.wonAhead).toBe(10);
+  });
+
+  it("senza round in comune non c'è ultimo GP", () => {
+    expect(buildDuelloStorico([], [], []).ultimoGp).toBeNull();
   });
 });

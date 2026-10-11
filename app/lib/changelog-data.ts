@@ -26,6 +26,13 @@ export const CHANGELOG: ChangelogRelease[] = [
           "Nuovo sub-tab DUELLI: primo contro secondo, secondo contro terzo e così via, con il distacco attuale e come si muove nel weekend (chi recupera, chi allunga, sorpassi). I tuoi duelli sono evidenziati. Disponibile anche a sessione finita, con i punteggi in archivio.",
         ],
       },
+      {
+        title: "Pagina Duelli",
+        items: [
+          "Nuova pagina Duelli (da Rivali, dal menu Altro o dal sub-tab in Gara): i testa a testa fra posizioni adiacenti sempre a portata di mano, anche a gara finita. In live si aggiorna in tempo reale, a weekend chiuso usa le sessioni calcolate, fuori dal weekend è la classifica di stagione.",
+          "Per ogni duello il bilancio stagionale: quanti weekend ha vinto l'uno e quanti l'altro, gli ultimi sei confronti con i punti, e di quanto l'ultimo GP ha mosso il distacco. In alto la tua posizione con i distacchi da chi ti precede e da chi ti segue.",
+        ],
+      },
     ],
   },
   {

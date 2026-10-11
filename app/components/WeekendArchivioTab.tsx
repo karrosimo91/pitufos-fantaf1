@@ -128,7 +128,7 @@ export default function WeekendArchivioTab({
         <FormazioniSvelate formazioni={data.formazioni} previsioniByUser={data.previsioniByUser} userId={userId} raceName={raceName} members={data.memberIds} />
       )}
       {subTab === "generale" && <ClassificaGeneraleLive rows={generale.rows} loading={generale.loading} />}
-      {subTab === "duelli" && <DuelliLive duelli={generale.duelli} loading={generale.loading} />}
+      {subTab === "duelli" && <DuelliLive duelli={generale.duelli} loading={generale.loading} pageHref={legaId ? `/duelli?lega=${legaId}` : "/duelli"} />}
 
       {selectedFormazione && selectedEntry && (
         <PlayerDetailModal

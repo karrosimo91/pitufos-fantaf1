@@ -239,6 +239,10 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
   distacchi da chi precede e dal leader, niente punti weekend) e DUELLI (testa a testa fra posizioni adiacenti,
   distacco e come si muove nel weekend): calcolo puro in `lib/classifica-generale-live.ts`, hook unico
   `lib/use-classifica-generale-live.ts`.
+- **Duelli:** `/duelli?lega=` (`app/duelli/page.tsx`), stessi testa a testa sempre disponibili: live con
+  `useWeekendClassifica` sulla sessione di `useWeekend().live`, archivio a formazione chiusa, stagione fuori dal
+  weekend; storico fra i due (`buildDuelloStorico`) dai `perRound` di `use-statistiche`. Link da Rivali, Altro e
+  dal sub-tab DUELLI.
 - **Recap:** `/risultati?round=` con `components/recap/WeekendRecap.tsx` e derivazioni pure `lib/recap.ts`.
 - **Rivali:** `/classifica` con `components/rivali/*` (forma, scheda stagione con testa a testa, chi ha chi),
   Classifica Reale dai `real_points` di `weekend_scores` via `use-statistiche`.

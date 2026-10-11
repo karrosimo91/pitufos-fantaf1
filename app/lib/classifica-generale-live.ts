@@ -119,3 +119,44 @@ export function buildDuelliLive(rows: GeneraleLiveRow[]): DuelloLive[] {
   }
   return duelli;
 }
+
+/** Storico stagionale di un duello: weekend vinti dall'uno e dall'altro, ultimi confronti, effetto dell'ultimo GP. */
+export interface DuelloStorico {
+  /** Weekend in cui chi precede ha fatto più punti di chi insegue */
+  wonAhead: number;
+  wonBehind: number;
+  tied: number;
+  /** Ultimi confronti (round, punti di chi precede, punti di chi insegue), in ordine di round */
+  recent: { round: number; ahead: number; behind: number }[];
+  /** Ultimo GP giocato da entrambi: quanto il distacco è cambiato (> 0 chi precede ha allungato) */
+  ultimoGp: { round: number; delta: number } | null;
+}
+
+export function buildDuelloStorico(
+  rounds: number[],
+  aheadPerRound: (number | null | undefined)[],
+  behindPerRound: (number | null | undefined)[],
+  recentCount = 6,
+): DuelloStorico {
+  const all: { round: number; ahead: number; behind: number }[] = [];
+  rounds.forEach((round, i) => {
+    const a = aheadPerRound[i];
+    const b = behindPerRound[i];
+    if (a == null || b == null) return;
+    all.push({ round, ahead: a, behind: b });
+  });
+  let wonAhead = 0, wonBehind = 0, tied = 0;
+  for (const x of all) {
+    if (x.ahead > x.behind) wonAhead++;
+    else if (x.ahead < x.behind) wonBehind++;
+    else tied++;
+  }
+  const last = all[all.length - 1];
+  return {
+    wonAhead,
+    wonBehind,
+    tied,
+    recent: all.slice(-recentCount),
+    ultimoGp: last ? { round: last.round, delta: last.ahead - last.behind } : null,
+  };
+}

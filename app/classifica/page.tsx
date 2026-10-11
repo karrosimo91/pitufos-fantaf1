@@ -19,7 +19,7 @@ import { useProvisionalScores } from "../lib/provisional-scores";
 import { RACES_2026, getRaceByRound, isAfterDeadline, LAST_ROUND } from "../lib/races";
 import type { LiveSnapshot } from "../lib/build-live-results";
 import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, remainingChips } from "../lib/chip-rules";
-import { ChevronDown, BarChart3, ChevronRight, Eye } from "lucide-react";
+import { ChevronDown, BarChart3, ChevronRight, Eye, Swords } from "lucide-react";
 
 const LEGA_GENERALE_ID = "00000000-0000-0000-0000-000000000001";
 const EMPTY_SNAP: LiveSnapshot = { positions: new Map(), raceControl: [], fastestLap: null, stints: [] };
@@ -135,7 +135,10 @@ function RivaliContent() {
             <div className="hud-label text-[#E8002D] mb-1">RIVALI · STAGIONE 2026</div>
             <h1 className="text-[26px] font-extrabold tracking-[-0.6px] leading-none">Classifica</h1>
           </div>
-          <Link href="/statistiche" className="btn-secondary py-2 px-3 text-[10px]"><BarChart3 size={12} /> STATISTICHE</Link>
+          <div className="flex gap-1.5 shrink-0">
+            <Link href={`/duelli?lega=${selectedLega}`} className="btn-secondary py-2 px-3 text-[10px]"><Swords size={12} /> DUELLI</Link>
+            <Link href="/statistiche" className="btn-secondary py-2 px-3 text-[10px]"><BarChart3 size={12} /> STATISTICHE</Link>
+          </div>
         </div>
 
         {legheLoaded && leghe.length > 1 && (
