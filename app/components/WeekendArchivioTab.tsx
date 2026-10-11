@@ -140,6 +140,9 @@ export default function WeekendArchivioTab({
           previousResults={data.previousResults}
           sessionType=""
           penalitaCambi={data.penalitaByUser.get(selectedFormazione.user_id) ?? 0}
+          classifica={data.classifica}
+          formazioni={data.formazioni}
+          userId={userId}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

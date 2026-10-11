@@ -1,5 +1,5 @@
 // ─── App Version ───
-export const APP_VERSION = "v1.11.5";
+export const APP_VERSION = "v1.11.6";
 
 // ─── Driver ───
 export interface Driver {

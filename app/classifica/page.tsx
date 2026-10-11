@@ -300,6 +300,9 @@ function RoundView({ round, legaId, userId, onSelect, selected, onClose }: { rou
           previousResults={data.previousResults}
           sessionType=""
           penalitaCambi={data.penalitaByUser.get(selectedForm.user_id) ?? 0}
+          classifica={data.classifica}
+          formazioni={data.formazioni}
+          userId={userId}
           onClose={onClose}
         />
       )}

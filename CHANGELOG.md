@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.6 — 11 Ottobre 2026
+
+### Gara: dettaglio del Team Principal con la grafica nuova
+- **Dettaglio giocatore** (`components/live/PlayerDetailModal.tsx`, dal tocco su una riga della classifica weekend in live, a sessione finita, in Rivali per round e nel Recap): stesso linguaggio del tab "I miei". Testata con punteggio colorato e posizione nel weekend ("3° su 12"); riepilogo PILOTI · PREVISIONI · CAMBI con la pill LIVE finché la sessione è in corso; riga "VS TE" (distacco da me, piloti in comune e diversi, capitano a confronto); aggiornamenti come pill con il bersaglio (Boost · Norris, Sesto Uomo · Lawson, Prev. Doppia · Safety Car); piloti con la riga live (delta e flash sui cambi, spacchettamento per sessione al tocco); previsioni vive nei tre stati (in attesa / presa / sbagliata, con il payoff "+6 se resta così") al posto della griglia verde/rossa; riga finale "Totale weekend".
+- Stato delle previsioni calcolato una volta sola (`buildPrevisioniStatus` in `lib/player-breakdown.ts`, testata): lo usano il mio punteggio live e il dettaglio degli altri, prima era duplicato. `computePlayerWeekendDetail` espone anche totali piloti/previsioni e lo stato delle previsioni.
+
 ## v1.11.5 — 11 Ottobre 2026
 
 ### Gara: Classifica Generale live con i distacchi, nuovo sub-tab DUELLI
