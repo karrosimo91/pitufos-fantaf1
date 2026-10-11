@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../lib/auth";
-import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock, BarChart3, CalendarDays, Receipt } from "lucide-react";
+import { Users, Info, User, LogOut, ChevronRight, Scale, FileClock, BarChart3, CalendarDays, Receipt, Swords } from "lucide-react";
 import { APP_VERSION } from "../lib/types";
 import { useCdaMembership } from "../lib/use-cda";
 import { CHANGELOG } from "../lib/changelog-data";
@@ -14,6 +14,7 @@ const MENU_ITEMS = [
   { href: "/risultati", label: "Recap dei weekend", desc: "Scontrino, rimpianti, classifica di ogni GP", icon: Receipt },
   { href: "/calendario", label: "Calendario", desc: "Date, orari e chiusura formazione di ogni round", icon: CalendarDays },
   { href: "/statistiche", label: "Statistiche", desc: "Grafici e andamento del campionato", icon: BarChart3 },
+  { href: "/duelli", label: "Duelli", desc: "Testa a testa fra posizioni adiacenti, live e di stagione", icon: Swords },
   { href: "/campionati", label: "Leghe", desc: "Crea, unisciti, invita con un link", icon: Users },
   { href: "/info", label: "Regolamento", desc: "Punteggi, previsioni, aggiornamenti dalla fabbrica", icon: Info },
   { href: "/profilo", label: "Profilo", desc: "Modifica nome e scuderia", icon: User },

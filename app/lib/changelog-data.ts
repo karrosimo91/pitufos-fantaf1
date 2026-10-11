@@ -15,6 +15,27 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.11.5",
+    date: "11 Ottobre 2026",
+    summary: "In Gara la Classifica Generale live mostra i distacchi invece dei punti del weekend, e arriva il sub-tab DUELLI con i testa a testa fra posizioni adiacenti.",
+    sections: [
+      {
+        title: "Gara",
+        items: [
+          "Classifica Generale live: niente più punti del weekend accanto al totale (li trovi nel sub-tab WEEKEND). Per ogni Team Principal il distacco da chi lo precede e dal leader, aggiornati in tempo reale, e la freccia se la posizione è cambiata rispetto a inizio weekend.",
+          "Nuovo sub-tab DUELLI: primo contro secondo, secondo contro terzo e così via, con il distacco attuale e come si muove nel weekend (chi recupera, chi allunga, sorpassi). I tuoi duelli sono evidenziati. Disponibile anche a sessione finita, con i punteggi in archivio.",
+        ],
+      },
+      {
+        title: "Pagina Duelli",
+        items: [
+          "Nuova pagina Duelli (da Rivali, dal menu Altro o dal sub-tab in Gara): i testa a testa fra posizioni adiacenti sempre a portata di mano, anche a gara finita. In live si aggiorna in tempo reale, a weekend chiuso usa le sessioni calcolate, fuori dal weekend è la classifica di stagione.",
+          "Per ogni duello il bilancio stagionale: quanti weekend ha vinto l'uno e quanti l'altro, gli ultimi sei confronti con i punti, e di quanto l'ultimo GP ha mosso il distacco. In alto la tua posizione con i distacchi da chi ti precede e da chi ti segue.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.11.1",
     date: "27 Settembre 2026",
     summary: "Il Bahrain GP si corre a Sepang il 4 ottobre: è il round 18, Singapore e le altre scalano di uno. Chip come usi rimasti, niente dati altrui prima delle qualifiche.",

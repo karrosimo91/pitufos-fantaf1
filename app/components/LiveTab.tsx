@@ -11,6 +11,8 @@ import { PrevisioneLiveCard } from "./live/PrevisioneLiveCard";
 import { RaceControlMessage } from "./live/RaceControlMessage";
 import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
 import { ClassificaGeneraleLive } from "./live/ClassificaGeneraleLive";
+import { DuelliLive } from "./live/DuelliLive";
+import { useClassificaGeneraleLive } from "../lib/use-classifica-generale-live";
 import { PlayerDetailModal } from "./live/PlayerDetailModal";
 import { FormazioniSvelate } from "./live/FormazioniSvelate";
 import { SessionBar } from "./live/SessionBar";
@@ -24,7 +26,7 @@ import { poleDriverNumber } from "../lib/official-results";
 import { getDriverByNumber } from "../lib/drivers-data";
 import { SectionHead } from "./ui/SectionHead";
 
-type SubTab = "dashboard" | "weekend" | "formazioni" | "generale";
+type SubTab = "dashboard" | "weekend" | "formazioni" | "generale" | "duelli";
 
 export default function LiveTab({
   sessionKey, sessionType, meetingKey, round, userId, legaId, raceName, locked = true,
@@ -80,6 +82,10 @@ export default function LiveTab({
     for (const c of classifica) m.set(c.userId, c.points);
     return m;
   }, [classifica]);
+
+  // Generale live (stagione + weekend) con distacchi e duelli: una sola
+  // istanza per i sub-tab GENERALE e DUELLI, letta solo a formazione chiusa.
+  const generale = useClassificaGeneraleLive({ legaId, round, liveWeekendPoints, userId, enabled: locked || debug });
 
   // Provvisori per TUTTI i giocatori (non solo la lega mostrata), throttle 30 s.
   const lastSaveRef = useRef(0);
@@ -163,10 +169,10 @@ export default function LiveTab({
       {!locked && !debug && (
         <div className="hud-card p-3 mb-3 text-[12px] text-white/60">Classifica, formazioni e rivali compaiono all&apos;inizio della sessione, quando la formazione è chiusa.</div>
       )}
-      <div className="flex gap-1 mb-4">
-        {([["dashboard", "I MIEI"], ["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"]] as const).filter(([id]) => locked || debug || id === "dashboard").map(([id, label]) => (
+      <div className="flex gap-1 mb-4 overflow-x-auto no-scrollbar">
+        {([["dashboard", "I MIEI"], ["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"], ["duelli", "DUELLI"]] as const).filter(([id]) => locked || debug || id === "dashboard").map(([id, label]) => (
           <button key={id} onClick={() => setSubTab(id)}
-            className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
+            className={`flex-1 shrink-0 py-2 px-2.5 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
             {label}
           </button>
         ))}
@@ -229,7 +235,11 @@ export default function LiveTab({
       )}
 
       {subTab === "generale" && (locked || debug) && (
-        <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={liveWeekendPoints} userId={userId} />
+        <ClassificaGeneraleLive rows={generale.rows} loading={generale.loading} />
+      )}
+
+      {subTab === "duelli" && (locked || debug) && (
+        <DuelliLive duelli={generale.duelli} loading={generale.loading} pageHref={legaId ? `/duelli?lega=${legaId}` : "/duelli"} />
       )}
 
       {(locked || debug) && selectedFormazione && selectedEntry && (

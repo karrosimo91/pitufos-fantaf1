@@ -6,6 +6,8 @@ import { useWeekendClassifica } from "../lib/use-weekend-classifica";
 import type { LiveSnapshot } from "../lib/build-live-results";
 import { ClassificaWeekendList } from "./live/ClassificaWeekendList";
 import { ClassificaGeneraleLive } from "./live/ClassificaGeneraleLive";
+import { DuelliLive } from "./live/DuelliLive";
+import { useClassificaGeneraleLive } from "../lib/use-classifica-generale-live";
 import { PlayerDetailModal } from "./live/PlayerDetailModal";
 import { FormazioniSvelate } from "./live/FormazioniSvelate";
 import { LiveHero } from "./live/LiveHero";
@@ -15,7 +17,7 @@ import { useToast } from "./ui/Toast";
 const EMPTY_SNAP: LiveSnapshot = { positions: new Map(), raceControl: [], fastestLap: null, stints: [] };
 const EMPTY_GRID = new Map<number, number>();
 
-type SubTab = "weekend" | "formazioni" | "generale";
+type SubTab = "weekend" | "formazioni" | "generale" | "duelli";
 
 /**
  * Weekend senza sessione live: punteggi di tutti dalle sessioni in archivio
@@ -44,6 +46,7 @@ export default function WeekendArchivioTab({
     for (const c of data.classifica) m.set(c.userId, c.points);
     return m;
   }, [data.classifica]);
+  const generale = useClassificaGeneraleLive({ legaId, round, liveWeekendPoints: weekendPoints, userId });
 
   const sessioni = useMemo(() => {
     const r = data.previousResults;
@@ -102,10 +105,10 @@ export default function WeekendArchivioTab({
         </div>
       )}
 
-      <div className="flex gap-1 mb-4">
-        {([["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"]] as const).map(([id, label]) => (
+      <div className="flex gap-1 mb-4 overflow-x-auto no-scrollbar">
+        {([["weekend", "WEEKEND"], ["formazioni", "FORMAZIONI"], ["generale", "GENERALE"], ["duelli", "DUELLI"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setSubTab(id)}
-            className={`flex-1 py-2 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
+            className={`flex-1 shrink-0 py-2 px-2.5 rounded font-[family-name:var(--font-jetbrains)] text-[10px] tracking-[1px] font-bold border tap ${subTab === id ? "bg-white/[0.08] border-white/45 text-white" : "bg-[#0e0e14] border-[#1c1c26] text-white/55"}`}>
             {label}
           </button>
         ))}
@@ -124,9 +127,8 @@ export default function WeekendArchivioTab({
       {subTab === "formazioni" && (
         <FormazioniSvelate formazioni={data.formazioni} previsioniByUser={data.previsioniByUser} userId={userId} raceName={raceName} members={data.memberIds} />
       )}
-      {subTab === "generale" && (
-        <ClassificaGeneraleLive legaId={legaId} round={round} liveWeekendPoints={weekendPoints} userId={userId} />
-      )}
+      {subTab === "generale" && <ClassificaGeneraleLive rows={generale.rows} loading={generale.loading} />}
+      {subTab === "duelli" && <DuelliLive duelli={generale.duelli} loading={generale.loading} pageHref={legaId ? `/duelli?lega=${legaId}` : "/duelli"} />}
 
       {selectedFormazione && selectedEntry && (
         <PlayerDetailModal
