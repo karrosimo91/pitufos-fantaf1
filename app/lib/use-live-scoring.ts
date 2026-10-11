@@ -8,7 +8,8 @@ import {
   type ChipPilotiConfig,
   type ChipPrevisioniConfig,
 } from "./scoring";
-import { PREVISIONI_PUNTI, type Previsioni } from "./types";
+import type { Previsioni } from "./types";
+import { buildPrevisioniStatus } from "./player-breakdown";
 import {
   buildLiveWeekendResults,
   detectLiveEvents,
@@ -114,47 +115,10 @@ export function useLiveScoring(
       isFastestLap: fastestLap?.driver_number === d.driver_number,
     }));
 
-    // Costruisci LivePrevisioneStatus solo in gara
-    const previsioniStatus: LivePrevisioneStatus[] = [];
-    if (isRace) {
-      const e = virtualResults.events;
-      const prevItems: { key: keyof Previsioni; label: string; happened: boolean; puntiSi: number; puntiNo: number }[] = [
-        { key: "safetyCar", label: "Safety Car", happened: e.safety_car, puntiSi: PREVISIONI_PUNTI.safetyCar.si, puntiNo: PREVISIONI_PUNTI.safetyCar.no },
-        { key: "virtualSafetyCar", label: "Virtual Safety Car", happened: e.virtual_safety_car, puntiSi: PREVISIONI_PUNTI.virtualSafetyCar.si, puntiNo: PREVISIONI_PUNTI.virtualSafetyCar.no },
-        { key: "redFlag", label: "Red Flag", happened: e.red_flag, puntiSi: PREVISIONI_PUNTI.redFlag.si, puntiNo: PREVISIONI_PUNTI.redFlag.no },
-        { key: "gommeWet", label: "Gomme Wet", happened: e.wet_tyres, puntiSi: PREVISIONI_PUNTI.gommeWet.si, puntiNo: PREVISIONI_PUNTI.gommeWet.no },
-        { key: "poleVince", label: "Pole vince", happened: e.pole_won, puntiSi: PREVISIONI_PUNTI.poleVince.si, puntiNo: PREVISIONI_PUNTI.poleVince.no },
-      ];
-
-      for (const p of prevItems) {
-        const prediction = myPrevisioni[p.key] as boolean | null;
-        const points = calc.previsioniDettaglio[p.key] ?? 0;
-        let correct: boolean | null = null;
-        if (prediction !== null) {
-          correct = prediction === p.happened;
-        }
-        previsioniStatus.push({
-          key: p.key,
-          label: p.label,
-          prediction,
-          happened: p.happened,
-          correct,
-          points,
-        });
-      }
-
-      const dnfPred = myPrevisioni.numeroDnf;
-      const dnfPoints = calc.previsioniDettaglio.numeroDnf ?? 0;
-      const dnfCorrect = dnfPred !== null ? dnfPred === e.total_dnf : null;
-      previsioniStatus.push({
-        key: "numeroDnf",
-        label: "Numero DNF",
-        prediction: dnfPred,
-        happened: e.total_dnf as unknown as boolean,
-        correct: dnfCorrect,
-        points: dnfPoints,
-      });
-    }
+    // Stato delle previsioni solo in gara (stessa lista del dettaglio giocatore)
+    const previsioniStatus: LivePrevisioneStatus[] = isRace
+      ? buildPrevisioniStatus(myPrevisioni, virtualResults.events, calc.previsioniDettaglio)
+      : [];
 
     return {
       piloti,

@@ -5,8 +5,8 @@ import {
   type ScoreBreakdown,
   type DriverResult,
 } from "./scoring";
-import type { Previsioni } from "./types";
-import type { LivePilotaScore } from "./use-live-scoring";
+import { PREVISIONI_PUNTI, type Previsioni } from "./types";
+import type { LivePilotaScore, LivePrevisioneStatus } from "./use-live-scoring";
 import type { PlayerFormazione, PlayerPrevisioni } from "./use-weekend-classifica";
 import {
   buildLiveWeekendResults,
@@ -84,9 +84,68 @@ export function buildPilotaBreakdown(
   return sections;
 }
 
+/** Etichette delle previsioni, nell'ordine in cui si mostrano. */
+export const PREVISIONI_LABELS: Record<keyof Previsioni, string> = {
+  safetyCar: "Safety Car",
+  virtualSafetyCar: "Virtual Safety Car",
+  redFlag: "Red Flag",
+  gommeWet: "Gomme Wet",
+  poleVince: "Pole vince",
+  numeroDnf: "Numero DNF",
+};
+
+/**
+ * Stato di ogni previsione (detto, successo, giusta, punti) a partire dagli
+ * eventi del weekend e dal dettaglio punti di `calcolaPuntiWeekend`. Stessa
+ * lista per il mio punteggio live e per il dettaglio degli altri giocatori.
+ */
+export function buildPrevisioniStatus(
+  previsioni: Previsioni,
+  events: RaceWeekendResults["events"],
+  dettaglio: Record<string, number>,
+): LivePrevisioneStatus[] {
+  const items: { key: Exclude<keyof Previsioni, "numeroDnf">; happened: boolean }[] = [
+    { key: "safetyCar", happened: events.safety_car },
+    { key: "virtualSafetyCar", happened: events.virtual_safety_car },
+    { key: "redFlag", happened: events.red_flag },
+    { key: "gommeWet", happened: events.wet_tyres },
+    { key: "poleVince", happened: events.pole_won },
+  ];
+  const out: LivePrevisioneStatus[] = items.map((p) => {
+    const prediction = previsioni[p.key];
+    return {
+      key: p.key,
+      label: PREVISIONI_LABELS[p.key],
+      prediction,
+      happened: p.happened,
+      correct: prediction === null ? null : prediction === p.happened,
+      points: dettaglio[p.key] ?? 0,
+    };
+  });
+  const dnfPred = previsioni.numeroDnf;
+  out.push({
+    key: "numeroDnf",
+    label: PREVISIONI_LABELS.numeroDnf,
+    prediction: dnfPred,
+    happened: events.total_dnf as unknown as boolean,
+    correct: dnfPred === null ? null : dnfPred === events.total_dnf,
+    points: dettaglio.numeroDnf ?? 0,
+  });
+  return out;
+}
+
+/** Punti possibili di una previsione SÌ/NO, per il payoff "+6 se resta così". */
+export { PREVISIONI_PUNTI };
+
 export interface PlayerWeekendDetail {
   piloti: LivePilotaScore[];
   totalPoints: number;
+  pilotiPoints: number;
+  previsioniPoints: number;
+  /** Vuoto quando le previsioni non contano (sessione diversa dalla gara) */
+  previsioniStatus: LivePrevisioneStatus[];
+  /** Le previsioni contano: gara live o gara in archivio */
+  isRace: boolean;
   events: RaceWeekendResults["events"];
   liveResults: RaceWeekendResults;
 }
@@ -160,7 +219,20 @@ export function computePlayerWeekendDetail(
     };
   });
 
-  return { piloti, totalPoints: calc.total, events: liveResults.events, liveResults };
+  const previsioniStatus = isRace && previsioniRow
+    ? buildPrevisioniStatus(previsioniIn, liveResults.events, calc.previsioniDettaglio)
+    : [];
+
+  return {
+    piloti,
+    totalPoints: calc.total,
+    pilotiPoints: calc.pilotiPoints,
+    previsioniPoints: calc.previsioniPoints,
+    previsioniStatus,
+    isRace,
+    events: liveResults.events,
+    liveResults,
+  };
 }
 
 /**

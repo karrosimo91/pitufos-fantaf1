@@ -15,6 +15,21 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.11.6",
+    date: "11 Ottobre 2026",
+    summary: "Il dettaglio di un Team Principal nel weekend parla la stessa lingua del tab \"I miei\": previsioni vive, confronto con te, posizione e totale.",
+    sections: [
+      {
+        title: "Gara",
+        items: [
+          "Tocca un Team Principal nella classifica weekend (in live o a sessione finita): in alto punteggio e posizione nel weekend, poi PILOTI · PREVISIONI · CAMBI e la riga VS TE con il distacco, i piloti in comune e diversi e il capitano a confronto.",
+          "Le sue previsioni si vedono come le tue: in attesa, presa o sbagliata, con quanto valgono se restano così. Gli aggiornamenti mostrano il bersaglio (Boost su chi, Sesto Uomo chi, Previsione Doppia su cosa).",
+          "Ogni pilota ha la riga live con il dettaglio per sessione al tocco; in fondo il totale del weekend al netto delle penalità cambi.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.11.5",
     date: "11 Ottobre 2026",
     summary: "In Gara la Classifica Generale live mostra i distacchi invece dei punti del weekend, e arriva il sub-tab DUELLI con i testa a testa fra posizioni adiacenti.",

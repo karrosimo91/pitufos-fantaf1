@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePlayerWeekendDetail, countsPrevisioni, lastArchivedResult } from "./player-breakdown";
+import { buildPrevisioniStatus, computePlayerWeekendDetail, countsPrevisioni, lastArchivedResult } from "./player-breakdown";
 import { calcolaPuntiWeekend, type RaceWeekendResults } from "./scoring";
 import type { PlayerFormazione, PlayerPrevisioni } from "./use-weekend-classifica";
 
@@ -62,5 +62,42 @@ describe("lastArchivedResult", () => {
   it("prende la sessione più avanzata disponibile", () => {
     expect(lastArchivedResult(4, archivio)?.position).toBe(20);
     expect(lastArchivedResult(4, { ...archivio, race: [] })?.position).toBe(5);
+  });
+});
+
+describe("buildPrevisioniStatus", () => {
+  it("una riga per previsione nell'ordine fisso, con detto, successo, esito e punti", () => {
+    const st = buildPrevisioniStatus(
+      { safetyCar: true, virtualSafetyCar: false, redFlag: null, gommeWet: false, poleVince: true, numeroDnf: 2 },
+      { safety_car: true, virtual_safety_car: true, red_flag: false, wet_tyres: false, pole_won: false, total_dnf: 2 },
+      { safetyCar: 4, gommeWet: 2, numeroDnf: 5 },
+    );
+    expect(st.map((p) => p.key)).toEqual(["safetyCar", "virtualSafetyCar", "redFlag", "gommeWet", "poleVince", "numeroDnf"]);
+    expect(st[0]).toMatchObject({ label: "Safety Car", prediction: true, happened: true, correct: true, points: 4 });
+    expect(st[1]).toMatchObject({ prediction: false, happened: true, correct: false, points: 0 });
+    expect(st[2]).toMatchObject({ prediction: null, correct: null, points: 0 });
+    expect(st[3]).toMatchObject({ prediction: false, happened: false, correct: true, points: 2 });
+    expect(st[5]).toMatchObject({ key: "numeroDnf", prediction: 2, correct: true, points: 5 });
+    expect(Number(st[5].happened)).toBe(2);
+  });
+});
+
+describe("computePlayerWeekendDetail · previsioni e totali", () => {
+  it("in archivio con la gara salvata espone totali piloti/previsioni e lo stato delle previsioni", () => {
+    const d = computePlayerWeekendDetail(formazione, previsioni, EMPTY_SNAP, new Map(), archivio, "");
+    expect(d.isRace).toBe(true);
+    expect(d.previsioniStatus).toHaveLength(6);
+    expect(d.pilotiPoints + d.previsioniPoints).toBe(d.totalPoints);
+    const sc = d.previsioniStatus.find((p) => p.key === "safetyCar")!;
+    expect(sc.correct).toBe(true);
+    expect(sc.points).toBeGreaterThan(0);
+  });
+
+  it("in qualifica le previsioni non contano: lista vuota e zero punti previsioni", () => {
+    const soloQ: RaceWeekendResults = { ...archivio, race: [] };
+    const d = computePlayerWeekendDetail(formazione, previsioni, EMPTY_SNAP, new Map(), soloQ, "");
+    expect(d.isRace).toBe(false);
+    expect(d.previsioniStatus).toEqual([]);
+    expect(d.previsioniPoints).toBe(0);
   });
 });

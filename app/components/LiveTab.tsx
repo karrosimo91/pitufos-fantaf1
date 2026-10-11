@@ -252,6 +252,10 @@ export default function LiveTab({
           previousResults={data.previousResults}
           sessionType={sessionType}
           penalitaCambi={data.penalitaByUser.get(selectedFormazione.user_id) ?? 0}
+          classifica={classifica}
+          formazioni={data.formazioni}
+          userId={userId}
+          live={!debug && live.connected}
           onClose={() => setSelectedPlayer(null)}
         />
       )}
