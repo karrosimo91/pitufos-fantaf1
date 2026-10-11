@@ -235,7 +235,10 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
   `lib/use-driver-insights.ts` (forma, delta prezzo, chi lo ha in lega, ha corso l'ultimo GP).
 - **Gara:** `LiveTab` (barra sessione, hero con rivale, eventi tradotti `lib/live-events.ts`, previsioni vive
   `lib/previsioni-live.ts`, formazioni svelate), `ProvisionalView`, `WeekendArchivioTab`; il recap del GP
-  precedente resta visibile fino alla deadline successiva.
+  precedente resta visibile fino alla deadline successiva. Sub-tab GENERALE (stagione + weekend live, solo
+  distacchi da chi precede e dal leader, niente punti weekend) e DUELLI (testa a testa fra posizioni adiacenti,
+  distacco e come si muove nel weekend): calcolo puro in `lib/classifica-generale-live.ts`, hook unico
+  `lib/use-classifica-generale-live.ts`.
 - **Recap:** `/risultati?round=` con `components/recap/WeekendRecap.tsx` e derivazioni pure `lib/recap.ts`.
 - **Rivali:** `/classifica` con `components/rivali/*` (forma, scheda stagione con testa a testa, chi ha chi),
   Classifica Reale dai `real_points` di `weekend_scores` via `use-statistiche`.

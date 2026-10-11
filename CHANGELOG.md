@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.11.5 — 11 Ottobre 2026
+
+### Gara: Classifica Generale live con i distacchi, nuovo sub-tab DUELLI
+- **Classifica Generale live senza i punti del weekend** (`components/live/ClassificaGeneraleLive.tsx`): il "+N" del weekend accanto al totale e la pill "N REALE" spariscono (i punti del weekend stanno nel sub-tab WEEKEND; la pill, basata sulla posizione di stagione e non su quella del weekend, era anche sbagliata). Al loro posto, come in Rivali, il distacco da chi precede (il secondo quanto ha dal primo, il terzo dal secondo…) e dal leader, aggiornati in tempo reale, più la freccia ▲/▼ se la posizione è cambiata rispetto a inizio weekend.
+- **Sub-tab DUELLI** (`components/live/DuelliLive.tsx`), in live e a sessione finita: un testa a testa per ogni coppia di posizioni adiacenti della generale (P1 vs P2, P2 vs P3, …) con il distacco attuale e come si è mosso nel weekend (chi insegue recupera, chi precede allunga, sorpasso rispetto a inizio weekend). I duelli che riguardano chi guarda sono evidenziati. La riga dei sub-tab scorre in orizzontale sugli schermi stretti.
+- Calcolo in `lib/classifica-generale-live.ts` (funzioni pure, testate: totale senza doppio conteggio delle sessioni già calcolate, posizione a inizio weekend, distacchi, duelli) e hook unico `lib/use-classifica-generale-live.ts`, istanziato una volta per `LiveTab` e `WeekendArchivioTab`.
+
 ## v1.11.4 — 10 Ottobre 2026
 
 ### Live: classifica ferma mentre race control scorre
