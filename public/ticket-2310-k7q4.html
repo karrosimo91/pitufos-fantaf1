@@ -103,17 +103,26 @@ button{font:inherit;cursor:pointer}
 @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
 /* console */
-.console{margin-top:26px;background:var(--con-bg);border-radius:14px;overflow:hidden}
-.console .bar{display:flex;justify-content:space-between;padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--con-dim);border-bottom:1px solid #22306A}
-.out{font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--con-ink);padding:12px 14px;height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
-.out .p{color:var(--con-prompt)}
-.out .dim{color:var(--con-dim)}
-.out .bad{color:#FF8A80}
-.out .good{color:#7FE3AE}
-.cin{display:flex;align-items:center;gap:8px;padding:10px 14px 14px;font-family:var(--mono);font-size:13px}
-.cin label{color:var(--con-prompt);white-space:nowrap}
-.cin input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid #2B3A7A;color:var(--con-ink);font-family:var(--mono);font-size:16px;padding:6px 2px;caret-color:var(--con-prompt)}
-.cin input:focus{outline:none;border-bottom-color:var(--con-prompt)}
+.console{margin-top:26px;background:#0c0c0c;border-radius:8px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.console .bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;font-family:var(--sans);font-size:12.5px;color:#eaeaea;background:#1f1f1f}
+.console .bar .wbtns{display:flex;gap:7px}
+.console .bar .wbtns i{width:11px;height:11px;border-radius:50%;display:block}
+.console .bar .wbtns i:nth-child(1){background:#febc2e}.console .bar .wbtns i:nth-child(2){background:#28c840}.console .bar .wbtns i:nth-child(3){background:#ff5f57}
+.out{font-family:"Cascadia Mono","Consolas",var(--mono);font-size:13px;line-height:1.5;color:#cccccc;padding:12px 14px;height:320px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;background:#0c0c0c}
+.out .p{color:#cccccc}
+.out .dim{color:#767676}
+.out .bad{color:#e74856}
+.out .good{color:#16c60c}
+.out .cy{color:#3b78ff}
+.out .warn{color:#f9f1a5}
+.out .cc{color:#d7a3ff}
+.cin{display:flex;align-items:center;gap:6px;padding:0 14px 14px;font-family:"Cascadia Mono","Consolas",var(--mono);font-size:13px;background:#0c0c0c}
+.cin label{color:#cccccc;white-space:nowrap}
+.cin.claude label{color:#d7a3ff}
+.cin input{flex:1;min-width:0;background:transparent;border:0;color:#cccccc;font-family:"Cascadia Mono","Consolas",var(--mono);font-size:16px;padding:6px 2px;caret-color:#cccccc}
+.cin input:focus{outline:none}
+#crun{flex:none;font-family:var(--sans);font-size:12px;color:#cccccc;background:#2b2b2b;border:1px solid #3a3a3a;border-radius:5px;padding:5px 10px;cursor:pointer}
+#crun:active{background:#3a3a3a}
 
 /* finale */
 .finale{margin-top:34px}
@@ -142,55 +151,132 @@ button{font:inherit;cursor:pointer}
   .unlocked .disc svg{animation:none}
   .shake{animation:none}
 }
-/* login federato */
-.login{min-height:100vh;min-height:100dvh;padding:40px 16px;background:linear-gradient(180deg,var(--blue) 0 200px,var(--bg) 200px);display:flex;flex-direction:column;align-items:center;gap:18px}
-.lcard{width:100%;max-width:440px;background:var(--surface);border-radius:6px;padding:36px 36px 30px;box-shadow:0 18px 50px rgba(10,20,60,.22)}
-.brand{font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--blue);margin-bottom:22px}
-.brand span{font-weight:400}
-.brand::after{content:"";display:block;width:34px;height:4px;background:var(--yellow);margin-top:6px;border-radius:2px}
-.ltitle{font-size:24px;font-weight:600;margin:0 0 14px}
-.lin{width:100%;font:inherit;font-size:16px;padding:8px 0;border:0;border-bottom:1.5px solid var(--muted);background:transparent;color:var(--ink);border-radius:0}
-.lin:focus{outline:none;border-bottom-color:var(--blue)}
-.lsmall{font-size:14px;color:var(--muted);margin:14px 0 0}
-.lerr{font-size:15px;color:var(--err);margin:0 0 10px}
+/* wrike */
+.wbar{margin:0 0 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.wtabs{display:flex;gap:6px;white-space:nowrap}
+.wtab{font-size:12px;padding:3px 10px;border-radius:4px;background:color-mix(in srgb,var(--blue) 8%,transparent);color:var(--muted)}
+.wtab.on{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--ink);font-weight:600}
+.wtask{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px;margin-bottom:18px;min-width:0}
+.wtitle{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+.wcheck{flex:none;font-size:12px;font-weight:600;color:#fff;background:#17b26a;border-radius:4px;padding:3px 9px;white-space:nowrap}
+.wcheck.done{background:var(--blue)}
+.wtitle h1{font-size:17px;line-height:1.3;font-weight:700;margin:0;letter-spacing:-.01em}
+.wrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.wassign{display:flex;align-items:center}
+.wav{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-left:-6px;border:2px solid var(--surface);flex:none}
+.wav:first-child{margin-left:0}
+.wav.ms{background:#1f8a5b}.wav.me{background:#b4245b}.wav.am{background:#6b4fa0}.wav.ec{background:#8a5a2b}
+.wmore{font-size:12px;color:var(--muted);margin-left:8px}
+.wdate{font-size:13px;color:var(--muted)}
+.wactions{display:flex;gap:6px;overflow-x:auto;white-space:nowrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.wactions span{font-size:12.5px;color:var(--blue);background:color-mix(in srgb,var(--blue) 7%,transparent);border-radius:6px;padding:4px 9px}
+.wdesc{font-size:15px;margin-bottom:4px}
+.wpath{font-size:13px;color:var(--muted);margin:0 0 10px;word-break:break-word}
+.wlabel{font-weight:700;margin:12px 0 4px}
+.wval{margin:0 0 4px;color:var(--ink)}
+.wval p{margin:0 0 6px}
+.wlog{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:12px}
+.wlogitem{display:flex;gap:10px;font-size:14px}
+.wlogitem > div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wlogitem b{font-weight:600}
+.wtime{font-size:12px;color:var(--muted)}
+.wact{color:var(--muted);font-size:13.5px;line-height:1.5}
+.wment{color:var(--blue);font-weight:600}
+.wcomment{margin-top:14px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--muted);font-size:14px}
+.wintro{font-size:15px;line-height:1.5;margin:18px 0 10px;max-width:60ch}
+/* login Microsoft */
+.login{min-height:100vh;min-height:100dvh;padding:24px 16px 56px;background:#fff;display:flex;flex-direction:column;align-items:center;color:#1b1b1b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .login{background:#1b1b1b}}
+:root[data-theme="dark"] .login{background:#1b1b1b}
+.lcard{width:100%;max-width:440px;background:#fff;color:#1b1b1b;padding:44px 44px 36px;box-shadow:0 2px 6px rgba(0,0,0,.18);border-radius:2px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lcard{background:#2b2b2b;color:#f3f2f1}}
+:root[data-theme="dark"] .lcard{background:#2b2b2b;color:#f3f2f1}
+.mslogo{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.mslogo .sq{display:grid;grid-template-columns:11px 11px;grid-template-rows:11px 11px;gap:2px}
+.mslogo .sq i{display:block}
+.mslogo .sq i:nth-child(1){background:#f25022}.mslogo .sq i:nth-child(2){background:#7fba00}.mslogo .sq i:nth-child(3){background:#00a4ef}.mslogo .sq i:nth-child(4){background:#ffb900}
+.mslogo span{font-size:19px;color:#5e5e5e;font-weight:600}
+.tenant{margin-bottom:16px;font-weight:700;color:#0a5aa0;font-size:18px;line-height:1.05}
+.tenant small{display:block;font-size:8.5px;letter-spacing:.09em;margin-bottom:3px}
+.ltitle{font-size:24px;font-weight:600;margin:0 0 12px;color:inherit}
+.lin{width:100%;font:inherit;font-size:15px;padding:6px 0 8px;border:0;border-bottom:1px solid #666;background:transparent;color:inherit;border-radius:0}
+.lin:focus{outline:none;border-bottom:2px solid #0067b8}
+.lback{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:0;margin:0 0 14px;color:inherit;font-size:15px;cursor:pointer}
+.lback svg{width:15px;height:15px}
+.llink{display:inline-block;background:none;border:0;padding:0;color:#0067b8;font-size:13px;cursor:pointer}
+.lplain{font-size:13px;color:inherit;margin:14px 0 0}
+.lerr{font-size:13px;color:#e81123;margin:6px 0 0}
 .lerr:empty{display:none}
-.linfo{font-size:15px;color:var(--ok);margin:0 0 10px}
+.lerr small{display:block;color:inherit;margin-top:6px;font-size:13px;opacity:.85}
+.linfo{font-size:13px;color:#107c10;margin:6px 0 0}
 .linfo:empty{display:none}
-.lerr small{display:block;color:var(--ink);margin-top:6px;font-size:15px}
-.lback{background:none;border:0;padding:0;margin:0 0 12px;color:var(--ink);font-size:15px}
-.linklike{background:none;border:0;padding:0;margin:14px 0 0;color:var(--blue);font-size:15px;text-decoration:underline;text-underline-offset:3px}
-.linklike.hot{font-weight:600}
-.lactions{display:flex;justify-content:flex-end;margin-top:26px}
-.lactions .btn{min-width:110px;border-radius:2px}
-.login .console{width:100%;max-width:640px;margin-top:0}
-.login .hint{max-width:440px;width:100%}
-.lhintrow{max-width:440px;width:100%;display:flex;justify-content:flex-end}
-@media (max-width:520px){.lcard{padding:28px 22px 24px}.lactions .btn{width:auto}}
-/* posta */
-.inbox{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:4px 0 12px}
-.mrow{display:block;width:100%;text-align:left;background:var(--surface);border:0;border-bottom:1px solid var(--line);padding:10px 12px;color:var(--ink);font-size:15px}
-.mrow:last-child{border-bottom:0}
-.mrow{overflow:hidden;max-width:100%}
-.inbox,.mread{max-width:100%;min-width:0}
-.msg{min-width:0;max-width:100%}
-.maddr code{word-break:break-all}
-.mrow.sel{background:color-mix(in srgb,var(--blue) 10%,var(--surface));box-shadow:inset 3px 0 0 var(--blue)}
-.mrow.unread .msub{font-weight:600}
-.mrow.gone{opacity:.45;text-decoration:line-through}
-.mrow .mfrom{font-weight:600;display:flex;justify-content:space-between;gap:8px}
-.mrow .mtag{font-size:12px;font-weight:600;color:var(--err);white-space:nowrap}
-.mrow .msub{display:block}
-.mrow .mprev{display:block;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mread{background:var(--bg);border-radius:10px;padding:14px;margin:0 0 10px}
-.mread h3{font-size:18px;margin:0 0 6px;font-weight:600}
-.maddr{font-size:14px;margin:0 0 12px;color:var(--muted)}
-.maddr code{font-size:13px}
-.mbody{font-size:15px;margin:0 0 12px}
-.mbody p{margin:0 0 8px}
-.mlink{display:inline-block;background:var(--blue);color:var(--surface);border:0;border-radius:6px;padding:8px 14px;font-size:15px;font-weight:600}
-.murl{display:block;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;word-break:break-all}
-.mactions{display:flex;gap:8px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:10px}
-.mbtn{background:var(--surface);border:1.5px solid var(--err);color:var(--err);border-radius:8px;padding:8px 12px;font-size:15px;font-weight:600}
+.lactions{display:flex;justify-content:flex-end;gap:8px;margin-top:26px}
+.msbtn{font:inherit;font-size:15px;min-width:108px;padding:8px 12px;border:0;border-radius:0;cursor:pointer;background:#0067b8;color:#fff}
+.msbtn.sec{background:#ebebeb;color:#1b1b1b}
+:root[data-theme="dark"] .msbtn.sec{background:#3b3b3b;color:#f3f2f1}
+.msbtn:focus-visible{outline:2px solid currentColor;outline-offset:1px}
+.lsignopts{width:100%;max-width:440px;background:#fff;color:#1b1b1b;margin-top:14px;padding:14px 16px;box-shadow:0 2px 6px rgba(0,0,0,.18);display:flex;align-items:center;gap:14px;font-size:15px}
+:root[data-theme="dark"] .lsignopts{background:#2b2b2b;color:#f3f2f1}
+.lfoot{width:100%;max-width:440px;display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;font-size:12px;color:#8a8a8a}
+.login .console{width:100%;max-width:640px;margin-top:16px}
+.login .hint{max-width:440px;width:100%;margin-top:12px}
+.lhintrow{max-width:440px;width:100%;display:flex;justify-content:flex-end;margin-top:8px}
+@media (max-width:520px){.lcard,.lsignopts{padding-left:24px;padding-right:24px}}
+/* Outlook mobile */
+.ol{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:4px 0 12px;background:var(--surface)}
+.olhdr{background:#0f6cbd;color:#fff;padding:12px 14px 10px}
+.olhrow{display:flex;align-items:center;gap:10px}
+.olme{width:30px;height:30px;border-radius:50%;background:#2b5ea8;overflow:hidden;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.olme img{width:100%;height:100%;object-fit:cover}
+.olttl{font-size:20px;font-weight:800;flex:1;letter-spacing:-.01em}
+.olicn{display:flex;gap:4px;background:rgba(255,255,255,.18);border-radius:16px;padding:5px 10px}
+.olicn svg{width:17px;height:17px;display:block}
+.olseg{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14px}
+.olpill{background:rgba(255,255,255,.22);border-radius:14px;padding:3px 12px;font-weight:600}
+.olseg .f{margin-left:auto;display:flex;align-items:center;gap:5px;opacity:.95}
+.ollist{background:var(--surface)}
+.olrow{display:flex;gap:11px;width:100%;text-align:left;background:var(--surface);border:0;border-bottom:1px solid var(--line);padding:11px 13px;color:var(--ink);cursor:pointer;align-items:flex-start}
+.olrow:last-child{border-bottom:0}
+.olav{width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;overflow:hidden}
+.olav img{width:100%;height:100%;object-fit:cover}
+.olc{flex:1;min-width:0}
+.olc .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.olfrom{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oltime{font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
+.olsub{font-size:14px;font-weight:600;margin:1px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.olprev{font-size:13.5px;color:var(--muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.olunread{position:relative}
+.olunread::before{content:"";position:absolute;left:4px;top:18px;width:9px;height:9px;border-radius:50%;background:#0f6cbd}
+.olrow.gone{opacity:.5}
+.olrow.gone .olsub{text-decoration:line-through}
+.oltag{font-size:11px;font-weight:700;color:var(--err);white-space:nowrap}
+.olnav{display:flex;border-top:1px solid var(--line);background:var(--surface)}
+.olnav span{flex:1;text-align:center;font-size:11px;color:var(--muted);padding:8px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.olnav span.on{color:#0f6cbd;font-weight:600}
+.olnav svg{width:20px;height:20px}
+/* lettura */
+.olread{background:var(--surface)}
+.olrbar{display:flex;align-items:center;gap:14px;padding:10px 13px;border-bottom:1px solid var(--line)}
+.olback{background:none;border:0;padding:0;color:var(--ink);display:flex;cursor:pointer}
+.olback svg{width:22px;height:22px}
+.olrttl{font-size:21px;font-weight:800;line-height:1.25;letter-spacing:-.01em;padding:14px 16px 10px;margin:0}
+.olsender{display:flex;gap:11px;padding:0 16px 12px;border-bottom:1px solid var(--line)}
+.olsender .olav{width:40px;height:40px}
+.olsb{flex:1;min-width:0}
+.olsb .n{font-size:15px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.olsb .n .t{font-size:12px;color:var(--muted);font-weight:400;white-space:nowrap}
+.olsb .to{font-size:13px;color:var(--muted);margin-top:2px;word-break:break-word}
+.olbody{font-size:15px;line-height:1.5;padding:14px 16px 4px}
+.olbody p{margin:0 0 10px}
+.olbody .sig{color:var(--muted);font-size:13px}
+.ollink{display:inline-block;background:#0f6cbd;color:#fff;border:0;border-radius:6px;padding:9px 16px;font-size:15px;font-weight:600;cursor:pointer;margin:2px 0 6px}
+.olurl{display:block;font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 8px;word-break:break-all}
+.olactions{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);padding:9px 10px;overflow-x:auto;background:var(--surface)}
+.olact{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-size:13px;padding:6px 8px;border-radius:8px;white-space:nowrap;cursor:pointer}
+.olact svg{width:17px;height:17px}
+.olact.rep{color:var(--err);font-weight:600;border:1px solid color-mix(in srgb,var(--err) 40%,transparent)}
+.olmsg{font-size:14px;padding:10px 16px 2px;margin:0}
+.olmsg.ok{color:var(--ok)}.olmsg.err{color:var(--err)}
 /* hubspot */
 .hsbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:4px 0 12px;background:var(--surface)}
 .hsbox h3{font-size:16px;margin:0 0 4px;font-weight:600}
@@ -214,53 +300,75 @@ button{font:inherit;cursor:pointer}
 <body>
 <section class="login" id="login" hidden>
   <div class="lcard">
-    <div class="brand">24h<span>assistance</span></div>
     <div id="lstep-user">
+      <div class="mslogo"><span class="sq"><i></i><i></i><i></i><i></i></span><span>Microsoft</span></div>
       <h1 class="ltitle">Accedi</h1>
+      <input class="lin" id="luser" type="email" placeholder="Email, telefono o Skype" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" aria-label="Email, telefono o Skype">
       <p class="lerr" id="luser-err"></p>
-      <input class="lin" id="luser" type="email" placeholder="Posta elettronica aziendale" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" aria-label="Posta elettronica aziendale">
-      <p class="lsmall">Accedi con il tuo account aziendale 24hassistance.</p>
-      <div class="lactions"><button class="btn" type="button" id="lnext">Avanti</button></div>
+      <p class="lplain">Se non si ha un account, <span class="llink">fare clic qui per crearne uno.</span></p>
+      <p class="lplain"><span class="llink">Problemi di accesso all'account?</span></p>
+      <div class="lactions"><button class="msbtn sec" type="button" id="lback-u">Indietro</button><button class="msbtn" type="button" id="lnext">Avanti</button></div>
     </div>
     <div id="lstep-pw" hidden>
-      <button class="lback" type="button" id="lback">‹ <span id="lwho"></span></button>
-      <h1 class="ltitle">Immetti la password</h1>
-      <p class="linfo" id="lpw-info"></p>
-      <div class="lerr" id="lpw-err"></div>
+      <div class="tenant"><small>ASSICURA LE TUE PASSIONI</small>24h assistance.com</div>
+      <button class="lback" type="button" id="lback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span id="lwho"></span></button>
+      <h1 class="ltitle">Immettere la password</h1>
       <input class="lin" id="lpw" type="password" placeholder="Password" autocomplete="off" enterkeyhint="go" aria-label="Password">
-      <button class="linklike" type="button" id="lforgot">Password dimenticata?</button>
-      <div class="lactions"><button class="btn" type="button" id="lsignin">Accedi</button></div>
+      <div class="lerr" id="lpw-err"></div>
+      <p class="linfo" id="lpw-info"></p>
+      <p class="lplain">L'account verrà memorizzato in questo dispositivo.</p>
+      <p class="lplain"><button class="llink" type="button" id="lforgot">Ho dimenticato la password</button></p>
+      <div class="lactions"><button class="msbtn" type="button" id="lsignin">Accedi</button></div>
     </div>
   </div>
+  <div class="lsignopts">🔑 &nbsp;Opzioni di accesso</div>
+  <div class="lfoot"><span>Condizioni per l'utilizzo</span><span>Privacy e cookie</span><span>···</span></div>
   <div class="lhintrow" id="lhintrow" hidden><button class="ghost" type="button" id="lhint">Mostra un suggerimento (costa 1 caffè)</button></div>
   <p class="hint" id="lhinttext" hidden></p>
-  <div id="lslot" style="width:100%;display:flex;justify-content:center"></div>
-</section>
+  <div id="lslot" style="width:100%;display:flex;flex-direction:column;align-items:center"></div>
+  </section>
 <main id="app" hidden>
-  <div class="topbar">
-    <span class="desk">Helpdesk 24h</span>
-    <span class="pill" id="status">Aperto</span>
+  <div class="wbar">
+    <div class="wtabs"><span class="wtab">0) Richieste altri team</span><span class="wtab">Attivazione - Disattivazione utente</span><span class="wtab on">IT SYS - Assistenza</span></div>
   </div>
 
-  <section class="hero">
-    <h1><span class="num">#2310</span>Offboarding dell’utente m.signo</h1>
-    <dl class="meta">
-      <dt>Richiedenti</dt><dd>Colleghi ed ex colleghi di 24h</dd>
-      <dt>Assegnato a</dt><dd>Marco Signò, Senior System Administrator</dd>
-      <dt>Priorità</dt><dd>Alta, stasera si beve</dd>
-    </dl>
-    <p class="lead">Ci sono due pacchi in giacenza a tuo nome. Il magazzino li rilascia solo a ticket risolto: cinque passaggi. L’ultimo si chiude da console. Se ti blocchi c’è il suggerimento, ma ognuno costa un caffè offerto al gruppo.</p>
-    <ol class="steps" id="steps" aria-label="Avanzamento ticket"></ol>
+  <section class="wtask">
+    <div class="wtitle"><span class="wcheck" id="status">Attiva</span>
+      <h1>Assistenza sistemistica (Password, Terminal, Office) · Disattivazione utenza dipendente · Marco Signò</h1>
+    </div>
+    <div class="wrow">
+      <div class="wassign"><span class="wav ms">MS</span><span class="wav me">ME</span><span class="wav am">AM</span></div>
+      <span class="wdate">22 ott · 1g</span>
+    </div>
+    <div class="wactions"><span>Elemento secondario</span><span>File</span><span>Lavagna</span><span>Approvazione</span><span>Dipendenza</span></div>
+    <div class="wdesc">
+      <p class="wpath">IT / Assistenza sistemistica / Disattivazione utenza dipendente</p>
+      <p class="wlabel">Da che data è possibile cancellare le utenze del dipendente?</p>
+      <p class="wval">2026-10-22</p>
+      <p class="wlabel">Descrivi brevemente la richiesta:</p>
+      <div class="wval"><p>Ciao,</p><p>dal 22/10 sarà possibile chiudere le utenze del collega Marco Signò.</p><p>Organizzatevi pure con lui per la restituzione delle dotazioni aziendali.</p><p>Grazie</p></div>
+    </div>
+    <div class="wlog">
+      <div class="wlogitem"><span class="wav ec">EC</span><div><b>Eleonora Cassini</b> <span class="wtime">oggi</span>
+        <span class="wact">Ha assegnato l'attività a Marco Signò, Moustafa El Roubeigy, Alessandro Monfrecola</span>
+        <span class="wact">Ha incluso l'attività in 0) Richieste altri team, Attivazione - Disattivazione utente, IT SYS - Assistenza</span></div></div>
+      <div class="wlogitem"><span class="wav ec">EC</span><div><b>Eleonora Cassini</b> <span class="wtime">oggi</span>
+        <span class="wact"><span class="wment">@Marco Signò</span> è il tuo ultimo giro. Prima di spegnere tutto, chiudi tu la richiesta: i passaggi sono qui sotto.</span></div></div>
+    </div>
+    <div class="wcomment">Aggiungi un commento…</div>
+    <p class="wintro">Due pacchi sono in giacenza a tuo nome. Si sbloccano a richiesta risolta: cinque passaggi, l'ultimo da console. Ogni suggerimento costa un caffè offerto al gruppo.</p>
+    <ol class="steps" id="steps" aria-label="Avanzamento"></ol>
   </section>
 
   <section class="thread" id="thread" aria-live="polite"></section>
 
   <section class="console" id="console" hidden aria-label="Console">
-    <div class="bar"><span>m.signo@helpdesk-24h</span><span>bash</span></div>
+    <div class="bar"><span>Prompt dei comandi — m.signo</span><span class="wbtns"><i></i><i></i><i></i></span></div>
     <div class="out" id="out" role="log"></div>
     <form class="cin" id="cform" autocomplete="off">
-      <label for="cmd" id="plabel">m.signo:~$</label>
+      <label for="cmd" id="plabel">C:\Users\m.signo&gt;</label>
       <input id="cmd" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Comando">
+      <button type="button" id="crun" aria-label="Invia comando">invio</button>
     </form>
   </section>
 
@@ -309,6 +417,7 @@ button{font:inherit;cursor:pointer}
     <div class="debt" id="debt"></div>
     <button class="ghost" type="button" onclick="try{localStorage.removeItem('ticket2310-signo')}catch(e){};location.reload()">Ricomincia da capo</button>
     <p class="sign">Buona strada nella nuova azienda, sistemista spettacolare. Il ticket è chiuso, i rapporti no.<br>I colleghi ed ex colleghi di 24h</p>
+    <p style="font-size:14px;color:var(--muted);margin:14px 0 0;line-height:1.7"><span style="font-family:var(--mono);font-size:12.5px;display:block;margin-bottom:4px">In copia, chi ha partecipato (33):</span>Gianmarco Azzini, Sara Baitieri, Roberta Basini, Fernando Begio Lay, Matteo Broggi, Cinzia Bucci, Maria Cristina Cappiello, Alessandro Cardillo, Simone Carroccia, Eleonora Cassini, Thomas Catozzi, Tommaso Cattaneo, Stefano Chinea, Fabio Colombo, Pietro Dominietto, Moustafa El Roubeigy, Antonio Esposito, Simone Gattarossa, Andrea Giannoni, Rita Giarone, Dario Giordano, Giuseppe Guidotto, Arianna Invernizzi, Christian Invernizzi, Simona Miglio, Alessandro Monfrecola, Antonella Munoz, Riccardo Nobile, Giulia Pascazio, Matteo Pontillo, Tommaso Pugassi, Simone Ranzani, Cristina Zizzi.</p>
   </section>
 </main>
 
@@ -336,35 +445,15 @@ button{font:inherit;cursor:pointer}
      hint:'Da console basta <code>passwd</code> (o <code>Set-ADAccountPassword</code>, se ti senti in Windows). La nuova password è nel promemoria: crociati, giallo e blu.',
      ok:'Accesso consentito.',shown:'parma'},
     {title:'Posta in arrivo',
-     body:`<p>Ti è arrivata la posta del tuo ultimo giorno, e parla parecchio del tuo regalo. Segnala come phishing le mail false e apri il pacco da quella vera del CEO.</p>`,
+     body:`<p>Ti è arrivata la posta del tuo ultimo giorno. Una di queste mail non è come sembra: segnala il phishing e apri il pacco dalla mail vera.</p>`,
      custom:'phishing',
-     hint:'Tocca ogni mail e guarda l’indirizzo vero dietro al nome, e dove porta il link. Un CEO vero non ti chiede gift card in segreto né la password di Microsoft 365. Le false sono due.',
-     ok:'Casella pulita.',shown:'2 segnalate'},
-    {title:'Claude non sa fare il caffè',
-     body:`<p>Hai collegato a Claude il server MCP della macchinetta del caffè. È connesso, i tool ci sono, eppure:</p>
-<div class="att"><span class="dim">&gt;</span> Claude, fammi un caffè
-Mi dispiace, non ho strumenti per preparare un caffè. Posso consigliarti una buona moka?
-
-<span class="dim">&gt;</span> /mcp
-macchinetta-caffe   <span class="good">✓ connesso</span>   3 tool
-  eroga_espresso, livello_cialde, decalcifica</div>
-<p>Qualcuno ha messo le mani nelle impostazioni di Claude Code. Quale tool è stato bloccato?</p>
-<div class="att"><span class="dim">// .claude/settings.json</span>
-{
-  "permissions": {
-    "deny": [
-      "Bash(rm -rf:*)",
-      "Read(./.env)",
-      "mcp__macchinetta-caffe__eroga_espresso"
-    ]
-  }
-}
-
-<span class="dim">ultima modifica: Arianna
-motivo: “da quando beve 4 caffè al giorno è irriconoscibile”</span></div>`,
-     label:'Tool bloccato',hashes:["1cbhvvdg0rt", "2cg1h8mch7a", "1m0l21y4g92", "1q2bcrt54bp"],
-     hint:'Le regole MCP nei permessi si scrivono mcp__nomeserver__nometool. Ti serve solo l’ultima parte.',
-     ok:'Regola rimossa. Claude: “Espresso in erogazione. È il quinto di oggi, non dirlo ad Arianna.” Il secondo pacco serve proprio a questa macchinetta.',shown:'eroga_espresso'},
+     hint:'Guarda l’indirizzo vero dietro al nome, non il tono. Un “CEO” che chiede buoni Amazon in segreto, da un dominio con una lettera di troppo (24hassistEnce), è il phishing. Stefano e Giulia sono veri.',
+     ok:'Casella pulita.',shown:'1 segnalata'},
+    {title:'Claude ha letto un file che non doveva',
+     body:`<p>Hai lasciato Claude Code acceso sul portatile e, senza una regola che glielo impedisse, ha letto un file che non doveva: un <code>.env</code> con dentro delle chiavi.</p><p>Dalla console qui sotto scrivi <code>claude</code> per aprire la sessione, guarda cosa è successo e aggiungi la regola <code>deny</code> giusta.</p>`,
+     console:true,
+     hint:'Dentro Claude Code scrivi <code>/permissions</code> per vedere le regole, poi aggiungi il blocco: <code>/permissions add deny Read(./.env)</code>.',
+     ok:'Permesso aggiunto. Claude non legge più l’.env.',shown:'deny Read(./.env)'},
     {title:'Workflow HubSpot in pausa',
      body:`<p>Il pacco parte da un workflow di HubSpot, ma il workflow si è fermato. Leggi cosa chiede, sistema le proprietà del tuo contatto e riattivalo.</p>`,
      custom:'hubspot',
@@ -423,7 +512,7 @@ ${hintShown?`<p class="hint">${s.hint}</p>`:''}`;
     }
     const done=state.stage>=stages.length;
     document.getElementById('finale').hidden=!done;
-    statusEl.textContent=done?'Risolto':state.stage===0?'Aperto':'In lavorazione';
+    statusEl.textContent=done?'Completata':state.stage===0?'Nuova':'Attiva';
     statusEl.classList.toggle('done',done);
     if(done){
       document.getElementById('debt').innerHTML=state.coffees===0?'Suggerimenti usati: zero. Il giro di caffè lo offriamo noi.':`Suggerimenti usati: ${state.coffees}<br>Caffè da offrire al gruppo: ${state.coffees}`;
@@ -449,33 +538,61 @@ ${hintShown?`<p class="hint">${s.hint}</p>`:''}`;
   });
   /* ---------- phishing ---------- */
   const mails=[
-    {id:'e',name:'Giulia Forlani',addr:'giulia.forlani@24hassistance.com',sub:'Re: stasera',fake:false,
-     body:'<p>Marcoooo ti scrivo dal telefono che sono in giro!!</p><p>Volevo solo dirti grazie per la pazienza quando ero la tua stagista. Stasera ci sono, ti tocca offrire 🍻</p><p>Inviato da iPhone</p>',link:null},
-    {id:'a',name:'Matteo Fossati',addr:'matteo.fossati@24hassistence.com',sub:'Urgente e riservato',fake:true,
-     body:'<p>Marco, sono in riunione e non posso parlare.</p><p>Mi serve un favore veloce prima che te ne vai: compra 5 gift card Amazon da 100 € e mandami i codici in foto qui. Ti rimborso domani.</p><p>Non dirlo a nessuno, è una sorpresa per il team.</p><p>Inviato da iPhone</p>',link:null},
-    {id:'d',name:'Stefano Chinea',addr:'stefano.chinea@24hassistance.com',sub:'Prima di andare',fake:false,
-     body:'<p>Ciao Marco,</p><p>prima che spegni il PC per l’ultima volta: occhio alla posta di oggi, c’è più di una mail sul tuo regalo e non tutte sono nostre.</p><p>Ci vediamo stasera.</p><p>Stefano</p>',link:null},
-    {id:'c',name:'Matteo Fossati',addr:'matteo.fossati@24hassistance.com.regalo-addio.top',sub:'Il tuo regalo d’addio ti aspetta',fake:true,
-     body:'<p>Gentile dipendente,</p><p>il tuo regalo d’addio è pronto. Per ritirarlo conferma entro 24 ore le tue credenziali Microsoft 365, altrimenti il regalo verrà annullato.</p>',
-     link:{label:'Ritira il regalo',url:'https://login-microsoft365.regalo-addio.top/24h/verify'}},
-    {id:'b',name:'Matteo Fossati',addr:'matteo.fossati@24hassistance.com',sub:'Un pensiero da tutti noi',fake:false,
-     body:'<p>Ciao Marco,</p><p>a nome di tutti i colleghi ed ex colleghi: per chi ha tenuto in piedi l’infrastruttura per tutti questi anni c’è un pacco in giacenza.</p><p>Nessun link strano, nessuna password da inserire. Chiudi il ticket e lo ritiri stasera.</p><p>Matteo</p>',
-     link:{label:'Apri il pacco',url:'https://helpdesk.24hassistance.com/ticket/2310'}}
+    {id:'e',name:'Giulia Forlani',addr:'giulia.forlani@gmail.com',sub:'Scusa se non ci sono',fake:false,ini:'GF',time:'11:42',
+     body:'<p>Ciao Marco, scusa il messaggio di corsa, ti scrivo dal telefono tra una cosa e l’altra qui al lavoro.</p><p>Mi dispiace un sacco non esserci stasera. Volevo dirti grazie per la pazienza di quando ero la tua stagista, hai fatto scuola. Fai buon viaggio a Dublino.</p><p>Inviato da Android</p>',link:null},
+    {id:'a',name:'Matteo Fossati',addr:'matteo.fossati@24hassistence.com',sub:'Urgente e riservato',fake:true,ini:'MF',time:'11:20',
+     body:'<p>Marco, sono in riunione e non posso parlare.</p><p>Mi serve un favore veloce prima che te ne vai: compra 5 buoni regalo Amazon da 100 € e mandami i codici in foto qui. Ti rimborso domani.</p><p>Non dirlo a nessuno, è una sorpresa per il team.</p><p>Inviato da iPhone</p>',link:null},
+    {id:'d',name:'Stefano Chinea',addr:'stefano.chinea@24hassistance.com',sub:'Un pensiero da tutti noi',fake:false,ini:'SC',time:'09:15',
+     body:'<p>Ciao Marco,</p><p>prima che spegni il PC per l’ultima volta: occhio alla posta di oggi, non tutte le mail sul tuo regalo sono nostre.</p><p>Quella vera è questa. A nome di tutti i colleghi ed ex colleghi c’è un pacco in giacenza per te: nessun link strano, nessuna password da inserire. Chiudi la richiesta e lo ritiri stasera.</p><p>Stefano</p>',
+     link:{label:'Apri il pacco',url:'https://wrike.com/open/task-2310-signo'}}
   ];
   function phState(){if(!state.ph)state.ph={sel:null,rep:[],read:[],msg:''};return state.ph;}
+  const olColors={e:'#7a4fb5',a:'#c23b7a',d:'#1f8a5b',f1:'#0f6cbd',f2:'#2b7de0'};
+  const esc2=x=>x.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const svg={bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+    search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>',
+    filter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>',
+    mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+    cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>',
+    apps:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>',
+    reply:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17l-6-5 6-5M3 12h11a4 4 0 0 1 4 4v2"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+    arch:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><path d="M5 8v12h14V8M10 12h4"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 9v5M12 17v.5"/></svg>',
+    dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'};
   function phishHTML(){
     const ph=phState();
-    const list=mails.map(m=>{
-      const rep=ph.rep.includes(m.id);
-      return `<button type="button" class="mrow${ph.sel===m.id?' sel':''}${ph.read.includes(m.id)?'':' unread'}${rep?' gone':''}" data-ph-open="${m.id}">
-<span class="mfrom"><span>${m.name}</span>${rep?'<span class="mtag">Segnalata</span>':''}</span>
-<span class="msub">${m.sub}</span><span class="mprev">${m.body.replace(/<[^>]+>/g,' ').trim().slice(0,70)}</span></button>`;}).join('');
     const m=mails.find(x=>x.id===ph.sel);
-    const read=m?`<div class="mread"><h3>${m.sub}</h3>
-<p class="maddr">${m.name} &lt;<code>${m.addr}</code>&gt;<br>A: marco.signo@24hassistance.com</p>
-<div class="mbody">${m.body}${m.link?`<button type="button" class="mlink" data-ph-link="${m.id}">${m.link.label}</button><span class="murl">${m.link.url}</span>`:''}</div>
-<div class="mactions">${ph.rep.includes(m.id)?'<span class="feedback">Già segnalata al team sicurezza.</span>':`<button type="button" class="mbtn" data-ph-rep="${m.id}">Segnala phishing</button>`}</div></div>`:'<p class="feedback" style="color:var(--muted)">Tocca una mail per aprirla.</p>';
-    return `<div class="inbox">${list}</div>${read}<p class="feedback ${/^ok:/.test(ph.msg)?'ok':'err'}" role="status">${ph.msg.replace(/^(ok|err):/,'')}</p>`;
+    if(m){
+      const rep=ph.rep.includes(m.id);
+      const av=`<span class="olav" style="background:${olColors[m.id]||'#0f6cbd'}">${m.ini||m.name[0]}</span>`;
+      return `<div class="ol olread">
+<div class="olrbar"><button type="button" class="olback" data-ph-back aria-label="Indietro">${svg.back}</button></div>
+<h2 class="olrttl">${esc2(m.sub)}</h2>
+<div class="olsender">${av}<div class="olsb"><div class="n"><span>${esc2(m.name)}</span><span class="t">${m.time}</span></div>
+<div class="to">${esc2(m.addr)}<br>A: agenzia.connexa@24hassistance.com</div></div></div>
+<div class="olbody">${m.body}${m.link?`<button type="button" class="ollink" data-ph-link="${m.id}">${m.link.label}</button><span class="olurl">${m.link.url}</span>`:''}</div>
+<div class="olactions">
+<button type="button" class="olact" data-ph-back>${svg.reply} Rispondi</button>
+<button type="button" class="olact" data-ph-back>${svg.trash}</button>
+<button type="button" class="olact" data-ph-back>${svg.arch}</button>
+${rep?'<span class="olact" style="color:var(--ok)">Segnalata</span>':`<button type="button" class="olact rep" data-ph-rep="${m.id}">${svg.warn} Segnala phishing</button>`}
+<button type="button" class="olact" data-ph-back>${svg.dots}</button></div>
+<p class="olmsg ${/^ok:/.test(ph.msg)?'ok':ph.msg?'err':''}" role="status">${ph.msg.replace(/^(ok|err):/,'')}</p></div>`;
+    }
+    const rows=mails.map(x=>{
+      const rep=ph.rep.includes(x.id), unread=!ph.read.includes(x.id);
+      return `<button type="button" class="olrow${unread?' olunread':''}${rep?' gone':''}" data-ph-open="${x.id}">
+<span class="olav" style="background:${olColors[x.id]||'#0f6cbd'}">${x.ini||x.name[0]}</span>
+<span class="olc"><span class="l1"><span class="olfrom">${esc2(x.name)}</span><span class="oltime">${rep?'<span class="oltag">Segnalata</span>':x.time}</span></span>
+<span class="olsub">${esc2(x.sub)}</span><span class="olprev">${esc2(x.body.replace(/<[^>]+>/g,String.fromCharCode(32)).replace(/\\s+/g,String.fromCharCode(32)).trim().slice(0,90))}</span></span></button>`;}).join('');
+    return `<div class="ol">
+<div class="olhdr"><div class="olhrow"><span class="olme">MS</span><span class="olttl">Posta in arrivo</span><span class="olicn">${svg.bell}${svg.search}</span></div>
+<div class="olseg"><span class="olpill">Evidenziata</span><span>Altro</span><span class="f">${svg.filter} Filtro</span></div></div>
+<div class="ollist">${rows}</div>
+<div class="olnav"><span class="on">${svg.mail}Posta</span><span>${svg.cal}Calendario</span><span>${svg.apps}App</span></div></div>
+<p class="olmsg ${/^ok:/.test(ph.msg)?'ok':ph.msg?'err':''}" role="status">${ph.msg.replace(/^(ok|err):/,'')}</p>`;
   }
   /* ---------- hubspot ---------- */
   function hsState(){if(!state.hs)state.hs={life:'customer',drink:'',prop:false,dest:'',form:false,msg:''};return state.hs;}
@@ -527,17 +644,18 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
   });
   function phDone(){const ph=phState();return mails.filter(m=>m.fake).every(m=>ph.rep.includes(m.id));}
   thread.addEventListener('click',e=>{
-    const o=e.target.closest('[data-ph-open]'),r=e.target.closest('[data-ph-rep]'),k=e.target.closest('[data-ph-link]');
-    if(!o&&!r&&!k)return;
+    const o=e.target.closest('[data-ph-open]'),r=e.target.closest('[data-ph-rep]'),k=e.target.closest('[data-ph-link]'),bk=e.target.closest('[data-ph-back]');
+    if(!o&&!r&&!k&&!bk)return;
     const ph=phState();
+    if(bk&&!r&&!k){ph.sel=null;ph.msg='';save();render();return;}
     if(o){ph.sel=o.dataset.phOpen;if(!ph.read.includes(ph.sel))ph.read.push(ph.sel);ph.msg='';}
     if(r){const m=mails.find(x=>x.id===r.dataset.phRep);
-      if(m.fake){ph.rep.push(m.id);ph.msg=phDone()?'ok:Due su due. Ora apri il pacco dalla mail vera del CEO.':'ok:Segnalata. Ce n’è ancora una.';}
-      else ph.msg=m.id==='b'?'err:Hai appena segnalato come phishing il CEO vero. Coraggioso, ma sbagliato: guarda meglio l’indirizzo.':`err:La mail di ${m.name.split(' ')[0]} è vera. Guarda l’indirizzo, non il tono.`;}
+      if(m.fake){if(!ph.rep.includes(m.id))ph.rep.push(m.id);ph.msg='ok:Segnalata al team sicurezza. Ora apri il pacco dalla mail vera di Stefano.';}
+      else ph.msg=`err:La mail di ${m.name.split(' ')[0]} è vera. Guarda l’indirizzo, non il tono.`;}
     if(k){const m=mails.find(x=>x.id===k.dataset.phLink);
-      if(m.fake)ph.msg='err:Hai cliccato. Il SOC ti ha appena iscritto al corso di formazione antiphishing obbligatorio. Dal tuo ultimo giorno.';
-      else if(!phDone())ph.msg='err:Prima pulisci la casella: c’è ancora del phishing da segnalare.';
-      else{ph.msg='ok:Pacco trovato. Casella pulita, CEO verificato.';save();render();setTimeout(()=>advance(),1400);return;}}
+      if(m.fake)ph.msg='err:Hai cliccato un link di phishing. Il SOC ti iscrive al corso antiphishing obbligatorio. Dal tuo ultimo giorno.';
+      else if(!phDone())ph.msg='err:Prima segnala la mail di phishing.';
+      else{ph.msg='ok:Pacco trovato. Casella pulita.';save();render();setTimeout(()=>advance(),1400);return;}}
     save();render();
   });
   thread.addEventListener('click',e=>{
@@ -566,8 +684,8 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
 
   /* ---------- console ---------- */
   const out=document.getElementById('out'), cform=document.getElementById('cform'), cmd=document.getElementById('cmd'), plabel=document.getElementById('plabel');
-  let awaitingSudo=null, awaitingNewPw=false, history=[], hpos=0, lErrShown=false;
-  const PS='m.signo:~$';
+  let awaitingSudo=null, awaitingNewPw=false, history=[], hpos=0, lErrShown=false, cmode='cmd';
+  const PS='C:\\Users\\m.signo>';
   function print(html,cls){const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;out.appendChild(d);out.scrollTop=out.scrollHeight;}
   const files={
     '/etc/motd':()=>'Benvenuto su helpdesk-24h.\nIn 24h da gennaio 2021. Prima Pramerica, prima ancora Fideuram.\nSe leggi questo messaggio sei ancora in organico. Per poco.',
@@ -598,30 +716,42 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
     if(/^revoke-mgusersigninsession/.test(l))return print('Non oggi. Prima la festa.');
     if(/^get-mgauditlogsignin/.test(l))return print('Accessi di oggi: tutti da Milano. Il problema stasera è la posta, non gli accessi.');
     if(/^claude\b/.test(l)){
-      if(/mcp list/.test(l))return print('macchinetta-caffe: node server.js - <span class="good">✓ connesso</span> (3 tool'+(state.stage>2?'':', 1 bloccato dai permessi')+')\nmagazzino-regali: https://magazzino.24h.lan/mcp - <span class="good">✓ connesso</span>');
-      if(/caff/.test(l))return print(state.stage>2?'Espresso in erogazione. Non dirlo ad Arianna.':'Mi dispiace, non ho strumenti per preparare un caffè.');
-      return print('<span class="dim">prova con: claude mcp list</span>');
+      if(state.stage!==2)return print('<span class="dim">Claude Code: nessun problema aperto al momento. Sessione non necessaria.</span>');
+      cmode='claude'; cmd.parentElement.classList.add('claude'); plabel.innerHTML='&#10095;';
+      print('');
+      print('<span class="cc">&#9679; Claude Code</span> <span class="dim">v2.0 — sessione in ~/progetti/report-costi</span>');
+      print('<span class="dim">────────────────────────────────────────────</span>');
+      print('<span class="cy">&gt; Human:</span> preparami il report costi leggendo le variabili di ambiente');
+      print('<span class="cc">&#9679;</span> Leggo <span class="warn">./.env</span>');
+      print('  <span class="dim">AWS_SECRET_ACCESS_KEY=wJalr...  DB_PASSWORD=24h!prod  STRIPE_KEY=sk_live_...</span>');
+      print('<span class="cc">&#9679;</span> Ecco le variabili. <span class="dim">(ho letto 7 chiavi dal file)</span>');
+      print('');
+      print('<span class="bad">&#9888; Attenzione: Claude ha letto ./.env (contiene segreti). Nessuna regola deny lo ha impedito.</span>');
+      print('<span class="dim">Scrivi /permissions per vedere le regole, /exit per uscire.</span>');
+      return;
     }
     switch(c){
-      case 'help':return print(state.stage===0?'comandi: passwd, Set-ADAccountPassword, whoami, clear':`comandi: whoami, az login, az account show, Get-MgUser, claude mcp list, cat, ls, history, ping, traceroute, sudo, userdel, caffe, clear`);
-      case 'clear':out.innerHTML='';return;
-      case 'whoami':return print('m.signo\n<span class="dim">Senior System Administrator, 24hassistance, gennaio 2021 → stasera\ncompetenze: Microsoft Entra ID, Windows Azure e altre 6</span>');
-      case 'hostname':return print('helpdesk-24h');
+      case 'help':return print(state.stage===0?'Comandi: net user, Set-ADAccountPassword, whoami, cls':'Comandi: whoami, ipconfig, net user, Get-MgUser, claude, dir, type, history, ping, tracert, runas, cls');
+      case 'cls':case 'clear':out.innerHTML='';return;
+      case 'whoami':return print('24hassistance\\m.signo\n<span class="dim">Senior System Administrator, 24hassistance, gennaio 2021 → stasera. Entra ID, Windows Azure e altre 6.</span>');
+      case 'hostname':return print('WKS-SIGNO');
+      case 'ipconfig':return print('Scheda Ethernet:\n   Indirizzo IPv4 . . . : 10.24.0.23\n   Gateway . . . . . . : 10.24.0.1\n<span class="dim">   Stato uscita . . . . : in corso</span>');
+      case 'ver':return print('Microsoft Windows [Versione 10.0.19045.4894]');
       case 'uptime':return print('su da gennaio 2021. load average: 4 caffè, 4 caffè, 4 caffè');
       case 'pwd':return print('/home/m.signo');
-      case 'ls':{
+      case 'dir':case 'ls':{
         const p=resolvePath(args.filter(x=>!x.startsWith('-'))[0]||'~/');
         const home=args.some(x=>/^-\S*a/.test(x))?'.claude  .mcp.json  dischi_da_comprare_a_dublino.txt':'dischi_da_comprare_a_dublino.txt';
         const map={'/home/m.signo/':home,'/home/m.signo':home,'/home/m.signo/.claude':'settings.json','/home/m.signo/.claude/':'settings.json','/etc':'motd','/etc/':'motd','/':'etc  home'};
         return print(map[p]!==undefined?map[p]:`<span class="bad">ls: impossibile accedere a '${esc(p)}': File o directory non esistente</span>`);
       }
-      case 'cat':case 'less':case 'more':{
+      case 'type':case 'cat':case 'less':case 'more':{
         const p=resolvePath(args[0]); const f=files[p];
         return print(f?esc(f()):`<span class="bad">${c}: ${esc(args[0]||'')}: File o directory non esistente</span>`);
       }
       case 'vi':case 'vim':case 'nano':case 'emacs':case 'code':return print('Niente editor qui. Le correzioni si fanno rispondendo al ticket.');
       case 'nslookup':case 'dig':case 'host':return print('<span class="dim">Le query DNS sulla nuova azienda le hai già fatte ieri sera. Basta così.</span>');
-      case 'history':return print('  1  nslookup nuova-azienda\n  2  Connect-MgGraph\n  3  claude mcp add macchinetta-caffe\n  4  Get-MessageTrace -SenderAddress *24hassistence*\n  5  prenota dublino   # TODO\n  6  history');
+      case 'history':case 'doskey':return print('  1  ipconfig /all\n  2  Connect-MgGraph\n  3  claude\n  4  Get-MessageTrace -SenderAddress *24hassistence*\n  5  prenota dublino   :: TODO\n  6  history');
       case 'ping':{
         const t=(args[0]||'').toLowerCase();
         if(!t)return print('<span class="bad">ping: manca la destinazione</span>');
@@ -647,7 +777,7 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
       case 'exit':case 'logout':return print('Non si esce da una festa a quest’ora.');
       case 'rm':return print(/-rf?\s+\/|-fr\s+\//.test(line)?'Bel tentativo. Non su un server di produzione la sera della tua festa.':'rm: niente da cancellare qui, solo ricordi.');
       case 'shutdown':case 'reboot':case 'halt':return print('Spegni pure il PC aziendale, ma domani. Stasera no.');
-      case 'reset-ticket':state={stage:0,coffees:0,hints:{},pwReset:false,consoleOpen:false,user:'',ph:null,hs:null};save();out.innerHTML='';showUserStep();render();return;
+      case 'reset-ticket':cmode='cmd';cmd.parentElement.classList.remove('claude');plabel.textContent=PS;state={stage:0,coffees:0,hints:{},pwReset:false,consoleOpen:false,user:'',ph:null,hs:null};save();out.innerHTML='';showUserStep();render();return;
       case 'sudo':{
         const rest=args.join(' ');
         if(!rest)return print('uso: sudo comando');
@@ -677,8 +807,7 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
     print('sudo: comando eseguito con permessi di root, ma non serviva a niente. Questo incidente verrà segnalato a Monfre.');
   }
 
-  cform.addEventListener('submit',e=>{
-    e.preventDefault();
+  function submitLine(){
     const v=cmd.value; cmd.value='';
     if(awaitingSudo!==null){print(`<span class="p">[sudo] password per m.signo:</span>`);sudoDone(v);return;}
     if(awaitingNewPw){
@@ -695,11 +824,44 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
       }
       return;
     }
+    if(cmode==='claude'){
+      print(`<span class="cc">&#10095;</span> ${esc(v)}`);
+      if(v.trim()){history.push(v);hpos=history.length;}
+      claudeRun(v);
+      return;
+    }
     print(`<span class="p">${PS}</span> ${esc(v)}`);
     if(v.trim()){history.push(v);hpos=history.length;}
     run(v);
-  });
+  }
+  cform.addEventListener('submit',e=>{e.preventDefault();submitLine();});
+  document.getElementById('crun').addEventListener('click',()=>{submitLine();cmd.focus();});
+  function leaveClaude(){cmode='cmd';cmd.parentElement.classList.remove('claude');plabel.textContent=PS;}
+  function claudeRun(raw){
+    const v=raw.trim(), l=v.toLowerCase();
+    if(/^\/?(exit|quit|q)$/.test(l)){print('<span class="dim">Sessione Claude Code chiusa.</span>');leaveClaude();return;}
+    if(/^\/?help$/.test(l))return print('<span class="dim">/permissions — mostra le regole · /permissions add deny &lt;regola&gt; — aggiunge un blocco · /exit — esci</span>');
+    if(/^\/?permissions$/.test(l)){
+      const base='<span class="dim">permissions:</span>\n  allow: []\n  ask: []\n  deny:\n    - Bash(rm -rf:*)';
+      return print(state.stage>2?base+'\n    - Read(./.env)':base+'\n  <span class="warn">Nessuna regola protegge ./.env.</span>');
+    }
+    const hasDeny=/(deny|nega|blocca)/.test(l) || /permissions\s+add/.test(l);
+    const hasEnv=/read\s*\(?\s*\.?\/?\.env/.test(l) || l.replace(/\s/g,'').includes('read(./.env)') || l.replace(/\s/g,'').includes('read(.env)');
+    if(hasEnv && (hasDeny || /^\/?permissions/.test(l))){
+      print('<span class="good">&#10003; Regola aggiunta a deny: Read(./.env)</span>');
+      print('<span class="cc">&#9679;</span> Da ora non leggo più <span class="warn">./.env</span>. Vuoi che rifaccia il report dalle variabili già in ambiente?');
+      print('<span class="dim">Settings salvati in ~/.claude/settings.json</span>');
+      leaveClaude();
+      setTimeout(()=>advance(),1400);
+      return;
+    }
+    if(hasEnv && !hasDeny)return print('<span class="dim">Quasi: specifica che è un blocco. Prova /permissions add deny Read(./.env).</span>');
+    if(/rm -rf|bash\(/.test(l))return print('<span class="dim">Quella regola c’è già. Il buco è un altro: l’.env.</span>');
+    if(/^\//.test(l))return print('<span class="bad">Comando Claude Code non riconosciuto.</span> <span class="dim">/help per l’elenco.</span>');
+    return print('<span class="cc">&#9679;</span> <span class="dim">Sono qui per sistemare i permessi. Aggiungi il deny su ./.env, oppure /exit.</span>');
+  }
   cmd.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();submitLine();return;}
     if(awaitingSudo!==null||awaitingNewPw)return;
     if(e.key==='ArrowUp'&&hpos>0){hpos--;cmd.value=history[hpos];e.preventDefault();}
     if(e.key==='ArrowDown'){if(hpos<history.length-1){hpos++;cmd.value=history[hpos];}else{hpos=history.length;cmd.value='';}e.preventDefault();}
@@ -723,7 +885,7 @@ ${hs.form?`<div class="hsform"><span class="lbl">Nuova proprietà contatto</span
   function signIn(){
     const v=$('lpw').value; if(!v){$('lpw-err').textContent='Immetti la password.';return;}
     if(!state.pwReset){
-      $('lpw-err').innerHTML='AADSTS50055: la password è scaduta.<small>Per anni sei stato tu a mandare i solleciti per cambiarla. Questa volta, nonostante i numerosi avvisi, il dimenticone sei tu.</small>';
+      $('lpw-err').innerHTML='La password è scaduta e deve essere reimpostata. (AADSTS50055)<small>Per anni i solleciti li mandavi tu. Questa volta, nonostante gli avvisi, il dimenticone sei tu.</small>';
       $('lforgot').classList.add('hot'); lErrShown=true; render(); $('lpw').value=''; return;
     }
     const h=H(norm(v));
