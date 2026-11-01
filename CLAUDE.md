@@ -162,7 +162,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - `session_result` → classifiche finali (qualifica, gara, sprint)
 - `starting_grid` → griglia partenza. ATTENZIONE: verificato a Monza 2026, risponde **200 con array vuoto** anche con token valido: non ci si può contare. La griglia si risolve a cascata in `lib/starting-grid.ts` → `starting_grid` → prime posizioni del feed `position` della gara (lo schieramento, unica fonte live) → posizioni di qualifica (ultimo fallback, ignora le penalità in griglia)
 - `drivers` → info piloti (nome, team, numero, foto, colore)
-- `race_control` → Safety Car, VSC, Red Flag, penalità di gara e in griglia. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano
+- `race_control` → Safety Car, VSC, Red Flag, penalità di gara e in griglia. NON copre tutti i ritiri: OpenF1 non emette un messaggio per ogni macchina che si ferma, quindi i DNF live si leggono anche da `session_result` via `/api/live-retired` (flag `dnf`/`dsq`, aggiornati durante la sessione) e le due fonti si sommano; terza fonte (v1.11.7) le macchine ferme dai giri, `lib/live-stopped.ts` (provvisoria, si annulla se la macchina riparte)
 - `stints` → compound gomme (per previsione wet)
 - `laps` → tempi al giro (per giro veloce)
 - `meetings` → info weekend
@@ -243,6 +243,7 @@ e `calcola-risultati` rispondono 410: erano doppioni con logica divergente.
   `useWeekendClassifica` sulla sessione di `useWeekend().live`, archivio a formazione chiusa, stagione fuori dal
   weekend; storico fra i due (`buildDuelloStorico`) dai `perRound` di `use-statistiche`. Link da Rivali, Altro e
   dal sub-tab DUELLI.
+- **Previsioni live** (v1.11.7): stati `pending` (adesso 0) / `ora` (giusta adesso, già nel totale) / `presa` / `sbagliata` in `lib/previsioni-live.ts`. La card deve dire la stessa cosa del totale.
 - **Recap:** `/risultati?round=` con `components/recap/WeekendRecap.tsx` e derivazioni pure `lib/recap.ts`.
 - **Rivali:** `/classifica` con `components/rivali/*` (forma, scheda stagione con testa a testa, chi ha chi),
   Classifica Reale dai `real_points` di `weekend_scores` via `use-statistiche`.

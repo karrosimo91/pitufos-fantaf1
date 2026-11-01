@@ -6,7 +6,7 @@ import type { PlayerFormazione, PlayerPrevisioni, WeekendClassificaEntry } from 
 import type { LiveSnapshot } from "../../lib/build-live-results";
 import { classifySession } from "../../lib/build-live-results";
 import { buildPilotaBreakdown, computePlayerWeekendDetail, PREVISIONI_LABELS } from "../../lib/player-breakdown";
-import { previsioneViva } from "../../lib/previsioni-live";
+import { previsioneViva, contaComeDecisa } from "../../lib/previsioni-live";
 import { sessionEnded } from "../../lib/live-events";
 import { poleDriverNumber } from "../../lib/official-results";
 import { getDriverByNumber } from "../../lib/drivers-data";
@@ -92,7 +92,7 @@ export function PlayerDetailModal({
       poleName: p.key === "poleVince" ? pole.name : undefined, poleLeading: p.key === "poleVince" ? pole.leading : undefined,
     }),
   }));
-  const decided = vive.filter((v) => v.viva.state !== "pending").length;
+  const decided = vive.filter((v) => contaComeDecisa(v.viva.state)).length;
 
   // vs te: piloti in comune e diversi, capitano
   const shared = myForm && !isMe ? player.driver_numbers.filter((n) => myForm.driver_numbers.includes(n)) : [];

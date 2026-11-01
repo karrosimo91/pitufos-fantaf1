@@ -15,6 +15,7 @@ import {
   classifySession,
 } from "./build-live-results";
 import { countsPrevisioni } from "./player-breakdown";
+import { detectStoppedDrivers } from "./live-stopped";
 
 export interface PlayerFormazione {
   user_id: string;
@@ -93,7 +94,7 @@ export function useWeekendClassifica(opts: {
   const [previousResults, setPreviousResults] = useState<RaceWeekendResults | null>(null);
   const [previousLoaded, setPreviousLoaded] = useState(false);
   const [gridPositions, setGridPositions] = useState<Map<number, number>>(new Map());
-  const [retiredDrivers, setRetiredDrivers] = useState<Set<number>>(new Set());
+  const [officialRetired, setRetiredDrivers] = useState<Set<number>>(new Set());
   const [formazioni, setFormazioni] = useState<PlayerFormazione[]>([]);
   // Membri della lega selezionata (null = nessun filtro). Le formazioni si
   // leggono per TUTTI i giocatori: i provvisori si salvano per tutti, la
@@ -356,6 +357,21 @@ export function useWeekendClassifica(opts: {
 
   // Dati WebSocket della sessione corrente
   const ws = useLiveWebSocket(debug ? null : sessionKey);
+
+  // Ritiri live = ufficiali (session_result, non si annullano) ∪ macchine
+  // ferme dai giri (live-stopped.ts: tornano in gara se ripartono). La terza
+  // fonte copre i ritiri che OpenF1 non segnala a gara in corso.
+  const stoppedKey = useMemo(() => {
+    const kind = classifySession(sessionType);
+    if (debug || !sessionKey || (kind !== "race" && kind !== "sprint")) return "";
+    return [...detectStoppedDrivers(ws.lapProgress, ws.positions.keys())].sort((a, b) => a - b).join(",");
+  }, [debug, sessionKey, sessionType, ws.lapProgress, ws.positions]);
+  const retiredDrivers = useMemo(() => {
+    if (!stoppedKey) return officialRetired;
+    const all = new Set(officialRetired);
+    for (const n of stoppedKey.split(",")) all.add(Number(n));
+    return all.size === officialRetired.size ? officialRetired : all;
+  }, [officialRetired, stoppedKey]);
 
   // Costruisce classifica live combinando WS + formazioni + previsioni + previousResults
   // (tutti i giocatori con formazione confermata; il filtro lega è sotto)

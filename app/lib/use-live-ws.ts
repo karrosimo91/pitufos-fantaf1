@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import mqtt from "mqtt";
 import { mergePositions, latestPositionDate, type LivePositionEntry } from "./live-positions";
+import { mergeLapProgress, type LapProgress, type RawLapLike } from "./live-stopped";
 
 // ─── Tipi per i dati live ───
 
@@ -65,6 +66,9 @@ export function useLiveWebSocket(sessionKey: number | null) {
   const [raceControl, setRaceControl] = useState<LiveRaceControl[]>([]);
   const [fastestLap, setFastestLap] = useState<{ driver_number: number; duration: number } | null>(null);
   const [stints, setStints] = useState<LiveStint[]>([]);
+  // Avanzamento giri per pilota: serve a riconoscere le macchine ferme
+  // (ritiri che OpenF1 non segnala durante la gara), vedi live-stopped.ts.
+  const [lapProgress, setLapProgress] = useState<Map<number, LapProgress>>(new Map());
   const [connected, setConnected] = useState(false);
   const [mode, setMode] = useState<"init" | "mqtt" | "polling">("init");
   // Giro corrente (massimo lap_number visto) e istante dell'ultimo dato
@@ -104,6 +108,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
     setRaceControl([]);
     setFastestLap(null);
     setStints([]);
+    setLapProgress(new Map());
     fastestRef.current = Infinity;
     lastDataAtRef.current = 0;
     lastPositionAtRef.current = 0;
@@ -170,6 +175,8 @@ export function useLiveWebSocket(sessionKey: number | null) {
         fastestRef.current = fastest;
         setFastestLap({ driver_number: fastestDriver, duration: fastest });
       }
+      const rawLaps = data.laps as unknown as RawLapLike[];
+      setLapProgress((prev) => mergeLapProgress(prev, rawLaps) ?? prev);
       let maxLap = 0;
       for (const l of data.laps) if (l.lap_number && l.lap_number > maxLap) maxLap = l.lap_number;
       if (maxLap > 0) setCurrentLap((prev) => (prev == null || maxLap > prev ? maxLap : prev));
@@ -359,6 +366,7 @@ export function useLiveWebSocket(sessionKey: number | null) {
 
             if (topic === "laps" && msg.lap_number) {
               statsRef.current.applied.laps++;
+              setLapProgress((prev) => mergeLapProgress(prev, [msg]) ?? prev);
               const ln = Number(msg.lap_number);
               if (ln > 0) setCurrentLap((prev) => (prev == null || ln > prev ? ln : prev));
             }
@@ -409,5 +417,5 @@ export function useLiveWebSocket(sessionKey: number | null) {
     };
   }, [sessionKey, fetchLiveData, applyPositions, markPositionsFresh]);
 
-  return { positions, raceControl, fastestLap, stints, connected, mode, currentLap, lastDataAt, lastPositionAt };
+  return { positions, raceControl, fastestLap, stints, lapProgress, connected, mode, currentLap, lastDataAt, lastPositionAt };
 }
