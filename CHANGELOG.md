@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.7 — 1 Novembre 2026
+
+### Gara: previsioni contate in tempo reale e ritiri anche dai giri
+- **Previsioni "in attesa" anche quando erano già nei punti** (`lib/previsioni-live.ts`). Il totale live contava già ogni previsione con la situazione del momento (SC non uscita = NO giusto, pole non in testa = "pole vince NO" giusto), ma la card restava IN ATTESA fino alla bandiera a scacchi. Nuovo stato **PER ORA** (verde, bordo tratteggiato) con i punti già conteggiati: i NO finché l'evento non succede ("+6 per ora · persa se esce la SC"), "pole vince" secondo chi è in testa adesso (in entrambi i sensi), il numero ritiri quando è pari a quello detto. IN ATTESA resta solo per ciò che adesso vale 0 e può ancora arrivare. Il contatore "N / 6 DECISE" conta solo le previsioni che non possono più cambiare.
+- **Ritiri live anche dai giri** (`lib/live-stopped.ts`, testata). Le due fonti OpenF1 dei ritiri a gara in corso possono tacere entrambe (`race_control` quasi non annuncia le macchine ferme, `session_result` non garantisce i flag durante la sessione) e il ritirato restava nella sua ultima posizione senza −10 e fuori dal "Numero DNF". Terza fonte: una macchina che non chiude giri da più di max(4 min, 3 giri tipici) mentre le altre vanno avanti è ferma. Solo tempi relativi fra macchine, quindi bandiera rossa e safety car non segnano nessuno; dal 3° giro del leader; chi si collega a gara in corso non vede ritiri finché l'osservazione non copre la soglia; chi riparte dopo un box lungo torna in gara da solo. I ritiri ufficiali restano definitivi, quelli dai giri sono provvisori; il post-gara usa comunque solo `session_result`.
+
 ## v1.11.6 — 11 Ottobre 2026
 
 ### Gara: dettaglio del Team Principal con la grafica nuova

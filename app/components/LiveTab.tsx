@@ -21,7 +21,7 @@ import { EventiPerTe } from "./live/EventiPerTe";
 import { buildMockLiveData, MOCK_CLASSIFICA } from "./live/mock-data";
 import { buildLiveWeekendResults, detectLiveEvents, classifySession } from "../lib/build-live-results";
 import { translateRaceControl, sessionEnded } from "../lib/live-events";
-import { previsioneViva } from "../lib/previsioni-live";
+import { previsioneViva, contaComeDecisa } from "../lib/previsioni-live";
 import { poleDriverNumber } from "../lib/official-results";
 import { getDriverByNumber } from "../lib/drivers-data";
 import { SectionHead } from "./ui/SectionHead";
@@ -137,7 +137,7 @@ export default function LiveTab({
   const selectedFormazione = selectedPlayer ? data.formazioni.find((f) => f.user_id === selectedPlayer) : null;
   const selectedEntry = selectedPlayer ? classifica.find((c) => c.userId === selectedPlayer) : null;
   const selectedPrev = selectedPlayer ? data.previsioniByUser.get(selectedPlayer) : undefined;
-  const decided = live.previsioniStatus.filter((p) => previsioneViva({ key: p.key as keyof Previsioni, prediction: p.prediction, happened: p.happened as unknown as boolean, ended, points: p.points }).state !== "pending").length;
+  const decided = live.previsioniStatus.filter((p) => contaComeDecisa(previsioneViva({ key: p.key as keyof Previsioni, prediction: p.prediction, happened: p.happened as unknown as boolean, ended, points: p.points }).state)).length;
 
   return (
     <div>
