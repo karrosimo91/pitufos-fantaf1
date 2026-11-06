@@ -5,13 +5,14 @@ import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { OPENF1, fetchJson } from "../../lib/openf1-server";
 import { extractPenalizedDrivers, suspectPostRacePenalties } from "../../lib/penalties";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
+import { puntiClassificaReale } from "../../lib/classifica-reale";
 import { withPenaltyOverrides } from "../../lib/manual-overrides";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-sessions";
 
 /**
  * POST /api/recalc-penalties
- * Body: { admin_key: string, round?: number }
+ * Body: { admin_key: string, round?: number, dry_run?: boolean }
  *
  * Corregge le penalità di gara già salvate usando la rilevazione aggiornata
  * (legge il numero auto dal testo di race_control, non dal campo driver_number
@@ -23,10 +24,12 @@ import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-se
  *      idempotente
  *
  * Se `round` è omesso, processa tutti i round con risultati gara salvati.
+ * Con `dry_run: true` calcola e restituisce le variazioni senza scrivere nulla.
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { round, admin_key } = body;
+  const { round, admin_key, dry_run } = body;
+  const prova = dry_run === true;
 
   if (!isAdminRequest(request, admin_key)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
@@ -109,8 +112,40 @@ export async function POST(request: NextRequest) {
         `-[${removed.map(driverName).join(", ") || "—"}]`
       );
 
-      // 3a. Salva i flag corretti
       const updatedResults: RaceWeekendResults = { ...data, race: newRace };
+
+      // Prova: stesso calcolo, nessuna scrittura. Delta contro weekend_scores.
+      if (prova) {
+        const newScores = await computePlayerScores(supabase, rnd, updatedResults, true);
+        const { data: oldRows } = await supabase
+          .from("weekend_scores")
+          .select("user_id, total_points, real_points")
+          .eq("round", rnd);
+        const newReal = puntiClassificaReale(newScores.map((p) => ({ user_id: p.user_id, total_points: p.weekend_points, piloti_points: p.piloti_points, previsioni_points: p.previsioni_points })));
+        const affected = newScores
+          .map((p) => {
+            const o = (oldRows ?? []).find((r: any) => r.user_id === p.user_id);
+            return {
+              nome: p.name,
+              delta_punti: p.weekend_points - Number(o?.total_points ?? 0),
+              delta_reale: (newReal.get(p.user_id) ?? 0) - Number(o?.real_points ?? 0),
+              nuovo_weekend: p.weekend_points,
+            };
+          })
+          .filter((a) => a.delta_punti !== 0 || a.delta_reale !== 0);
+        report.push({
+          round: rnd,
+          gara: meeting.meeting_name,
+          variazioni: true,
+          aggiunte: added.map((n) => `#${n} ${driverName(n)}`),
+          rimosse: removed.map((n) => `#${n} ${driverName(n)}`),
+          sospetti_post_gara: sospetti,
+          giocatori_impattati: affected,
+        });
+        continue;
+      }
+
+      // 3a. Salva i flag corretti
       const { error: saveErr } = await supabase
         .from("weekend_results")
         .upsert({ round: rnd, data: updatedResults, updated_at: new Date().toISOString() }, { onConflict: "round" });
@@ -141,6 +176,7 @@ export async function POST(request: NextRequest) {
     const roundsConVariazioni = report.filter((r) => r.variazioni).length;
     return NextResponse.json({
       success: true,
+      prova,
       round: round ?? "tutti",
       round_verificati: targetRounds.length,
       round_con_variazioni: roundsConVariazioni,
