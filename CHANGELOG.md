@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.11.8 — 6 Novembre 2026
+
+### Penalità post-gara che OpenF1 non vede
+- **Il ricalcolo penalità non trovava nulla per Messico** (round 21). `/api/recalc-penalties` legge solo `race_control`, che è il feed della sessione: le decisioni dei commissari prese ore dopo la gara (Gasly e Colapinto, 10 s per bandiere gialle) non ci arrivano mai. OpenF1 aggiorna la classifica in `session_result` (Colapinto 15°, Gasly 17° già in archivio), ma il -5 si perdeva. Nuovo `RACE_PENALTY_OVERRIDES` in `lib/manual-overrides.ts` (con fonte, testato), applicato da `recalc-penalties` e dal post-gara, quindi sopravvive ai rilanci.
+
 ## v1.11.7 — 1 Novembre 2026
 
 ### Gara: previsioni contate in tempo reale e ritiri anche dai giri

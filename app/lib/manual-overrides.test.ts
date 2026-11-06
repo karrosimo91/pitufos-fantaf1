@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyRaceOverrides, RACE_OVERRIDES } from "./manual-overrides";
+import { applyRaceOverrides, RACE_OVERRIDES, withPenaltyOverrides } from "./manual-overrides";
 
 describe("applyRaceOverrides", () => {
   it("Monaco 2026: Gasly 7°, Hadjar 3° anche se OpenF1 dice il contrario", () => {
@@ -35,5 +35,17 @@ describe("applyRaceOverrides", () => {
   it("round senza override: identità", () => {
     const rows = [{ driver_number: 1, position: 1 }];
     expect(applyRaceOverrides(16, rows).race).toBe(rows);
+  });
+});
+
+describe("withPenaltyOverrides", () => {
+  it("Messico 2026: aggiunge Gasly e Colapinto a quelli di race_control", () => {
+    const out = withPenaltyOverrides(21, new Set([16, 63]));
+    expect([...out].sort((a, b) => a - b)).toEqual([10, 16, 43, 63]);
+  });
+
+  it("round senza override: stesso insieme", () => {
+    const s = new Set([1]);
+    expect(withPenaltyOverrides(16, s)).toBe(s);
   });
 });

@@ -5,6 +5,7 @@ import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { OPENF1, fetchJson } from "../../lib/openf1-server";
 import { extractPenalizedDrivers } from "../../lib/penalties";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
+import { withPenaltyOverrides } from "../../lib/manual-overrides";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { findRaceSessionForRound, type OpenF1Session } from "../../lib/openf1-sessions";
 
@@ -74,7 +75,8 @@ export async function POST(request: NextRequest) {
 
       // Ricalcola i piloti penalizzati con la rilevazione aggiornata
       const raceControl = await fetchJson(`${OPENF1}/race_control?session_key=${raceSession.session_key}`);
-      const penalized = extractPenalizedDrivers(raceControl);
+      // + penalità post-gara che race_control non contiene (manual-overrides.ts)
+      const penalized = withPenaltyOverrides(rnd, extractPenalizedDrivers(raceControl));
 
       // Confronta con i flag salvati
       const added: number[] = [];
