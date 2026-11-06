@@ -10,7 +10,7 @@ import {
 import { DRIVERS_2026 } from "../../lib/drivers-data";
 import { RACES_2026 } from "../../lib/races";
 import { extractPenalizedDrivers } from "../../lib/penalties";
-import { applyRaceOverrides, RACE_OVERRIDES, FORZA_MAGGIORE } from "../../lib/manual-overrides";
+import { applyRaceOverrides, RACE_OVERRIDES, FORZA_MAGGIORE, RACE_PENALTY_OVERRIDES, withPenaltyOverrides } from "../../lib/manual-overrides";
 import { resolveGrid, gridFromRacePositions } from "../../lib/starting-grid";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { OPENF1, fetchJson, fetchOpenF1 } from "../../lib/openf1-server";
@@ -189,6 +189,12 @@ export async function POST(request: NextRequest) {
       const ov = applyRaceOverrides(round, raceResults);
       raceResults = ov.race;
       if (ov.modifiche.length) log.push(`Override classifica (${RACE_OVERRIDES[round].fonte}): ${ov.modifiche.join(", ")}`);
+      // Penalità post-gara assenti da race_control (vedi manual-overrides.ts)
+      if (RACE_PENALTY_OVERRIDES[round]) {
+        const penalizzati = withPenaltyOverrides(round, new Set(raceResults.filter((d) => d.penalty).map((d) => d.driver_number)));
+        raceResults = raceResults.map((d) => ({ ...d, penalty: penalizzati.has(d.driver_number) }));
+        log.push(`Override penalità (${RACE_PENALTY_OVERRIDES[round].fonte}): ${RACE_PENALTY_OVERRIDES[round].drivers.map((n) => `#${n}`).join(", ")}`);
+      }
       log.push(`Gara: ${raceResults.length} piloti, ${raceResults.filter((d) => d.dnf).length} ritiri (DNS inclusi), ${raceResults.filter((d) => d.dns).length} forza maggiore`);
 
       events = await fetchRaceEvents(raceKey, official.rows, forzaMaggiore);

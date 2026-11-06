@@ -65,23 +65,29 @@ describe("previsioneViva", () => {
     expect(previsioneViva({ key: "safetyCar", prediction: true, happened: true, ended: false, points: 4 })).toEqual({ state: "presa", payoff: "Presa · +4" });
     expect(previsioneViva({ key: "safetyCar", prediction: true, happened: false, ended: true, points: 0 }).state).toBe("sbagliata");
   });
-  it("NO in attesa finché la gara non finisce, sbagliata appena succede", () => {
-    const pend = previsioneViva({ key: "redFlag", prediction: false, happened: false, ended: false, points: 0 });
-    expect(pend.state).toBe("pending");
-    expect(pend.payoff).toContain("+3");
+  it("NO giusta per ora finché l'evento non succede (già nel totale), sbagliata appena succede", () => {
+    const ora = previsioneViva({ key: "safetyCar", prediction: false, happened: false, ended: false, points: 6 });
+    expect(ora.state).toBe("ora");
+    expect(ora.payoff).toContain("+6 per ora");
+    expect(ora.payoff).toContain("SC");
     expect(previsioneViva({ key: "redFlag", prediction: false, happened: true, ended: false, points: 0 }).state).toBe("sbagliata");
     expect(previsioneViva({ key: "redFlag", prediction: false, happened: false, ended: true, points: 3 }).state).toBe("presa");
   });
-  it("numero ritiri: sbagliata solo quando superato o a fine gara", () => {
+  it("numero ritiri: per ora se pari, sbagliata solo quando superato o a fine gara", () => {
     expect(previsioneViva({ key: "numeroDnf", prediction: 3, happened: 2, ended: false, points: 0 }).state).toBe("pending");
+    expect(previsioneViva({ key: "numeroDnf", prediction: 3, happened: 3, ended: false, points: 5 }).state).toBe("ora");
     expect(previsioneViva({ key: "numeroDnf", prediction: 3, happened: 4, ended: false, points: 0 }).state).toBe("sbagliata");
     expect(previsioneViva({ key: "numeroDnf", prediction: 3, happened: 3, ended: true, points: 5 }).state).toBe("presa");
     expect(previsioneViva({ key: "numeroDnf", prediction: 3, happened: 2, ended: true, points: 0 }).state).toBe("sbagliata");
   });
-  it("pole vince: in attesa fino alla fine", () => {
-    const p = previsioneViva({ key: "poleVince", prediction: true, happened: false, ended: false, points: 0, poleName: "Verstappen", poleLeading: true });
-    expect(p.state).toBe("pending");
-    expect(p.payoff).toContain("Verstappen");
+  it("pole vince: segue chi è in testa adesso", () => {
+    const no = previsioneViva({ key: "poleVince", prediction: false, happened: false, ended: false, points: 7, poleName: "Verstappen" });
+    expect(no.state).toBe("ora");
+    expect(no.payoff).toContain("+7 per ora");
+    expect(no.payoff).toContain("Verstappen");
+    expect(previsioneViva({ key: "poleVince", prediction: false, happened: true, ended: false, points: 0 }).state).toBe("pending");
+    expect(previsioneViva({ key: "poleVince", prediction: true, happened: true, ended: false, points: 4 }).state).toBe("ora");
+    expect(previsioneViva({ key: "poleVince", prediction: true, happened: false, ended: false, points: 0 }).state).toBe("pending");
     expect(previsioneViva({ key: "poleVince", prediction: true, happened: true, ended: true, points: 4 }).state).toBe("presa");
   });
   it("nessuna previsione", () => {

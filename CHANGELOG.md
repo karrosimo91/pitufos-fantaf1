@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.11.8 — 6 Novembre 2026
+
+### Penalità post-gara che OpenF1 non vede
+- **Il ricalcolo penalità non trovava nulla per Messico** (round 21). `/api/recalc-penalties` legge solo `race_control`, che è il feed della sessione: le decisioni dei commissari prese ore dopo la gara (Gasly e Colapinto, 10 s per bandiere gialle) non ci arrivano mai. OpenF1 aggiorna la classifica in `session_result` (Colapinto 15°, Gasly 17° già in archivio), ma il -5 si perdeva. Nuovo `RACE_PENALTY_OVERRIDES` in `lib/manual-overrides.ts` (con fonte, testato), applicato da `recalc-penalties` e dal post-gara, quindi sopravvive ai rilanci.
+- **Rilevatore delle penalità post-gara** (`suspectPostRacePenalties` in `lib/penalties.ts`, testato). Una penalità decisa dopo la gara fa scendere solo chi la prende: il ricalcolo penalità confronta la classifica ufficiale con l'ultima posizione del feed `position` (l'ordine sotto la bandiera) e segnala nel pannello admin chi è sceso senza flag. Non applica nulla: si conferma la decisione FIA e si aggiunge a `RACE_PENALTY_OVERRIDES`. Non vede le penalità che non cambiano posizione.
+- **Penalità post-gara mancanti nei round passati**, verificate su stampa e confrontate con l'archivio (posizioni già corrette, mancava il -5): Miami Leclerc e Verstappen, Barcellona Colapinto, Silverstone Sainz, Baku Bortoleto, Messico anche Piastri. Si applicano con "Ricalcola penalità" su tutti i round.
+- **Prova del ricalcolo penalità** (`dry_run`, bottone "Prova su tutti i GP" in admin): stesso calcolo, nessuna scrittura, mostra chi cambia e di quanto contro i punteggi salvati.
+
+## v1.11.7 — 1 Novembre 2026
+
+### Gara: previsioni contate in tempo reale e ritiri anche dai giri
+- **Previsioni "in attesa" anche quando erano già nei punti** (`lib/previsioni-live.ts`). Il totale live contava già ogni previsione con la situazione del momento (SC non uscita = NO giusto, pole non in testa = "pole vince NO" giusto), ma la card restava IN ATTESA fino alla bandiera a scacchi. Nuovo stato **PER ORA** (verde, bordo tratteggiato) con i punti già conteggiati: i NO finché l'evento non succede ("+6 per ora · persa se esce la SC"), "pole vince" secondo chi è in testa adesso (in entrambi i sensi), il numero ritiri quando è pari a quello detto. IN ATTESA resta solo per ciò che adesso vale 0 e può ancora arrivare. Il contatore "N / 6 DECISE" conta solo le previsioni che non possono più cambiare.
+- **Ritiri live anche dai giri** (`lib/live-stopped.ts`, testata). Le due fonti OpenF1 dei ritiri a gara in corso possono tacere entrambe (`race_control` quasi non annuncia le macchine ferme, `session_result` non garantisce i flag durante la sessione) e il ritirato restava nella sua ultima posizione senza −10 e fuori dal "Numero DNF". Terza fonte: una macchina che non chiude giri da più di max(4 min, 3 giri tipici) mentre le altre vanno avanti è ferma. Solo tempi relativi fra macchine, quindi bandiera rossa e safety car non segnano nessuno; dal 3° giro del leader; chi si collega a gara in corso non vede ritiri finché l'osservazione non copre la soglia; chi riparte dopo un box lungo torna in gara da solo. I ritiri ufficiali restano definitivi, quelli dai giri sono provvisori; il post-gara usa comunque solo `session_result`.
+
 ## v1.11.6 — 11 Ottobre 2026
 
 ### Gara: dettaglio del Team Principal con la grafica nuova

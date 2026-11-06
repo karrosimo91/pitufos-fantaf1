@@ -79,3 +79,37 @@ describe("extractPenalizedDrivers — dati reali Monaco 2026 (session 11299)", (
     expect(penalized.has(16)).toBe(true);
   });
 });
+
+import { suspectPostRacePenalties, finalFeedPositions } from "./penalties";
+
+describe("suspectPostRacePenalties", () => {
+  // Messico 2026: Colapinto 8° sotto la bandiera, 15° dopo i 10 s
+  const feed = [
+    { driver_number: 43, position: 9, date: "2026-11-01T21:20:00Z" },
+    { driver_number: 43, position: 8, date: "2026-11-01T21:30:00Z" },
+    { driver_number: 23, position: 9, date: "2026-11-01T21:30:00Z" },
+    { driver_number: 81, position: 15, date: "2026-11-01T21:30:00Z" },
+    { driver_number: 16, position: 3, date: "2026-11-01T21:30:00Z" },
+  ];
+
+  it("prende l'ultima posizione del feed", () => {
+    expect(finalFeedPositions(feed).get(43)).toBe(8);
+  });
+
+  it("segnala chi scende, non chi sale per effetto della penalità altrui", () => {
+    const race = [
+      { driver_number: 43, position: 15 },
+      { driver_number: 23, position: 8 },
+      { driver_number: 81, position: 14 },
+    ];
+    expect(suspectPostRacePenalties(race, feed)).toEqual([{ driver_number: 43, sotto_bandiera: 8, classifica: 15 }]);
+  });
+
+  it("ignora ritirati e chi ha già il flag penalità", () => {
+    const race = [
+      { driver_number: 43, position: 15, penalty: true },
+      { driver_number: 16, position: 5, dnf: true },
+    ];
+    expect(suspectPostRacePenalties(race, feed)).toEqual([]);
+  });
+});

@@ -2,18 +2,20 @@
 import type { LivePrevisioneStatus } from "../../lib/use-live-scoring";
 import type { PrevisioneViva } from "../../lib/previsioni-live";
 
-/** Previsione viva: in attesa (neutra), presa (verde), sbagliata (rossa). */
+/** Previsione viva: in attesa (neutra), giusta per ora (verde tenue), presa (verde), sbagliata (rossa). */
 export function PrevisioneLiveCard({ p, viva }: { p: LivePrevisioneStatus; viva: PrevisioneViva }) {
   const cls = viva.state === "presa"
     ? "border-[#2ee59d]/40 bg-[#2ee59d]/[0.06]"
-    : viva.state === "sbagliata"
+    : viva.state === "ora"
+      ? "border-[#2ee59d]/25 border-dashed bg-[#2ee59d]/[0.03]"
+      : viva.state === "sbagliata"
       ? "border-[#E8002D]/30 bg-[#E8002D]/[0.04]"
       : "border-[#1c1c26] bg-[#0e0e14]";
-  const valueCls = viva.state === "presa" ? "text-[#2ee59d]" : viva.state === "sbagliata" ? "text-[#E8002D]" : "text-white/85";
+  const valueCls = viva.state === "presa" || viva.state === "ora" ? "text-[#2ee59d]" : viva.state === "sbagliata" ? "text-[#E8002D]" : "text-white/85";
   const value = p.key === "numeroDnf"
     ? (p.prediction ?? "—")
     : p.prediction === true ? "SÌ" : p.prediction === false ? "NO" : "—";
-  const tag = viva.state === "presa" ? "PRESA" : viva.state === "sbagliata" ? "SBAGLIATA" : viva.state === "pending" ? "IN ATTESA" : "";
+  const tag = viva.state === "presa" ? "PRESA" : viva.state === "ora" ? "PER ORA" : viva.state === "sbagliata" ? "SBAGLIATA" : viva.state === "pending" ? "IN ATTESA" : "";
 
   return (
     <div className={`rounded-lg p-3 border ${cls}`}>

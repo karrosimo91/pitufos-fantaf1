@@ -15,6 +15,20 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: "v1.11.7",
+    date: "1 Novembre 2026",
+    summary: "Le previsioni live mostrano subito i punti che stai già prendendo, e i ritiri si vedono anche quando OpenF1 non li annuncia.",
+    sections: [
+      {
+        title: "Gara",
+        items: [
+          "Previsioni PER ORA: un NO vale già i suoi punti finché l'evento non succede (SC, VSC, rossa, gomme da bagnato), \"pole vince\" segue chi è in testa adesso, il numero ritiri conta quando è pari a quello che hai detto. IN ATTESA resta solo per quello che adesso vale 0.",
+          "Ritiri: una macchina che smette di girare mentre le altre vanno avanti viene contata come ritirata (−10 e Numero DNF), anche se OpenF1 non lo segnala. Se riparte torna in gara.",
+        ],
+      },
+    ],
+  },
+  {
     version: "v1.11.6",
     date: "11 Ottobre 2026",
     summary: "Il dettaglio di un Team Principal nel weekend parla la stessa lingua del tab \"I miei\": previsioni vive, confronto con te, posizione e totale.",

@@ -183,16 +183,17 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const handleRecalcPenalties = async (allRounds: boolean) => {
+  const handleRecalcPenalties = async (allRounds: boolean, dryRun = false) => {
     const msg = allRounds
       ? "Ricalcolare le penalità di gara per TUTTI i GP già processati? I punteggi verranno aggiornati di conseguenza."
       : `Ricalcolare le penalità di gara solo per il Round ${round}?`;
-    if (!confirm(msg)) return;
+    if (!dryRun && !confirm(msg)) return;
     setRecalcPen(true);
     setRecalcData(null);
     try {
       const body: any = {};
       if (!allRounds) body.round = round;
+      if (dryRun) body.dry_run = true;
       const res = await fetch("/api/recalc-penalties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -579,6 +580,13 @@ export default function AdminPage() {
               {recalcPen ? "Ricalcolo..." : "Ricalcola TUTTI i GP"}
             </button>
           </div>
+          <button
+            onClick={() => handleRecalcPenalties(true, true)}
+            disabled={recalcPen || loading || resetting}
+            className="mt-3 w-full py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
+          >
+            {recalcPen ? "Simulazione..." : "Prova su tutti i GP (non salva)"}
+          </button>
         </div>
 
         {/* Risultato ricalcolo penalità */}
@@ -592,7 +600,7 @@ export default function AdminPage() {
             ) : (
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
                 <div className="text-[10px] tracking-[2px] text-purple-400 uppercase font-bold mb-3">
-                  Ricalcolo penalità — {recalcData.round_verificati} GP verificati, {recalcData.round_con_variazioni} con variazioni
+                  {recalcData.prova ? "PROVA, niente salvato · " : ""}Ricalcolo penalità — {recalcData.round_verificati} GP verificati, {recalcData.round_con_variazioni} con variazioni
                 </div>
                 {recalcData.round_con_variazioni === 0 ? (
                   <div className="text-green-400 text-sm font-bold">
@@ -624,6 +632,24 @@ export default function AdminPage() {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+                {recalcData.report?.some((r: any) => r.sospetti_post_gara?.length > 0) && (
+                  <div className="mt-4 bg-yellow-500/[0.06] border border-yellow-500/20 rounded-xl p-4">
+                    <div className="text-[11px] tracking-[2px] text-yellow-400 uppercase font-bold mb-2">
+                      Sospette penalità post-gara (non applicate)
+                    </div>
+                    <div className="text-[11px] text-white/60 mb-2">
+                      Scesi in classifica dopo la bandiera a scacchi. Verificare la decisione FIA e, se confermata,
+                      aggiungere il pilota a RACE_PENALTY_OVERRIDES in lib/manual-overrides.ts.
+                    </div>
+                    {recalcData.report
+                      .filter((r: any) => r.sospetti_post_gara?.length > 0)
+                      .map((r: any) => (
+                        <div key={r.round} className="text-xs text-white/80 mb-1">
+                          R{r.round} — {r.gara}: {r.sospetti_post_gara.join("; ")}
+                        </div>
+                      ))}
                   </div>
                 )}
                 {recalcData.log?.length > 0 && (
