@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.11.9 — 6 Novembre 2026
+
+### Admin più semplice
+- **Pagina admin riorganizzata** in tre blocchi: WEEKEND (sessione, Driver of the Day, Calcola: il lavoro di ogni GP), CONTROLLI (sola lettura: dettaglio round, verifica penalità, replay, audit regole chiuso in un riquadro), CORREZIONI (scrivono, con conferma: applica penalità, ricalcola round, ricalcola stagione, azzera round). Un solo selettore del round in alto, che parte dall'ultimo GP corso. Tolti il ricalcolo penalità per singolo round (quello su tutti i GP tocca solo i round che cambiano) e le descrizioni ripetute.
+
+### Haas: Câmara al posto di Ocon
+- **Rafael Câmara (#50, Haas, 9 Soldini)** acquistabile dal Brasile; **Ocon fuori dal mercato** dal Messico (`outFromRound` in `drivers-data.ts`, `driversInRound`): non compare più fra gli acquistabili né fra i candidati Sesto Uomo, ma chi lo avesse in rosa lo vede e lo può vendere. Nessuno lo aveva, quindi niente rimborsi. Hirakawa (Messico) non aggiunto: non corre più.
+
 ## v1.11.8 — 6 Novembre 2026
 
 ### Penalità post-gara che OpenF1 non vede

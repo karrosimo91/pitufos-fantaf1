@@ -49,3 +49,13 @@ describe("withPenaltyOverrides", () => {
     expect(withPenaltyOverrides(16, s)).toBe(s);
   });
 });
+
+import { driversInRound } from "./drivers-data";
+
+describe("driversInRound", () => {
+  it("Ocon fuori dal Messico, Câmara dentro dal Brasile", () => {
+    expect(driversInRound(20).some((d) => d.number === 31)).toBe(true);
+    expect(driversInRound(22).some((d) => d.number === 31)).toBe(false);
+    expect(driversInRound(22).some((d) => d.number === 50)).toBe(true);
+  });
+});

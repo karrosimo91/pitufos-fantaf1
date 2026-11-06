@@ -10,7 +10,7 @@ import { SwapSheet } from "../components/mercato/SwapSheet";
 import { SellSheet } from "../components/mercato/SellSheet";
 import { PaidChangeSheet } from "../components/mercato/PaidChangeSheet";
 import { useToast } from "../components/ui/Toast";
-import { DRIVERS_2026, getDriverByNumber } from "../lib/drivers-data";
+import { driversInRound, getDriverByNumber } from "../lib/drivers-data";
 import { useLegaPreferita } from "../lib/store";
 import { useWeekend } from "../lib/weekend-context";
 import { useAuth } from "../lib/auth";
@@ -72,7 +72,13 @@ export default function MercatoPage() {
       const f = ins.insights.get(n)?.form ?? [];
       return f.reduce((s, x) => s + x.points, 0);
     };
-    return DRIVERS_2026
+    // In rosa resta visibile anche chi non corre più, così lo si può vendere
+    const attivi = driversInRound(round);
+    const fuoriInRosa = squadra.driverNumbers
+      .filter((n) => !attivi.some((d) => d.number === n))
+      .map(getDriverByNumber)
+      .filter((d) => d != null);
+    return [...attivi, ...fuoriInRosa]
       .map((d) => ({ ...d, price: priceOf(d.number), owned: squadra.driverNumbers.includes(d.number) }))
       .filter((d) => !q || d.name.toLowerCase().includes(q) || d.team.toLowerCase().includes(q))
       .filter((d) => filter === "tutti" || (filter === "rosa" ? d.owned : (!d.owned && d.price <= cassa)))
@@ -83,7 +89,7 @@ export default function MercatoPage() {
         return a.team.localeCompare(b.team) || b.price - a.price;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, filter, sortBy, squadra.driverNumbers, squadra.prices, ins.insights, cassa]);
+  }, [search, filter, sortBy, squadra.driverNumbers, squadra.prices, ins.insights, cassa, round]);
 
   // ─── Azioni ───
   const doBuy = async (n: number) => {

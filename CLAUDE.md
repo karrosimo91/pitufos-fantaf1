@@ -152,7 +152,7 @@ Budget: 100 Soldini, 5 piloti per scuderia.
 - Alpine: Gasly, Colapinto
 - Williams: Sainz, Albon
 - Aston Martin: Alonso, Stroll
-- Haas: Ocon, Bearman
+- Haas: Bearman, Câmara (#50, dal round 22; Ocon fuori dal round 21, `outFromRound` in `drivers-data.ts`: il mercato usa `driversInRound(round)`)
 - Audi: Hulkenberg, Bortoleto
 - Racing Bulls: Lawson, Lindblad
 - Cadillac: Perez, Bottas

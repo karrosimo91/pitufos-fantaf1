@@ -6,7 +6,7 @@ import DriverTile from "../DriverTile";
 import { CHIP_PILOTI_RULES, CHIP_PREVISIONI_RULES, chipStatusText, chipRule, chipRemaining, halfEndRound, type ChipRule } from "../../lib/chip-rules";
 import { PAUSA_ESTIVA_ROUND, type ChipUsage } from "../../lib/store";
 import { getRaceByRound, LAST_ROUND } from "../../lib/races";
-import { DRIVERS_2026 } from "../../lib/drivers-data";
+import { driversInRound } from "../../lib/drivers-data";
 import type { DriverInsight } from "../../lib/use-driver-insights";
 import { PREVISIONI_LABELS } from "./previsioni-config";
 
@@ -54,11 +54,11 @@ export function AggiornamentiSection({
 
   const sestoCandidates = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return DRIVERS_2026
+    return driversInRound(round)
       .filter((d) => !driverNumbers.includes(d.number))
       .filter((d) => !q || d.name.toLowerCase().includes(q) || d.team.toLowerCase().includes(q))
       .sort((a, b) => (prices.get(b.number) ?? b.price) - (prices.get(a.number) ?? a.price));
-  }, [driverNumbers, search, prices]);
+  }, [driverNumbers, search, prices, round]);
 
   const renderChip = (c: ChipRule, active: boolean, usedRound: number | null, _usage: ChipUsage | undefined, onSelect: () => void) => {
     const disabled = usedRound != null && !active;

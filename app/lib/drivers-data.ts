@@ -5,6 +5,8 @@ export interface DriverData {
   teamColour: string;
   country: string;
   price: number;
+  /** Primo round in cui NON corre più (fuori dal mercato da lì in poi). */
+  outFromRound?: number;
 }
 
 // Piloti stagione 2026 — quotazioni confermate
@@ -23,7 +25,8 @@ export const DRIVERS_2026: DriverData[] = [
   { number: 30, name: "Liam Lawson", team: "Racing Bulls", teamColour: "6692FF", country: "NZ", price: 9 },
   { number: 14, name: "Fernando Alonso", team: "Aston Martin", teamColour: "229971", country: "ES", price: 12 },
   { number: 87, name: "Oliver Bearman", team: "Haas", teamColour: "B6BABD", country: "GB", price: 12 },
-  { number: 31, name: "Esteban Ocon", team: "Haas", teamColour: "B6BABD", country: "FR", price: 11 },
+  // Ocon fuori da Haas dal Messico (r21, sostituito da Hirakawa), poi da Câmara
+  { number: 31, name: "Esteban Ocon", team: "Haas", teamColour: "B6BABD", country: "FR", price: 11, outFromRound: 21 },
   { number: 27, name: "Nico Hulkenberg", team: "Audi", teamColour: "52E252", country: "DE", price: 9 },
   { number: 18, name: "Lance Stroll", team: "Aston Martin", teamColour: "229971", country: "CA", price: 10 },
   { number: 41, name: "Arvid Lindblad", team: "Racing Bulls", teamColour: "6692FF", country: "GB", price: 10 },
@@ -32,7 +35,15 @@ export const DRIVERS_2026: DriverData[] = [
   { number: 43, name: "Franco Colapinto", team: "Alpine", teamColour: "0093CC", country: "AR", price: 8 },
   { number: 11, name: "Sergio Perez", team: "Cadillac", teamColour: "FFD700", country: "MX", price: 8 },
   { number: 77, name: "Valtteri Bottas", team: "Cadillac", teamColour: "FFD700", country: "FI", price: 7 },
+  // Dal Brasile (r22) al posto di Ocon. #50: numero Haas usato da Hirakawa in
+  // Messico e scelto da Câmara; da verificare sull'entry list di Interlagos.
+  { number: 50, name: "Rafael Câmara", team: "Haas", teamColour: "B6BABD", country: "BR", price: 9 },
 ];
+
+/** Piloti acquistabili nel round: esclusi quelli che non corrono più. */
+export function driversInRound(round: number): DriverData[] {
+  return DRIVERS_2026.filter((d) => d.outFromRound == null || round < d.outFromRound);
+}
 
 export function getDriverByNumber(num: number): DriverData | undefined {
   return DRIVERS_2026.find((d) => d.number === num);

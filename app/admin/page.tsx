@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { RACES_2026 } from "../lib/races";
+import { RACES_2026, TOTAL_ROUNDS } from "../lib/races";
 import { DRIVERS_2026 } from "../lib/drivers-data";
 
 // Credenziali e chiave admin stanno SOLO lato server (ADMIN_USER, ADMIN_PASS,
@@ -13,8 +13,13 @@ export default function AdminPage() {
   const [pass, setPass] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [round, setRound] = useState(1);
-  const [session, setSession] = useState<string>("sprint_shootout");
+  // Di default l'ultimo GP già corso (o in corso): è quello su cui si lavora.
+  const [round, setRound] = useState(() => {
+    const now = Date.now();
+    const corse = RACES_2026.filter((r) => Date.parse(r.date) - 3 * 86400000 <= now);
+    return corse.length ? corse[corse.length - 1].round : RACES_2026[0].round;
+  });
+  const [session, setSession] = useState<string>("race");
   const [dotd, setDotd] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -183,17 +188,15 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const handleRecalcPenalties = async (allRounds: boolean, dryRun = false) => {
-    const msg = allRounds
-      ? "Ricalcolare le penalità di gara per TUTTI i GP già processati? I punteggi verranno aggiornati di conseguenza."
-      : `Ricalcolare le penalità di gara solo per il Round ${round}?`;
-    if (!dryRun && !confirm(msg)) return;
+  // Penalità su tutti i GP in archivio. verifica=true: solo lettura (prova),
+  // false: applica, previa conferma. Il ricalcolo tocca solo i round che cambiano.
+  const handleRecalcPenalties = async (verifica: boolean) => {
+    if (!verifica && !confirm("Applicare le penalità su tutti i GP in archivio? Cambiano solo i round con variazioni. Hai fatto prima \"Verifica penalità\"?")) return;
     setRecalcPen(true);
     setRecalcData(null);
     try {
       const body: any = {};
-      if (!allRounds) body.round = round;
-      if (dryRun) body.dry_run = true;
+      if (verifica) body.dry_run = true;
       const res = await fetch("/api/recalc-penalties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,6 +208,26 @@ export default function AdminPage() {
       setRecalcData({ error: err.message });
     }
     setRecalcPen(false);
+  };
+
+  const handleReset = async () => {
+    if (!confirm(`Azzerare i punteggi del Round ${round}? Toglie il round dalla classifica finché non lo ricalcoli.`)) return;
+    setResetting(true);
+    setResult(null);
+    setLogs([]);
+    try {
+      const res = await fetch("/api/reset-round", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ round }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (data.log) setLogs(data.log);
+    } catch (err: any) {
+      setResult({ error: err.message });
+    }
+    setResetting(false);
   };
 
   const handleReview = async () => {
@@ -273,6 +296,7 @@ export default function AdminPage() {
 
   // Admin panel
   const race = RACES_2026.find((r) => r.round === round);
+  const busy = loading || resetting || reviewing || recalcPen || recalcRound || recalcSeason;
   const driversSorted = [...DRIVERS_2026].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -285,7 +309,7 @@ export default function AdminPage() {
               Admin Panel
             </div>
             <h1 className="text-3xl font-black font-[family-name:var(--font-oswald)]">
-              POST-GARA
+              GESTIONE WEEKEND
             </h1>
           </div>
           <button
@@ -296,80 +320,11 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Replay gara (sola lettura) */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Replay gara (classifica giro per giro, per i video)
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <a href={`/replay.html?round=${round}`} target="_blank" rel="noreferrer"
-              className="py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase bg-white/10 hover:bg-white/15 text-white transition-all">
-              Apri replay round {round}
-            </a>
-            <span className="text-white/50 text-[11px]">Ricostruito dagli stream storici OpenF1 con le regole del live; usa il cookie admin di questo browser.</span>
-          </div>
-        </div>
-
-        {/* Audit regole (sola lettura) */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Audit regole (sola lettura, a blocchi di round)
-          </label>
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <input type="number" min={1} max={24} value={auditFrom} onChange={(e) => setAuditFrom(Number(e.target.value))}
-              className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
-            <span className="text-white/40 text-xs">→</span>
-            <input type="number" min={1} max={24} value={auditTo} onChange={(e) => setAuditTo(Number(e.target.value))}
-              className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
-            <button onClick={handleAudit} disabled={auditing}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${auditing ? "bg-white/10 text-white/50 cursor-wait" : "bg-blue-600 hover:bg-blue-600/80 text-white"}`}>
-              {auditing ? "Audit in corso..." : "Lancia audit"}
-            </button>
-            <span className="text-white/50 text-[11px]">Max ~6 round per chiamata (limite 60s)</span>
-          </div>
-          {auditData?.error && <div className="text-red-400 text-xs">{auditData.error}</div>}
-          {auditData?.totali_stagione && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs font-[family-name:var(--font-jetbrains)]">
-                <thead className="text-white/40 text-[10px] uppercase tracking-wider">
-                  <tr><th className="text-left py-1">Giocatore</th><th className="text-right">Salvato</th><th className="text-right">Griglia</th><th className="text-right">Pole</th><th className="text-right">Qualifica</th><th className="text-right">Nuovo</th></tr>
-                </thead>
-                <tbody>
-                  {auditData.totali_stagione.map((t: any) => (
-                    <tr key={t.nome} className="border-t border-white/[0.06]">
-                      <td className="py-1.5 text-white/80">{t.nome}</td>
-                      <td className="text-right text-white/60">{t.salvato}</td>
-                      <td className={`text-right ${t.regola3 ? "text-yellow-300" : "text-white/40"}`}>{t.regola3 > 0 ? "+" : ""}{t.regola3}</td>
-                      <td className={`text-right ${t.regola1 ? "text-yellow-300" : "text-white/40"}`}>{t.regola1 > 0 ? "+" : ""}{t.regola1}</td>
-                      <td className={`text-right ${t.regole24 ? "text-yellow-300" : "text-white/40"}`}>{t.regole24 > 0 ? "+" : ""}{t.regole24}</td>
-                      <td className="text-right text-white font-bold">{t.nuovo}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {auditData.report?.some((r: any) => r.note?.length) && (
-                <div className="mt-3 text-yellow-400 text-[11px] space-y-1">
-                  {auditData.report.filter((r: any) => r.note?.length).map((r: any) => (
-                    <div key={r.round}>R{r.round}: {r.note.join(" · ")}</div>
-                  ))}
-                </div>
-              )}
-              <details className="mt-3">
-                <summary className="text-white/40 text-[11px] cursor-pointer">JSON completo (per round, piloti, chiamate OpenF1)</summary>
-                <pre className="mt-2 text-[10px] text-white/60 whitespace-pre-wrap break-all max-h-[400px] overflow-auto">{JSON.stringify(auditData, null, 2)}</pre>
-              </details>
-            </div>
-          )}
-        </div>
-
-        {/* Selezione Round */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Seleziona Round
-          </label>
+        {/* Round, unico per tutta la pagina */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6">
           <select
             value={round}
-            onChange={(e) => { setRound(Number(e.target.value)); setResult(null); setLogs([]); }}
+            onChange={(e) => { setRound(Number(e.target.value)); setResult(null); setLogs([]); setReviewData(null); }}
             className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
           >
             {RACES_2026.map((r) => (
@@ -378,216 +333,162 @@ export default function AdminPage() {
               </option>
             ))}
           </select>
-
           {race && (
-            <div className="mt-3 text-xs text-white/40">
+            <div className="mt-2 text-[11px] text-white/50">
               {race.sprint ? "Weekend Sprint" : "Weekend Normale"} — {race.circuit}
             </div>
           )}
         </div>
 
-        {/* Selezione Sessione */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Sessione da calcolare
-          </label>
-          <div className="grid grid-cols-2 gap-2">
+        {/* 1. WEEKEND: il lavoro normale dopo ogni sessione */}
+        <section className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6">
+          <div className="text-[11px] tracking-[2px] text-[#E8002D] uppercase font-bold mb-1">Weekend</div>
+          <p className="text-[11px] text-white/50 mb-4">Dopo ogni sessione: scegli la sessione e calcola. Rilanciare è sicuro.</p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
             {[
-              { value: "sprint_shootout", label: "Sprint Qualifiche", desc: "Solo punti piloti SS", sprint: true },
-              { value: "sprint", label: "Sprint Race", desc: "Solo punti piloti Sprint", sprint: true },
-              { value: "qualifying", label: "Qualifica", desc: "Solo punti piloti Quali" },
-              { value: "race", label: "Gara", desc: "Piloti + Previsioni + Penalita" },
+              { value: "sprint_shootout", label: "Sprint Qualifiche", sprint: true },
+              { value: "sprint", label: "Sprint Race", sprint: true },
+              { value: "qualifying", label: "Qualifica" },
+              { value: "race", label: "Gara" },
             ].filter((s) => !s.sprint || race?.sprint).map((s) => (
               <button
                 key={s.value}
                 onClick={() => setSession(s.value)}
-                className={`p-3 rounded-xl text-left transition-all border ${
+                className={`p-3 rounded-xl text-left text-sm font-bold transition-all border ${
                   session === s.value
                     ? "bg-[#E8002D]/20 border-[#E8002D]/40 text-white"
                     : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
                 }`}
               >
-                <div className="text-sm font-bold">{s.label}</div>
-                <div className="text-[10px] text-white/50 mt-1">{s.desc}</div>
+                {s.label}
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Driver of the Day — solo per mode "race" */}
-        {session === "race" && (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-            <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-              Driver of the Day
-            </label>
+          {session === "race" && (
             <select
               value={dotd ?? ""}
               onChange={(e) => setDotd(e.target.value ? Number(e.target.value) : null)}
-              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
+              className="w-full mb-4 bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#E8002D]/40 appearance-none"
             >
-              <option value="" className="bg-[#050507]">— Nessuno / Non ancora annunciato —</option>
+              <option value="" className="bg-[#050507]">Driver of the Day: nessuno / tengo quello salvato</option>
               {driversSorted.map((d) => (
                 <option key={d.number} value={d.number} className="bg-[#050507]">
                   #{d.number} {d.name} ({d.team})
                 </option>
               ))}
             </select>
-          </div>
-        )}
-
-        {/* Ricalcolo completo del round */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Ricalcolo completo Round {round}
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <button onClick={handleRicalcolaRound} disabled={recalcRound || loading || resetting}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcRound ? "bg-white/10 text-white/50 cursor-wait" : "bg-emerald-600 hover:bg-emerald-600/80 text-white"}`}>
-              {recalcRound ? "Ricalcolo in corso..." : `Ricalcola round ${round}`}
-            </button>
-            <span className="text-white/50 text-[11px]">
-              {RACES_2026.find((x) => x.round === round)?.sprint ? "Shootout → Sprint → Qualifica → Gara" : "Qualifica → Gara"}, idempotente. Il Driver of the Day salvato viene mantenuto se non ne selezioni uno.
-            </span>
-          </div>
-          {recalcRoundLog.length > 0 && (
-            <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[300px] overflow-auto">{recalcRoundLog.join("\n")}</pre>
           )}
-        </div>
-
-        {/* Ricalcolo stagione */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 mb-6">
-          <label className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold block mb-3">
-            Ricalcolo intera stagione
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <button onClick={handleRicalcolaStagione} disabled={recalcSeason || recalcRound || loading || resetting}
-              className={`py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${recalcSeason ? "bg-white/10 text-white/50 cursor-wait" : "bg-orange-600 hover:bg-orange-600/80 text-white"}`}>
-              {recalcSeason ? "Ricalcolo in corso..." : "Ricalcola tutti i round in archivio"}
-            </button>
-            <span className="text-white/50 text-[11px]">Solo i round già calcolati, tutte le sessioni, in ordine. Idempotente. Alcuni minuti.</span>
-          </div>
-          {recalcSeasonLog.length > 0 && (
-            <pre className="mt-3 text-[10px] text-white/60 whitespace-pre-wrap max-h-[400px] overflow-auto">{recalcSeasonLog.join("\n")}</pre>
-          )}
-        </div>
-
-        {/* Bottoni */}
-        <div className="flex gap-3">
           <button
             onClick={handlePostGara}
-            disabled={loading || resetting}
-            className={`flex-1 py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting
-                ? "bg-white/10 text-white/50 cursor-wait"
-                : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white hover:scale-[1.01] active:scale-[0.99]"
+            disabled={busy}
+            className={`w-full py-4 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
+              busy ? "bg-white/10 text-white/50 cursor-wait" : "bg-[#E8002D] hover:bg-[#E8002D]/80 text-white"
             }`}
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-3">
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Calcolo in corso...
-              </span>
-            ) : (
-              `Calcola ${session === "sprint_shootout" ? "Sprint Quali" : session === "sprint" ? "Sprint" : session === "qualifying" ? "Qualifica" : "Gara"} R${round}`
-            )}
+            {loading
+              ? "Calcolo in corso..."
+              : `Calcola ${session === "sprint_shootout" ? "Sprint Quali" : session === "sprint" ? "Sprint" : session === "qualifying" ? "Qualifica" : "Gara"} R${round}`}
           </button>
-          <button
-            onClick={handleReview}
-            disabled={loading || resetting || reviewing}
-            className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting || reviewing
-                ? "bg-white/10 text-white/50 cursor-wait"
-                : "bg-blue-600 hover:bg-blue-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
-            }`}
-          >
-            {reviewing ? (
-              <span className="flex items-center justify-center gap-3">
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Review...
-              </span>
-            ) : (
-              "REVIEW"
-            )}
-          </button>
-          <button
-            onClick={async () => {
-              if (!confirm(`Sei sicuro di voler azzerare i punteggi del Round ${round}?`)) return;
-              setResetting(true);
-              setResult(null);
-              setLogs([]);
-              try {
-                const res = await fetch("/api/reset-round", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ round }),
-                });
-                const data = await res.json();
-                setResult(data);
-                if (data.log) setLogs(data.log);
-              } catch (err: any) {
-                setResult({ error: err.message });
-              }
-              setResetting(false);
-            }}
-            disabled={loading || resetting}
-            className={`py-4 px-6 rounded-2xl font-bold text-sm tracking-[2px] uppercase transition-all ${
-              loading || resetting
-                ? "bg-white/10 text-white/50 cursor-wait"
-                : "bg-orange-600 hover:bg-orange-600/80 text-white hover:scale-[1.01] active:scale-[0.99]"
-            }`}
-          >
-            {resetting ? (
-              <span className="flex items-center justify-center gap-3">
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Reset...
-              </span>
-            ) : (
-              "RESET"
-            )}
-          </button>
-        </div>
+        </section>
 
-        {/* Ricalcolo penalità */}
-        <div className="mt-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
-          <div className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold mb-1">
-            Manutenzione penalità
+        {/* 2. CONTROLLI: sola lettura, non cambiano niente */}
+        <section className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6">
+          <div className="text-[11px] tracking-[2px] text-blue-400 uppercase font-bold mb-1">Controlli</div>
+          <p className="text-[11px] text-white/50 mb-4">Sola lettura: non salvano nulla.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button onClick={handleReview} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 disabled:opacity-50">
+              {reviewing ? "Review..." : `Dettaglio R${round}`}
+            </button>
+            <button onClick={() => handleRecalcPenalties(true)} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 disabled:opacity-50">
+              {recalcPen ? "Verifica..." : "Verifica penalità"}
+            </button>
+            <a href={`/replay.html?round=${round}`} target="_blank" rel="noreferrer"
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-white/15 text-white/70 hover:bg-white/5 text-center">
+              Replay R{round}
+            </a>
           </div>
-          <p className="text-xs text-white/40 mb-4">
-            Ricontrolla le penalità di gara da OpenF1 e aggiorna i punteggi (-5 una volta per pilota).
-            Idempotente: rilanciarlo non cambia nulla se non ci sono variazioni.
+          <details className="mt-4">
+            <summary className="text-[11px] text-white/50 cursor-pointer">Audit regole su più round</summary>
+            <div className="flex flex-wrap items-center gap-3 mt-3 mb-3">
+              <input type="number" min={1} max={TOTAL_ROUNDS} value={auditFrom} onChange={(e) => setAuditFrom(Number(e.target.value))}
+                className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
+              <span className="text-white/40 text-xs">→</span>
+              <input type="number" min={1} max={TOTAL_ROUNDS} value={auditTo} onChange={(e) => setAuditTo(Number(e.target.value))}
+                className="w-20 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none" />
+              <button onClick={handleAudit} disabled={auditing}
+                className="py-2 px-5 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 disabled:opacity-50">
+                {auditing ? "Audit..." : "Lancia"}
+              </button>
+              <span className="text-white/50 text-[11px]">Max ~6 round per volta</span>
+            </div>
+            {auditData?.error && <div className="text-red-400 text-xs">{auditData.error}</div>}
+            {auditData?.totali_stagione && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-[family-name:var(--font-jetbrains)]">
+                  <thead className="text-white/40 text-[11px] uppercase tracking-wider">
+                    <tr><th className="text-left py-1">Giocatore</th><th className="text-right">Salvato</th><th className="text-right">Griglia</th><th className="text-right">Pole</th><th className="text-right">Qualifica</th><th className="text-right">Nuovo</th></tr>
+                  </thead>
+                  <tbody>
+                    {auditData.totali_stagione.map((t: any) => (
+                      <tr key={t.nome} className="border-t border-white/[0.06]">
+                        <td className="py-1.5 text-white/80">{t.nome}</td>
+                        <td className="text-right text-white/60">{t.salvato}</td>
+                        <td className={`text-right ${t.regola3 ? "text-yellow-300" : "text-white/40"}`}>{t.regola3 > 0 ? "+" : ""}{t.regola3}</td>
+                        <td className={`text-right ${t.regola1 ? "text-yellow-300" : "text-white/40"}`}>{t.regola1 > 0 ? "+" : ""}{t.regola1}</td>
+                        <td className={`text-right ${t.regole24 ? "text-yellow-300" : "text-white/40"}`}>{t.regole24 > 0 ? "+" : ""}{t.regole24}</td>
+                        <td className="text-right text-white font-bold">{t.nuovo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {auditData.report?.some((r: any) => r.note?.length) && (
+                  <div className="mt-3 text-yellow-400 text-[11px] space-y-1">
+                    {auditData.report.filter((r: any) => r.note?.length).map((r: any) => (
+                      <div key={r.round}>R{r.round}: {r.note.join(" · ")}</div>
+                    ))}
+                  </div>
+                )}
+                <details className="mt-3">
+                  <summary className="text-white/40 text-[11px] cursor-pointer">JSON completo</summary>
+                  <pre className="mt-2 text-[11px] text-white/60 whitespace-pre-wrap break-all max-h-[400px] overflow-auto">{JSON.stringify(auditData, null, 2)}</pre>
+                </details>
+              </div>
+            )}
+          </details>
+        </section>
+
+        {/* 3. CORREZIONI: scrivono sui punteggi, ognuna chiede conferma */}
+        <section className="bg-white/[0.03] border border-orange-500/20 rounded-2xl p-5 mb-6">
+          <div className="text-[11px] tracking-[2px] text-orange-400 uppercase font-bold mb-1">Correzioni</div>
+          <p className="text-[11px] text-white/50 mb-4">
+            Scrivono sui punteggi (per differenza, rilanciare è sicuro). Prima fai il controllo corrispondente.
           </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleRecalcPenalties(false)}
-              disabled={recalcPen || loading || resetting}
-              className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
-                recalcPen || loading || resetting
-                  ? "bg-white/10 text-white/50 cursor-wait"
-                  : "bg-purple-600 hover:bg-purple-600/80 text-white"
-              }`}
-            >
-              {recalcPen ? "Ricalcolo..." : `Ricalcola penalità R${round}`}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button onClick={() => handleRecalcPenalties(false)} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase bg-purple-600 hover:bg-purple-600/80 text-white disabled:opacity-50">
+              {recalcPen ? "Applico..." : "Applica penalità"}
             </button>
-            <button
-              onClick={() => handleRecalcPenalties(true)}
-              disabled={recalcPen || loading || resetting}
-              className={`flex-1 py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase transition-all ${
-                recalcPen || loading || resetting
-                  ? "bg-white/10 text-white/50 cursor-wait"
-                  : "bg-purple-700 hover:bg-purple-700/80 text-white"
-              }`}
-            >
-              {recalcPen ? "Ricalcolo..." : "Ricalcola TUTTI i GP"}
+            <button onClick={handleRicalcolaRound} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase bg-emerald-600 hover:bg-emerald-600/80 text-white disabled:opacity-50">
+              {recalcRound ? "Ricalcolo..." : `Ricalcola tutto R${round}`}
+            </button>
+            <button onClick={handleRicalcolaStagione} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase bg-orange-600 hover:bg-orange-600/80 text-white disabled:opacity-50">
+              {recalcSeason ? "Ricalcolo..." : "Ricalcola stagione"}
+            </button>
+            <button onClick={handleReset} disabled={busy}
+              className="py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-50">
+              {resetting ? "Reset..." : `Azzera R${round}`}
             </button>
           </div>
-          <button
-            onClick={() => handleRecalcPenalties(true, true)}
-            disabled={recalcPen || loading || resetting}
-            className="mt-3 w-full py-3 rounded-xl font-bold text-xs tracking-[2px] uppercase border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
-          >
-            {recalcPen ? "Simulazione..." : "Prova su tutti i GP (non salva)"}
-          </button>
-        </div>
+          {(recalcRoundLog.length > 0 || recalcSeasonLog.length > 0) && (
+            <pre className="mt-3 text-[11px] text-white/60 whitespace-pre-wrap max-h-[300px] overflow-auto">
+              {[...recalcRoundLog, ...recalcSeasonLog].join("\n")}
+            </pre>
+          )}
+        </section>
 
         {/* Risultato ricalcolo penalità */}
         {recalcData && (
@@ -600,7 +501,7 @@ export default function AdminPage() {
             ) : (
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
                 <div className="text-[10px] tracking-[2px] text-purple-400 uppercase font-bold mb-3">
-                  {recalcData.prova ? "PROVA, niente salvato · " : ""}Ricalcolo penalità — {recalcData.round_verificati} GP verificati, {recalcData.round_con_variazioni} con variazioni
+                  {recalcData.prova ? "VERIFICA, niente salvato · " : "APPLICATO · "}Penalità — {recalcData.round_verificati} GP verificati, {recalcData.round_con_variazioni} con variazioni
                 </div>
                 {recalcData.round_con_variazioni === 0 ? (
                   <div className="text-green-400 text-sm font-bold">
