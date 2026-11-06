@@ -61,11 +61,36 @@ export interface PenaltyOverride {
   fonte: string;
 }
 
+// Verificate il 6/11/2026 incrociando stampa e archivio: in tutti i casi la
+// posizione in weekend_results è già quella dopo la penalità, mancava il -5.
 export const RACE_PENALTY_OVERRIDES: Record<number, PenaltyOverride> = {
+  6: {
+    // Miami: Leclerc drive-through convertito in +20 s (P6 → P8); Verstappen
+    // +5 s per la linea d'uscita box, indagine chiusa a fine gara (resta P5).
+    drivers: [16, 3],
+    fonte: "FIA stewards, Miami GP 2026 (formula1.com, motorsport.com, motorsportweek.com 4/5/2026)",
+  },
+  9: {
+    // Barcellona: Colapinto +10 s bandiera gialla (P8 → P10).
+    drivers: [43],
+    fonte: "FIA stewards, Barcelona GP 2026 (racingnews365.com, the-race.com)",
+  },
+  11: {
+    // Silverstone: Sainz penalità di un giro, sdoppiamento sotto SC (P12 → P17).
+    drivers: [55],
+    fonte: "FIA stewards, British GP 2026 (racingnews365.com, the-race.com)",
+  },
+  17: {
+    // Baku: Bortoleto +10 s sorpasso in regime di bandiera gialla (P13 → P15).
+    // Colapinto: penalità convertita in griglia per Sepang → 0, esclusa.
+    drivers: [5],
+    fonte: "FIA stewards, Azerbaijan GP 2026 (formula1.com, racingnews365.com)",
+  },
   21: {
-    // Messico 2026: Gasly e Colapinto, 10 s post-gara per bandiere gialle
-    // (Colapinto da P8 a P15). Classifica già aggiornata da OpenF1.
-    drivers: [10, 43],
+    // Messico: Gasly stop&go convertito in +30 s e Colapinto +10 s per
+    // bandiere gialle (Colapinto P8 → P15); Piastri +10 s collisione con
+    // Lindblad (P7 → P13).
+    drivers: [10, 43, 81],
     fonte: "FIA stewards, Mexico City GP 1/11/2026 (formula1.com, 2/11/2026)",
   },
 };

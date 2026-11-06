@@ -39,9 +39,9 @@ describe("applyRaceOverrides", () => {
 });
 
 describe("withPenaltyOverrides", () => {
-  it("Messico 2026: aggiunge Gasly e Colapinto a quelli di race_control", () => {
+  it("Messico 2026: aggiunge Gasly, Colapinto e Piastri a quelli di race_control", () => {
     const out = withPenaltyOverrides(21, new Set([16, 63]));
-    expect([...out].sort((a, b) => a - b)).toEqual([10, 16, 43, 63]);
+    expect([...out].sort((a, b) => a - b)).toEqual([10, 16, 43, 63, 81]);
   });
 
   it("round senza override: stesso insieme", () => {
