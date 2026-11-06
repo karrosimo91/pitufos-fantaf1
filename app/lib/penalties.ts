@@ -65,3 +65,57 @@ export function extractPenalizedDrivers(raceControl: RaceControlMessage[]): Set<
   }
   return penalized;
 }
+
+// ─── Penalità post-gara: rilevamento indiretto ───
+//
+// Le decisioni prese dopo la bandiera a scacchi non arrivano in race_control,
+// ma OpenF1 aggiorna la classifica di session_result. Il feed `position` invece
+// resta fermo all'ordine sotto la bandiera. Una penalità post-gara fa SCENDERE
+// solo chi la prende (chi sta dietro sale), quindi un classificato che finisce
+// più indietro in session_result che nell'ultimo record di `position` è un
+// sospetto penalizzato. Non vede le penalità che non cambiano la posizione
+// (distacco più largo della penalità): per quelle resta l'override manuale.
+
+export interface PositionFeedRow {
+  driver_number?: number | null;
+  position?: number | null;
+  date?: string | null;
+}
+
+export interface PostRaceSuspect {
+  driver_number: number;
+  sotto_bandiera: number;
+  classifica: number;
+}
+
+/** Ultima posizione di ogni pilota nel feed `position` (ordine sotto la bandiera). */
+export function finalFeedPositions(feed: PositionFeedRow[]): Map<number, number> {
+  const last = new Map<number, { pos: number; t: number }>();
+  for (const r of feed) {
+    if (r.driver_number == null || r.position == null) continue;
+    const t = r.date ? Date.parse(r.date) : 0;
+    const prev = last.get(r.driver_number);
+    if (!prev || t >= prev.t) last.set(r.driver_number, { pos: r.position, t });
+  }
+  return new Map([...last].map(([n, v]) => [n, v.pos]));
+}
+
+/**
+ * Classificati non ritirati e non già penalizzati che in classifica ufficiale
+ * stanno più indietro che sotto la bandiera.
+ */
+export function suspectPostRacePenalties(
+  race: { driver_number: number; position: number | null; dnf?: boolean; dns?: boolean; penalty?: boolean }[],
+  feed: PositionFeedRow[],
+): PostRaceSuspect[] {
+  const finale = finalFeedPositions(feed);
+  const out: PostRaceSuspect[] = [];
+  for (const r of race) {
+    if (r.position == null || r.dnf || r.dns || r.penalty) continue;
+    const flag = finale.get(r.driver_number);
+    if (flag != null && r.position > flag) {
+      out.push({ driver_number: r.driver_number, sotto_bandiera: flag, classifica: r.position });
+    }
+  }
+  return out.sort((a, b) => a.classifica - b.classifica);
+}

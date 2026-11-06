@@ -4,6 +4,7 @@
 
 ### Penalità post-gara che OpenF1 non vede
 - **Il ricalcolo penalità non trovava nulla per Messico** (round 21). `/api/recalc-penalties` legge solo `race_control`, che è il feed della sessione: le decisioni dei commissari prese ore dopo la gara (Gasly e Colapinto, 10 s per bandiere gialle) non ci arrivano mai. OpenF1 aggiorna la classifica in `session_result` (Colapinto 15°, Gasly 17° già in archivio), ma il -5 si perdeva. Nuovo `RACE_PENALTY_OVERRIDES` in `lib/manual-overrides.ts` (con fonte, testato), applicato da `recalc-penalties` e dal post-gara, quindi sopravvive ai rilanci.
+- **Rilevatore delle penalità post-gara** (`suspectPostRacePenalties` in `lib/penalties.ts`, testato). Una penalità decisa dopo la gara fa scendere solo chi la prende: il ricalcolo penalità confronta la classifica ufficiale con l'ultima posizione del feed `position` (l'ordine sotto la bandiera) e segnala nel pannello admin chi è sceso senza flag. Non applica nulla: si conferma la decisione FIA e si aggiunge a `RACE_PENALTY_OVERRIDES`. Non vede le penalità che non cambiano posizione.
 
 ## v1.11.7 — 1 Novembre 2026
 

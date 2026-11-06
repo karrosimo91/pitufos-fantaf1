@@ -626,6 +626,24 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
+                {recalcData.report?.some((r: any) => r.sospetti_post_gara?.length > 0) && (
+                  <div className="mt-4 bg-yellow-500/[0.06] border border-yellow-500/20 rounded-xl p-4">
+                    <div className="text-[11px] tracking-[2px] text-yellow-400 uppercase font-bold mb-2">
+                      Sospette penalità post-gara (non applicate)
+                    </div>
+                    <div className="text-[11px] text-white/60 mb-2">
+                      Scesi in classifica dopo la bandiera a scacchi. Verificare la decisione FIA e, se confermata,
+                      aggiungere il pilota a RACE_PENALTY_OVERRIDES in lib/manual-overrides.ts.
+                    </div>
+                    {recalcData.report
+                      .filter((r: any) => r.sospetti_post_gara?.length > 0)
+                      .map((r: any) => (
+                        <div key={r.round} className="text-xs text-white/80 mb-1">
+                          R{r.round} — {r.gara}: {r.sospetti_post_gara.join("; ")}
+                        </div>
+                      ))}
+                  </div>
+                )}
                 {recalcData.log?.length > 0 && (
                   <details className="mt-4">
                     <summary className="text-[10px] tracking-[2px] text-white/50 uppercase font-bold cursor-pointer">

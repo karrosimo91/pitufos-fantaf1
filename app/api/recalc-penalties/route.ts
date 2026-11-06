@@ -3,7 +3,7 @@ import { isAdminRequest } from "../../lib/admin-auth";
 import { createServerClient } from "../../lib/supabase-server";
 import type { RaceWeekendResults, DriverResult } from "../../lib/scoring";
 import { OPENF1, fetchJson } from "../../lib/openf1-server";
-import { extractPenalizedDrivers } from "../../lib/penalties";
+import { extractPenalizedDrivers, suspectPostRacePenalties } from "../../lib/penalties";
 import { computePlayerScores, applicaPunteggiRound } from "../../lib/score-round";
 import { withPenaltyOverrides } from "../../lib/manual-overrides";
 import { DRIVERS_2026 } from "../../lib/drivers-data";
@@ -78,6 +78,15 @@ export async function POST(request: NextRequest) {
       // + penalità post-gara che race_control non contiene (manual-overrides.ts)
       const penalized = withPenaltyOverrides(rnd, extractPenalizedDrivers(raceControl));
 
+      // Sospette penalità post-gara (scesi in classifica dopo la bandiera):
+      // solo segnalate, si confermano a mano in RACE_PENALTY_OVERRIDES.
+      const feed = await fetchJson(`${OPENF1}/position?session_key=${raceSession.session_key}`);
+      const sospetti = suspectPostRacePenalties(
+        data.race.map((r) => ({ ...r, penalty: penalized.has(r.driver_number) })),
+        feed,
+      ).map((s) => `#${s.driver_number} ${driverName(s.driver_number)}: P${s.sotto_bandiera} sotto la bandiera, P${s.classifica} in classifica`);
+      if (sospetti.length) log.push(`R${rnd}: SOSPETTA penalità post-gara, da verificare → ${sospetti.join("; ")}`);
+
       // Confronta con i flag salvati
       const added: number[] = [];
       const removed: number[] = [];
@@ -90,7 +99,7 @@ export async function POST(request: NextRequest) {
 
       if (added.length === 0 && removed.length === 0) {
         log.push(`R${rnd} (${meeting.meeting_name}): nessuna variazione penalità`);
-        report.push({ round: rnd, gara: meeting.meeting_name, variazioni: false, aggiunte: [], rimosse: [] });
+        report.push({ round: rnd, gara: meeting.meeting_name, variazioni: false, aggiunte: [], rimosse: [], sospetti_post_gara: sospetti });
         continue;
       }
 
@@ -124,6 +133,7 @@ export async function POST(request: NextRequest) {
         variazioni: true,
         aggiunte: added.map((n) => `#${n} ${driverName(n)}`),
         rimosse: removed.map((n) => `#${n} ${driverName(n)}`),
+        sospetti_post_gara: sospetti,
         giocatori_impattati: affected,
       });
     }
